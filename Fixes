@@ -1,15 +1,752 @@
-I see the issue! You have a duplicated and malformed loadWeatherData() function in your code. The function appears twice with inconsistent structure. Here's the fix:
+    <script>
+        // Initialize AOS
+        AOS.init({
+            duration: 800,
+            easing: 'ease-in-out',
+            once: true
+        });
 
-Problem:
+        // Initialize jsPDF
+        window.jsPDF = window.jspdf.jsPDF;
 
-Your loadWeatherData() function has duplicate code and is missing proper structure. Look at lines around the weather section - you have:
+        // Map-related variables
+        let projectMap = null;
+        let projectMarker = null;
+        let modalProjectMap = null;
+        let modalProjectMarker = null;
 
-1. First incomplete version with duplicate updateHistoricalWeatherChart() call
-2. Then the full version with the proper code
+        // WeatherAPI.com configuration - FIXED: Moved API key handling to backend proxy pattern
+        const weatherConfig = {
+            useProxy: true, // Set to true to use backend proxy
+            proxyUrl: '/api/weather', // Your backend endpoint
+            fallbackToExample: true // Fall back to example data if API fails
+        };
 
-Solution: Replace the entire loadWeatherData() function with this corrected version:
+        // User authentication state
+        let currentUser = {
+            role: 'viewer',
+            name: 'Demo User',
+            permissions: []
+        };
 
-```javascript
+        // User roles and permissions
+        const userRoles = {
+            viewer: {
+                name: 'Viewer',
+                permissions: ['view_dashboard', 'view_projects', 'view_assessments', 'view_species', 'view_maintenance', 'view_charts', 'view_data', 'view_weather'],
+                color: 'info'
+            },
+            staff: {
+                name: 'Field Staff',
+                permissions: ['view_dashboard', 'view_projects', 'create_assessments', 'view_assessments', 'create_species', 'view_species', 'create_maintenance', 'view_maintenance', 'complete_maintenance', 'view_charts', 'view_data', 'view_weather'],
+                color: 'success'
+            },
+            manager: {
+                name: 'Project Manager',
+                permissions: ['view_dashboard', 'create_projects', 'edit_projects', 'view_projects', 'create_assessments', 'edit_assessments', 'view_assessments', 'create_species', 'edit_species', 'view_species', 'create_maintenance', 'edit_maintenance', 'view_maintenance', 'approve_projects', 'view_charts', 'export_data', 'view_data', 'view_weather'],
+                color: 'warning'
+            },
+            admin: {
+                name: 'System Administrator',
+                permissions: ['all'],
+                color: 'danger'
+            }
+        };
+
+        // Audit log system
+        const auditLog = {
+            logs: [],
+            
+            init: function() {
+                if (!localStorage.getItem('auditLogs')) {
+                    localStorage.setItem('auditLogs', JSON.stringify([]));
+                }
+                this.logs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
+            },
+            
+            log: function(action, details = {}) {
+                const logEntry = {
+                    timestamp: new Date().toISOString(),
+                    user: currentUser.role,
+                    userName: currentUser.name,
+                    action: action,
+                    details: details,
+                    ip: '127.0.0.1' // In production, get from server
+                };
+                
+                this.logs.push(logEntry);
+                // Keep only last 1000 logs
+                if (this.logs.length > 1000) {
+                    this.logs = this.logs.slice(-1000);
+                }
+                
+                localStorage.setItem('auditLogs', JSON.stringify(this.logs));
+                
+                // Also log to console for debugging
+                console.log(`[AUDIT] ${logEntry.timestamp} - ${currentUser.role}: ${action}`, details);
+            },
+            
+            getLogs: function() {
+                return this.logs;
+            },
+            
+            clearLogs: function() {
+                this.logs = [];
+                localStorage.setItem('auditLogs', JSON.stringify([]));
+            }
+        };
+
+        // Data validation system
+        const dataValidator = {
+            validateProject: function(project) {
+                const errors = [];
+                
+                // Name validation
+                if (!project.name || project.name.trim().length < 3) {
+                    errors.push("Project name must be at least 3 characters");
+                }
+                
+                if (project.name && project.name.length > 100) {
+                    errors.push("Project name cannot exceed 100 characters");
+                }
+                
+                // Date validation
+                if (project.startDate) {
+                    const startDate = new Date(project.startDate);
+                    if (startDate > new Date()) {
+                        errors.push("Start date cannot be in the future");
+                    }
+                }
+                
+                // Coordinate validation
+                if (project.latitude && (project.latitude < -90 || project.latitude > 90)) {
+                    errors.push("Latitude must be between -90 and 90");
+                }
+                
+                if (project.longitude && (project.longitude < -180 || project.longitude > 180)) {
+                    errors.push("Longitude must be between -180 and 180");
+                }
+                
+                // Progress validation
+                if (project.progress && (project.progress < 0 || project.progress > 100)) {
+                    errors.push("Progress must be between 0 and 100%");
+                }
+                
+                // Budget validation
+                if (project.budget && project.budget < 0) {
+                    errors.push("Budget cannot be negative");
+                }
+                
+                return {
+                    isValid: errors.length === 0,
+                    errors: errors
+                };
+            },
+            
+            validateAssessment: function(assessment) {
+                const errors = [];
+                
+                if (!assessment.assessor || assessment.assessor.trim().length < 2) {
+                    errors.push("Assessor name must be at least 2 characters");
+                }
+                
+                if (assessment.date) {
+                    const assessmentDate = new Date(assessment.date);
+                    if (assessmentDate > new Date()) {
+                        errors.push("Assessment date cannot be in the future");
+                    }
+                }
+                
+                return {
+                    isValid: errors.length === 0,
+                    errors: errors
+                };
+            },
+            
+            sanitizeInput: function(input) {
+                // Basic XSS protection
+                if (typeof input === 'string') {
+                    return input
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#x27;')
+                        .replace(/\//g, '&#x2F;');
+                }
+                return input;
+            }
+        };
+
+        // User Guide button functionality - Load in main content area
+        document.getElementById('userGuideBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Navigate to the User Guide section like other menu items
+            document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Hide all content sections
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Create or show User Guide section
+            showUserGuideSection();
+        });
+
+        function showUserGuideSection() {
+            // Check if User Guide section already exists
+            let userGuideSection = document.getElementById('user-guide');
+            
+            if (!userGuideSection) {
+                // Create User Guide section
+                userGuideSection = document.createElement('div');
+                userGuideSection.id = 'user-guide';
+                userGuideSection.className = 'content-section';
+                
+                // Add User Guide content
+                userGuideSection.innerHTML = `
+                    <div class="section-header">
+                        <h2>User Guide</h2>
+                        <p class="text-muted">Learn how to use EcoManager Pro effectively</p>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">EcoManager Pro Documentation</h5>
+                        </div>
+                        <div class="card-body">
+                            <iframe id="guideFrame" src="UserGuide.html" style="width: 100%; height: 700px; border: none; border-radius: 8px;"></iframe>
+                        </div>
+                    </div>
+                `;
+                
+                // Add to main content
+                document.querySelector('.main-content').appendChild(userGuideSection);
+            }
+            
+            // Show the User Guide section
+            setTimeout(() => {
+                userGuideSection.classList.add('active');
+                
+                // Update page title
+                document.title = 'User Guide | EcoManager Pro';
+            }, 50);
+        }
+
+        // Simple database using localStorage with enhanced structure
+        const db = {
+            init: function() {
+                if (!localStorage.getItem('projects')) {
+                    // Add sample data for demonstration
+                    const sampleProjects = [
+                        {
+                            id: '1',
+                            name: 'Burnie Coastal Restoration',
+                            code: 'BCR001',
+                            startDate: '2023-01-15',
+                            status: 'active',
+                            progress: 65,
+                            description: 'Restoration of coastal vegetation in Burnie area',
+                            latitude: -41.0521,
+                            longitude: 145.9061,
+                            budget: 150000,
+                            fte: 2.5,
+                            fundingSource: 'council',
+                            approvalStatus: 'approved',
+                            documents: [],
+                            riskAssessment: 'Moderate risk due to coastal erosion'
+                        },
+                        {
+                            id: '2',
+                            name: 'Tasmanian Wetlands Preservation',
+                            code: 'TWP002',
+                            startDate: '2023-03-10',
+                            status: 'planning',
+                            progress: 20,
+                            description: 'Preservation and monitoring of wetland ecosystems',
+                            latitude: -42.8821,
+                            longitude: 147.3272,
+                            budget: 85000,
+                            fte: 1.5,
+                            fundingSource: 'state',
+                            approvalStatus: 'pending_review',
+                            documents: [],
+                            riskAssessment: 'Low risk, high environmental value'
+                        }
+                    ];
+                    localStorage.setItem('projects', JSON.stringify(sampleProjects));
+                }
+                if (!localStorage.getItem('assessments')) {
+                    localStorage.setItem('assessments', JSON.stringify([]));
+                }
+                if (!localStorage.getItem('species')) {
+                    localStorage.setItem('species', JSON.stringify([]));
+                }
+                if (!localStorage.getItem('maintenance')) {
+                    localStorage.setItem('maintenance', JSON.stringify([]));
+                }
+                if (!localStorage.getItem('documents')) {
+                    localStorage.setItem('documents', JSON.stringify([]));
+                }
+            },
+            
+            getProjects: function() {
+                return JSON.parse(localStorage.getItem('projects') || '[]');
+            },
+            
+            saveProject: function(project, user) {
+                const validation = dataValidator.validateProject(project);
+                if (!validation.isValid) {
+                    showToast('Validation Error', validation.errors.join('<br>'), 'error');
+                    return null;
+                }
+                
+                // Sanitize inputs
+                project.name = dataValidator.sanitizeInput(project.name);
+                project.description = dataValidator.sanitizeInput(project.description);
+                
+                const projects = this.getProjects();
+                project.id = Date.now().toString();
+                project.createdBy = user;
+                project.createdAt = new Date().toISOString();
+                projects.push(project);
+                localStorage.setItem('projects', JSON.stringify(projects));
+                
+                // Log the action
+                auditLog.log('CREATE_PROJECT', {
+                    projectId: project.id,
+                    projectName: project.name,
+                    status: project.status
+                });
+                
+                return project;
+            },
+            
+            updateProject: function(id, updates, user) {
+                const validation = dataValidator.validateProject(updates);
+                if (!validation.isValid) {
+                    showToast('Validation Error', validation.errors.join('<br>'), 'error');
+                    return false;
+                }
+                
+                let projects = this.getProjects();
+                let updated = false;
+                
+                projects = projects.map(p => {
+                    if (p.id === id) {
+                        // Sanitize updates
+                        if (updates.name) updates.name = dataValidator.sanitizeInput(updates.name);
+                        if (updates.description) updates.description = dataValidator.sanitizeInput(updates.description);
+                        
+                        const oldStatus = p.status;
+                        const updatedProject = { ...p, ...updates, updatedBy: user, updatedAt: new Date().toISOString() };
+                        
+                        // Log status changes
+                        if (oldStatus !== updates.status) {
+                            auditLog.log('UPDATE_PROJECT_STATUS', {
+                                projectId: id,
+                                projectName: p.name,
+                                oldStatus: oldStatus,
+                                newStatus: updates.status
+                            });
+                        }
+                        
+                        auditLog.log('UPDATE_PROJECT', {
+                            projectId: id,
+                            projectName: p.name,
+                            updates: Object.keys(updates)
+                        });
+                        
+                        updated = true;
+                        return updatedProject;
+                    }
+                    return p;
+                });
+                
+                if (updated) {
+                    localStorage.setItem('projects', JSON.stringify(projects));
+                }
+                
+                return updated;
+            },
+            
+            deleteProject: function(id, user) {
+                let projects = this.getProjects();
+                const projectToDelete = projects.find(p => p.id === id);
+                
+                if (!projectToDelete) return false;
+                
+                projects = projects.filter(p => p.id !== id);
+                localStorage.setItem('projects', JSON.stringify(projects));
+                
+                // Log the deletion
+                auditLog.log('DELETE_PROJECT', {
+                    projectId: id,
+                    projectName: projectToDelete.name,
+                    deletedBy: user
+                });
+                
+                return true;
+            },
+            
+            getAssessments: function() {
+                return JSON.parse(localStorage.getItem('assessments') || '[]');
+            },
+            
+            saveAssessment: function(assessment, user) {
+                const validation = dataValidator.validateAssessment(assessment);
+                if (!validation.isValid) {
+                    showToast('Validation Error', validation.errors.join('<br>'), 'error');
+                    return null;
+                }
+                
+                // Sanitize inputs
+                assessment.assessor = dataValidator.sanitizeInput(assessment.assessor);
+                assessment.description = dataValidator.sanitizeInput(assessment.description);
+                
+                const assessments = this.getAssessments();
+                assessment.id = Date.now().toString();
+                assessment.createdBy = user;
+                assessment.createdAt = new Date().toISOString();
+                assessments.push(assessment);
+                localStorage.setItem('assessments', JSON.stringify(assessments));
+                
+                auditLog.log('CREATE_ASSESSMENT', {
+                    assessmentId: assessment.id,
+                    projectId: assessment.projectId,
+                    healthScore: assessment.healthScore?.total
+                });
+                
+                return assessment;
+            },
+            
+            deleteAssessment: function(id, user) {
+                let assessments = this.getAssessments();
+                const assessmentToDelete = assessments.find(a => a.id === id);
+                
+                if (!assessmentToDelete) return false;
+                
+                assessments = assessments.filter(a => a.id !== id);
+                localStorage.setItem('assessments', JSON.stringify(assessments));
+                
+                auditLog.log('DELETE_ASSESSMENT', {
+                    assessmentId: id,
+                    deletedBy: user
+                });
+                
+                return true;
+            },
+            
+            getSpecies: function() {
+                return JSON.parse(localStorage.getItem('species') || '[]');
+            },
+            
+            saveSpecies: function(species, user) {
+                const allSpecies = this.getSpecies();
+                species.id = Date.now().toString();
+                species.createdBy = user;
+                species.createdAt = new Date().toISOString();
+                allSpecies.push(species);
+                localStorage.setItem('species', JSON.stringify(allSpecies));
+                
+                auditLog.log('CREATE_SPECIES', {
+                    speciesId: species.id,
+                    speciesName: species.name,
+                    projectId: species.projectId
+                });
+                
+                return species;
+            },
+            
+            deleteSpecies: function(id, user) {
+                let allSpecies = this.getSpecies();
+                const speciesToDelete = allSpecies.find(s => s.id === id);
+                
+                if (!speciesToDelete) return false;
+                
+                allSpecies = allSpecies.filter(s => s.id !== id);
+                localStorage.setItem('species', JSON.stringify(allSpecies));
+                
+                auditLog.log('DELETE_SPECIES', {
+                    speciesId: id,
+                    speciesName: speciesToDelete.name,
+                    deletedBy: user
+                });
+                
+                return true;
+            },
+            
+            getMaintenance: function() {
+                return JSON.parse(localStorage.getItem('maintenance') || '[]');
+            },
+            
+            saveMaintenance: function(maintenance, user) {
+                const maintenanceItems = this.getMaintenance();
+                maintenance.id = Date.now().toString();
+                maintenance.status = 'scheduled';
+                maintenance.createdBy = user;
+                maintenance.createdAt = new Date().toISOString();
+                maintenanceItems.push(maintenance);
+                localStorage.setItem('maintenance', JSON.stringify(maintenanceItems));
+                
+                auditLog.log('CREATE_MAINTENANCE', {
+                    maintenanceId: maintenance.id,
+                    activity: maintenance.activity,
+                    projectId: maintenance.projectId
+                });
+                
+                return maintenance;
+            },
+            
+            updateMaintenanceStatus: function(id, status, user) {
+                let maintenanceItems = this.getMaintenance();
+                let updated = false;
+                
+                maintenanceItems = maintenanceItems.map(item => {
+                    if (item.id === id) {
+                        const oldStatus = item.status;
+                        item.status = status;
+                        if (status === 'completed') {
+                            item.completedDate = new Date().toISOString().split('T')[0];
+                            item.completedBy = user;
+                        }
+                        item.updatedAt = new Date().toISOString();
+                        
+                        auditLog.log('UPDATE_MAINTENANCE_STATUS', {
+                            maintenanceId: id,
+                            activity: item.activity,
+                            oldStatus: oldStatus,
+                            newStatus: status
+                        });
+                        
+                        updated = true;
+                    }
+                    return item;
+                });
+                
+                if (updated) {
+                    localStorage.setItem('maintenance', JSON.stringify(maintenanceItems));
+                }
+                
+                return updated;
+            },
+            
+            deleteMaintenance: function(id, user) {
+                let maintenanceItems = this.getMaintenance();
+                const maintenanceToDelete = maintenanceItems.find(m => m.id === id);
+                
+                if (!maintenanceToDelete) return false;
+                
+                maintenanceItems = maintenanceItems.filter(m => m.id !== id);
+                localStorage.setItem('maintenance', JSON.stringify(maintenanceItems));
+                
+                auditLog.log('DELETE_MAINTENANCE', {
+                    maintenanceId: id,
+                    activity: maintenanceToDelete.activity,
+                    deletedBy: user
+                });
+                
+                return true;
+            },
+            
+            saveDocument: function(document, user) {
+                const documents = JSON.parse(localStorage.getItem('documents') || '[]');
+                document.id = Date.now().toString();
+                document.uploadedBy = user;
+                document.uploadedAt = new Date().toISOString();
+                documents.push(document);
+                localStorage.setItem('documents', JSON.stringify(documents));
+                
+                auditLog.log('UPLOAD_DOCUMENT', {
+                    documentId: document.id,
+                    fileName: document.fileName,
+                    projectId: document.projectId
+                });
+                
+                return document;
+            },
+            
+            getDocumentsByProject: function(projectId) {
+                const documents = JSON.parse(localStorage.getItem('documents') || '[]');
+                return documents.filter(doc => doc.projectId === projectId);
+            }
+        };
+
+        // Calendar instance
+        let calendar = null;
+
+        // Chart instances
+        let projectStatusChart = null;
+        let healthTrendChart = null;
+        let analyticsHealthTrendChart = null;
+        let speciesTypeChart = null;
+        let maintenanceTypeChart = null;
+        let monthlyActivityChart = null;
+        let temperatureChart = null;
+        let historicalWeatherChart = null;
+
+        // ==================== USER AUTHENTICATION ====================
+
+        function login() {
+            const userRole = document.getElementById('userRole').value;
+            const password = document.getElementById('demoPassword').value;
+            
+            // Simple demo authentication
+            if (password === 'council123') {
+                currentUser.role = userRole;
+                currentUser.name = userRoles[userRole].name;
+                currentUser.permissions = userRoles[userRole].permissions;
+                
+                // Update UI
+                document.getElementById('currentUserRole').textContent = userRoles[userRole].name;
+                document.getElementById('currentUserRole').className = `badge bg-${userRoles[userRole].color} text-dark mt-1`;
+                
+                // Hide login screen
+                document.getElementById('login-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('login-screen').style.display = 'none';
+                }, 300);
+                
+                // Show welcome message
+                showToast('Welcome', `Logged in as ${userRoles[userRole].name}`, 'success');
+                
+                // Log the login
+                auditLog.log('USER_LOGIN', { role: userRole });
+                
+                // Update permissions
+                updatePermissions();
+                
+                // Show onboarding tour for first-time users
+                if (!localStorage.getItem('hasSeenTour')) {
+                    setTimeout(() => {
+                        userOnboarding.showTour();
+                        localStorage.setItem('hasSeenTour', 'true');
+                    }, 1000);
+                }
+            } else {
+                showToast('Login Failed', 'Invalid password. Use "council123" for demo.', 'error');
+            }
+        }
+
+        function logout() {
+            auditLog.log('USER_LOGOUT', { role: currentUser.role });
+            
+            // Reset user
+            currentUser = {
+                role: 'viewer',
+                name: 'Demo User',
+                permissions: []
+            };
+            
+            // Show login screen
+            document.getElementById('login-screen').style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('login-screen').style.opacity = '1';
+            }, 10);
+            
+            // Reset to dashboard
+            document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+            document.querySelector('[data-target="dashboard"]').classList.add('active');
+            
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById('dashboard').classList.add('active');
+        }
+
+        function checkPermission(permission) {
+            if (currentUser.permissions.includes('all')) return true;
+            return currentUser.permissions.includes(permission);
+        }
+
+        function updatePermissions() {
+            // Update UI based on permissions
+            const canCreateProjects = checkPermission('create_projects');
+            const canEditProjects = checkPermission('edit_projects');
+            const canApproveProjects = checkPermission('approve_projects');
+            
+            // Show/hide approval section based on role
+            const approvalSection = document.getElementById('approvalSection');
+            if (canApproveProjects || canEditProjects) {
+                approvalSection.style.display = 'block';
+            } else {
+                approvalSection.style.display = 'none';
+            }
+            
+            // Update quick actions based on permissions
+            document.querySelectorAll('.quick-action-btn').forEach(btn => {
+                const target = btn.dataset.target;
+                if (target === 'projects' && !canCreateProjects) {
+                    btn.style.opacity = '0.5';
+                    btn.style.pointerEvents = 'none';
+                }
+            });
+            
+            // Update form submit buttons
+            document.querySelectorAll('form').forEach(form => {
+                const submitBtn = form.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    if (form.id === 'projectForm' && !canCreateProjects && !canEditProjects) {
+                        submitBtn.disabled = true;
+                        submitBtn.title = 'Requires create/edit permission';
+                    }
+                }
+            });
+        }
+
+        // ==================== WEATHER API FUNCTIONS ====================
+
+        // Enhanced weather functions with backend proxy pattern
+        async function getWeatherByCoords(lat, lon) {
+            if (weatherConfig.useProxy) {
+                try {
+                    // In production, this would call your backend
+                    // const response = await fetch(`${weatherConfig.proxyUrl}?lat=${lat}&lon=${lon}`);
+                    // return await response.json();
+                    
+                    // For demo, simulate API call with example data
+                    return simulateWeatherAPI(lat, lon);
+                } catch (error) {
+                    console.error('Weather proxy error:', error);
+                    if (weatherConfig.fallbackToExample) {
+                        return showExampleWeatherData();
+                    }
+                    return null;
+                }
+            } else {
+                // Direct API call (not recommended for production)
+                console.warn('Direct API calls are disabled for security. Using example data.');
+                return showExampleWeatherData();
+            }
+        }
+
+        function simulateWeatherAPI(lat, lon) {
+            // Simulate API response with realistic data
+            return {
+                current: {
+                    temp_c: 18 + Math.sin(Date.now() / 1000000) * 5,
+                    condition: {
+                        text: "Partly Cloudy",
+                        code: "1003"
+                    },
+                    humidity: 65 + Math.sin(Date.now() / 2000000) * 10,
+                    wind_kph: 12 + Math.random() * 8,
+                    pressure_mb: 1015 + Math.random() * 10,
+                    uv: 6 + Math.random() * 4,
+                    vis_km: 10 + Math.random() * 5,
+                    air_quality: {
+                        'us-epa-index': 2
+                    }
+                },
+                location: {
+                    name: "Burnie, Tasmania",
+                    region: "Tasmania",
+                    country: "Australia"
+                }
+            };
+        }
+
 // Enhanced loadWeatherData function
 async function loadWeatherData() {
     // Try to get location from projects first
@@ -59,50 +796,2933 @@ async function loadWeatherData() {
         loadMockWeatherData();
     }
 }
-```
 
-Also, make sure you remove the duplicate/partial function that appears earlier. You have this section that should be removed:
+        // Function to show example weather data
+        function showExampleWeatherData() {
+            // Create realistic example data structure
+            const exampleData = {
+                current: {
+                    temp_c: 18,
+                    condition: {
+                        text: "Partly Cloudy",
+                        code: "1003" // Partly cloudy code
+                    },
+                    humidity: 65,
+                    wind_kph: 12,
+                    pressure_mb: 1015,
+                    uv: 6,
+                    vis_km: 10,
+                    air_quality: {
+                        'us-epa-index': 2
+                    }
+                },
+                location: {
+                    name: "Burnie, Tasmania",
+                    region: "Tasmania",
+                    country: "Australia"
+                }
+            };
+            
+            // Update display with example data
+            document.getElementById('current-temp').textContent = `${exampleData.current.temp_c}°C`;
+            document.getElementById('weather-description').textContent = exampleData.current.condition.text;
+            document.getElementById('humidity').textContent = `${exampleData.current.humidity}%`;
+            document.getElementById('wind-speed').textContent = `${exampleData.current.wind_kph} km/h`;
+            document.getElementById('pressure').textContent = `${exampleData.current.pressure_mb} hPa`;
 
-```javascript
-// Remove this entire section (it appears around line 600-620):
-try {
-    const weatherData = await getWeatherByCoords(lat, lon);
+            // Update weather icon
+            const weatherIcon = document.querySelector('.weather-icon i');
+            if (weatherIcon) {
+                weatherIcon.className = `bi ${getWeatherIcon(exampleData.current.condition.code)}`;
+            }
+            
+            // Add a subtle "example data" notification
+            const lastUpdateEl = document.getElementById('lastUpdate');
+            if (lastUpdateEl) {
+                lastUpdateEl.textContent = 'Showing example data • Configure backend for live weather';
+                lastUpdateEl.style.fontStyle = 'italic';
+                lastUpdateEl.style.color = '#666';
+            }
+            
+            return exampleData;
+        }
+
+        // Updated icon mapping for WeatherAPI.com
+        function getWeatherIcon(conditionCode) {
+            const iconMap = {
+                '1000': 'bi-sun', // Sunny
+                '1003': 'bi-cloud-sun', // Partly cloudy
+                '1006': 'bi-cloud', // Cloudy
+                '1009': 'bi-clouds', // Overcast
+                '1030': 'bi-cloud-haze', // Mist
+                '1063': 'bi-cloud-drizzle', // Patchy rain
+                '1066': 'bi-snow', // Patchy snow
+                '1069': 'bi-cloud-sleet', // Sleet
+                '1072': 'bi-cloud-drizzle', // Freezing drizzle
+                '1087': 'bi-cloud-lightning', // Thundery outbreaks
+                '1114': 'bi-wind', // Blowing snow
+                '1117': 'bi-wind', // Blizzard
+                '1135': 'bi-cloud-haze', // Fog
+                '1147': 'bi-cloud-haze', // Freezing fog
+                '1150': 'bi-cloud-drizzle', // Patchy light drizzle
+                '1153': 'bi-cloud-drizzle', // Light drizzle
+                '1168': 'bi-cloud-haze', // Freezing drizzle
+                '1171': 'bi-cloud-haze', // Heavy freezing drizzle
+                '1180': 'bi-cloud-drizzle', // Patchy light rain
+                '1183': 'bi-cloud-rain', // Light rain
+                '1186': 'bi-cloud-rain', // Moderate rain
+                '1189': 'bi-cloud-rain-heavy', // Heavy rain
+                '1192': 'bi-cloud-rain-heavy', // Heavy rain
+                '1195': 'bi-cloud-rain-heavy', // Heavy rain
+                '1198': 'bi-cloud-haze', // Light freezing rain
+                '1201': 'bi-cloud-haze', // Moderate/heavy freezing rain
+                '1204': 'bi-cloud-sleet', // Light sleet
+                '1207': 'bi-cloud-sleet', // Moderate/heavy sleet
+                '1210': 'bi-snow', // Patchy light snow
+                '1213': 'bi-snow', // Light snow
+                '1216': 'bi-snow', // Moderate snow
+                '1219': 'bi-snow', // Heavy snow
+                '1222': 'bi-snow', // Ice pellets
+                '1225': 'bi-snow', // Heavy snow
+                '1237': 'bi-snow', // Ice pellets
+                '1240': 'bi-cloud-rain', // Light rain shower
+                '1243': 'bi-cloud-rain-heavy', // Moderate/heavy rain shower
+                '1246': 'bi-cloud-rain-heavy', // Torrential rain shower
+                '1249': 'bi-cloud-sleet', // Light sleet showers
+                '1252': 'bi-cloud-sleet', // Moderate/heavy sleet showers
+                '1255': 'bi-snow', // Light snow showers
+                '1258': 'bi-snow', // Moderate/heavy snow showers
+                '1261': 'bi-snow', // Light showers of ice pellets
+                '1264': 'bi-snow', // Moderate/heavy showers of ice pellets
+                '1273': 'bi-cloud-lightning-rain', // Patchy light rain with thunder
+                '1276': 'bi-cloud-lightning-rain', // Moderate/heavy rain with thunder
+                '1279': 'bi-cloud-lightning-rain', // Patchy light snow with thunder
+                '1282': 'bi-cloud-lightning-rain', // Moderate/heavy snow with thunder,
+            };
+            
+            return iconMap[conditionCode] || 'bi-cloud';
+        }
+
+        // Updated display function
+        function updateWeatherDisplay(weatherData) {
+            if (!weatherData || !weatherData.current) {
+                // Show example data instead of just "Data unavailable"
+                const exampleData = showExampleWeatherData();
+                updateEnvironmentalAlerts(exampleData);
+                return;
+            }
+
+            const current = weatherData.current;
+            
+            // Update current weather
+            document.getElementById('current-temp').textContent = `${Math.round(current.temp_c)}°C`;
+            document.getElementById('weather-description').textContent = 
+                current.condition.text;
+            document.getElementById('humidity').textContent = `${current.humidity}%`;
+            document.getElementById('wind-speed').textContent = `${Math.round(current.wind_kph)} km/h`;
+            document.getElementById('pressure').textContent = `${current.pressure_mb} hPa`;
+
+            // Update weather icon
+            const weatherIcon = document.querySelector('.weather-icon i');
+            if (weatherIcon) {
+                weatherIcon.className = `bi ${getWeatherIcon(current.condition.code)}`;
+            }
+            
+            // Update last update text to show it's live data
+            const lastUpdateEl = document.getElementById('lastUpdate');
+            if (lastUpdateEl) {
+                lastUpdateEl.textContent = `Last updated: ${new Date().toLocaleTimeString('en-AU')}`;
+                lastUpdateEl.style.fontStyle = 'normal';
+                lastUpdateEl.style.color = '';
+            }
+        }
+
+        // Enhanced environmental alerts
+        function updateEnvironmentalAlerts(weatherData) {
+            const alertsContainer = document.getElementById('environmental-alerts');
+            alertsContainer.innerHTML = '';
+
+            const alerts = [];
+
+            if (!weatherData || !weatherData.current) {
+                // Show example alerts
+                alerts.push({
+                    type: 'info',
+                    icon: 'bi-info-circle',
+                    title: 'Example Data',
+                    message: 'Showing example weather data. Configure backend API for live updates.'
+                });
+                
+                alerts.push({
+                    type: 'success',
+                    icon: 'bi-check-circle',
+                    title: 'Favorable Conditions',
+                    message: 'Example weather conditions are suitable for most ecosystem management activities.'
+                });
+                
+                // Create alert elements
+                alerts.forEach(alert => {
+                    const alertElement = document.createElement('div');
+                    alertElement.className = `alert alert-${alert.type} mb-2`;
+                    alertElement.innerHTML = `
+                        <i class="bi ${alert.icon} me-2"></i>
+                        <strong>${alert.title}</strong>
+                        <p class="mb-0">${alert.message}</p>
+                    `;
+                    alertsContainer.appendChild(alertElement);
+                });
+                return;
+            }
+
+            const current = weatherData.current;
+
+            // Temperature alerts
+            if (current.temp_c > 35) {
+                alerts.push({
+                    type: 'danger',
+                    icon: 'bi-thermometer-high',
+                    title: 'Extreme Heat Warning',
+                    message: `Temperature is ${Math.round(current.temp_c)}°C. Avoid strenuous fieldwork and monitor water-dependent species.`
+                });
+            } else if (current.temp_c > 30) {
+                alerts.push({
+                    type: 'warning',
+                    icon: 'bi-thermometer-sun',
+                    title: 'High Temperature Alert',
+                    message: `Temperature is ${Math.round(current.temp_c)}°C. Consider adjusting maintenance schedules and hydration breaks.`
+                });
+            } else if (current.temp_c < 5) {
+                alerts.push({
+                    type: 'info',
+                    icon: 'bi-thermometer-snow',
+                    title: 'Low Temperature Alert',
+                    message: `Temperature is ${Math.round(current.temp_c)}°C. Frost may affect sensitive species and fieldwork.`
+                });
+            }
+
+            // Rainfall alerts
+            if (current.condition.text.toLowerCase().includes('rain')) {
+                alerts.push({
+                    type: 'info',
+                    icon: 'bi-cloud-rain',
+                    title: 'Rainfall Detected',
+                    message: 'Current rainfall may affect field work, monitoring activities, and chemical applications.'
+                });
+            }
+
+            // Wind alerts
+            if (current.wind_kph > 20) {
+                alerts.push({
+                    type: 'warning',
+                    icon: 'bi-wind',
+                    title: 'Windy Conditions',
+                    message: `Wind speed is ${Math.round(current.wind_kph)} km/h. May affect spraying accuracy and fieldwork safety.`
+                });
+            }
+
+            // Humidity alerts
+            if (current.humidity > 85) {
+                alerts.push({
+                    type: 'info',
+                    icon: 'bi-droplet',
+                    title: 'High Humidity',
+                    message: `Humidity is ${current.humidity}%. Monitor for fungal diseases in susceptible species.`
+                });
+            } else if (current.humidity < 30) {
+                alerts.push({
+                    type: 'warning',
+                    icon: 'bi-droplet',
+                    title: 'Low Humidity',
+                    message: `Humidity is ${current.humidity}%. Increased fire risk and plant water stress.`
+                });
+            }
+
+            // Air Quality alerts (if available)
+            if (current.air_quality && current.air_quality['us-epa-index']) {
+                const aqi = current.air_quality['us-epa-index'];
+                if (aqi >= 4) {
+                    alerts.push({
+                        type: 'danger',
+                        icon: 'bi-mask',
+                        title: 'Poor Air Quality',
+                        message: 'Air quality may affect fieldwork. Consider postponing outdoor activities.'
+                    });
+                } else if (aqi >= 3) {
+                    alerts.push({
+                        type: 'warning',
+                        icon: 'bi-mask',
+                        title: 'Moderate Air Quality',
+                        message: 'Sensitive individuals may be affected by air quality conditions.'
+                    });
+                }
+            }
+
+            // UV Index alerts
+            if (current.uv > 8) {
+                alerts.push({
+                    type: 'warning',
+                    icon: 'bi-sun',
+                    title: 'High UV Index',
+                    message: `UV index is ${current.uv}. Ensure sun protection during fieldwork.`
+                });
+            }
+
+            // Visibility alerts
+            if (current.vis_km < 5) {
+                alerts.push({
+                    type: 'warning',
+                    icon: 'bi-eye',
+                    title: 'Reduced Visibility',
+                    message: `Visibility is ${current.vis_km}km. Exercise caution during fieldwork and driving.`
+                });
+            }
+
+            // If no alerts, show all clear
+            if (alerts.length === 0) {
+                alerts.push({
+                    type: 'success',
+                    icon: 'bi-check-circle',
+                    title: 'Favorable Conditions',
+                    message: 'Weather conditions are suitable for most ecosystem management activities.'
+                });
+            }
+
+            // Create alert elements
+            alerts.forEach(alert => {
+                const alertElement = document.createElement('div');
+                alertElement.className = `alert alert-${alert.type} mb-2`;
+                alertElement.innerHTML = `
+                    <i class="bi ${alert.icon} me-2"></i>
+                    <strong>${alert.title}</strong>
+                    <p class="mb-0">${alert.message}</p>
+                `;
+                alertsContainer.appendChild(alertElement);
+            });
+        }
+
+            // Show loading state
+            document.getElementById('weather-description').textContent = 'Loading weather data...';
+            document.getElementById('lastUpdate').textContent = 'Updating...';
+
+            try {
+                const weatherData = await getWeatherByCoords(lat, lon);
+                
+                updateWeatherDisplay(weatherData);
+                updateEnvironmentalAlerts(weatherData);
+                
+                // Store weather data for later use
+                const updateTime = new Date().toLocaleTimeString('en-AU');
+                localStorage.setItem('lastWeatherUpdate', new Date().toISOString());
+                localStorage.setItem('weatherData', JSON.stringify(weatherData));
+                document.getElementById('lastUpdate').textContent = `Last updated: ${updateTime}`;
+                
+                // Update forecast chart
+                updateForecastChart(weatherData);
+                
+            } catch (error) {
+                console.error('Failed to load weather data:', error);
+                document.getElementById('lastUpdate').textContent = 'Using example data';
+                
+                // Always use example data when API fails
+                showExampleWeatherData();
+                loadMockWeatherData();
+            }
+        }
+
+        // Weather location management
+        function setupWeatherLocationSelector() {
+            const select = document.getElementById('weatherLocationSelect');
+            const projects = db.getProjects();
+            
+            // Clear existing options except default
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
+            
+            // Add projects with coordinates
+            projects.forEach(project => {
+                if (project.latitude && project.longitude) {
+                    const option = document.createElement('option');
+                    option.value = project.id;
+                    option.textContent = `${project.name} (${project.latitude.toFixed(4)}, ${project.longitude.toFixed(4)})`;
+                    option.dataset.lat = project.latitude;
+                    option.dataset.lon = project.longitude;
+                    select.appendChild(option);
+                }
+            });
+            
+            // Load saved location preference
+            const savedLocation = localStorage.getItem('weatherLocation');
+            if (savedLocation) {
+                select.value = savedLocation;
+            }
+        }
+
+        function getCurrentWeatherLocation() {
+            const select = document.getElementById('weatherLocationSelect');
+            const selectedOption = select.options[select.selectedIndex];
+            
+            if (select.value === 'default') {
+                return { lat: -41.0521, lon: 145.9061 }; // Default to Burnie
+            }
+            
+            if (selectedOption.dataset.lat && selectedOption.dataset.lon) {
+                return {
+                    lat: parseFloat(selectedOption.dataset.lat),
+                    lon: parseFloat(selectedOption.dataset.lon)
+                };
+            }
+            
+            // Fallback: try to get from project data
+            const project = db.getProjects().find(p => p.id === select.value);
+            if (project && project.latitude && project.longitude) {
+                return {
+                    lat: project.latitude,
+                    lon: project.longitude
+                };
+            }
+            
+            // Ultimate fallback
+            return { lat: -41.0521, lon: 145.9061 };
+        }
+
+        // Fallback mock data for charts
+        function loadMockWeatherData() {
+            // Mock temperature chart
+            if (temperatureChart) temperatureChart.destroy();
+            
+            temperatureChart = new Chart(document.getElementById('temperatureChart'), {
+                type: 'line',
+                data: {
+                    labels: ['6 AM', '9 AM', '12 PM', '3 PM', '6 PM', '9 PM'],
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: [12, 15, 18, 19, 17, 14],
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+            
+            // Mock historical weather chart
+     if (historicalWeatherChart) historicalWeatherChart.destroy();
     
-    updateWeatherDisplay(weatherData);
-    updateEnvironmentalAlerts(weatherData);
-    
-    // Store weather data for later use
-    const updateTime = new Date().toLocaleTimeString('en-AU');
-    localStorage.setItem('lastWeatherUpdate', new Date().toISOString());
-    localStorage.setItem('weatherData', JSON.stringify(weatherData));
-    document.getElementById('lastUpdate').textContent = `Last updated: ${updateTime}`;
-    
-    // Update forecast chart
-    updateForecastChart(weatherData);
-    
-    // ADD THIS LINE:
-    updateHistoricalWeatherChart();
-    
-} catch (error) {
-    // ... error handling ...
+    historicalWeatherChart = new Chart(document.getElementById('historicalWeatherChart'), {
+        type: 'bar',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            datasets: [
+                {
+                    label: 'Rainfall (mm)',
+                    data: [45, 52, 48, 62, 75, 82, 97, 94, 78, 64, 52, 48],
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Avg Temp (°C)',
+                    data: [22, 22, 20, 17, 14, 12, 11, 12, 14, 16, 18, 20],
+                    type: 'line',
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Rainfall (mm)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Temperature (°C)'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            }
+        }
+    });
 }
-```
 
-Complete corrected weather section structure:
+        function updateForecastChart(weatherData) {
+            // Mock forecast data for demo
+            const labels = ['Now', '+3h', '+6h', '+9h', '+12h', '+15h', '+18h', '+21h'];
+            const temperatures = [18, 19, 20, 21, 19, 17, 16, 15];
 
-Your weather functions should appear in this order:
+            if (temperatureChart) temperatureChart.destroy();
 
-1. getWeatherByCoords() - fetches weather data
-2. simulateWeatherAPI() - simulates API response
-3. showExampleWeatherData() - shows example data
-4. getWeatherIcon() - icon mapping
-5. updateWeatherDisplay() - updates UI
-6. updateEnvironmentalAlerts() - shows alerts
-7. loadWeatherData() - main function (use the corrected version above)
-8. setupWeatherLocationSelector() - location selector
-9. getCurrentWeatherLocation() - gets location
-10. loadMockWeatherData() - mock data for charts
-11. updateForecastChart() - updates forecast chart
-12. updateHistoricalWeatherChart() - updates historical chart
+            temperatureChart = new Chart(document.getElementById('temperatureChart'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: temperatures,
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
 
-After making these changes, your weather section should work correctly with both the current weather display and the historical weather chart showing properly.
+
+function updateHistoricalWeatherChart() {
+    const ctx = document.getElementById('historicalWeatherChart');
+    
+    if (!ctx) return;
+    
+    // Destroy existing chart if it exists
+    if (historicalWeatherChart) {
+        historicalWeatherChart.destroy();
+    }
+    
+    // Create the historical weather chart with realistic data
+    historicalWeatherChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            datasets: [
+                {
+                    label: 'Rainfall (mm)',
+                    data: [45, 52, 48, 62, 75, 82, 97, 94, 78, 64, 52, 48],
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Average Temperature (°C)',
+                    data: [22, 22, 20, 17, 14, 12, 11, 12, 14, 16, 18, 20],
+                    type: 'line',
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    tension: 0.4,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Rainfall (mm)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Temperature (°C)'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                if (context.dataset.label.includes('Rainfall')) {
+                                    label += context.parsed.y + ' mm';
+                                } else {
+                                    label += context.parsed.y + '°C';
+                                }
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+        // ==================== MAP FUNCTIONS ====================
+
+        function initProjectMap() {
+            if (projectMap) {
+                projectMap.remove();
+            }
+            
+            // Center on Burnie, Tasmania
+            projectMap = L.map('projectMap').setView([-41.0521, 145.9061], 11);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(projectMap);
+            
+            // Add drawing tools
+            const drawnItems = new L.FeatureGroup();
+            projectMap.addLayer(drawnItems);
+            
+            const drawControl = new L.Control.Draw({
+                edit: {
+                    featureGroup: drawnItems
+                },
+                draw: {
+                    polygon: {
+                        allowIntersection: false,
+                        showArea: true,
+                        shapeOptions: {
+                            color: '#2c5530'
+                        }
+                    },
+                    polyline: false,
+                    circle: false,
+                    rectangle: false,
+                    marker: {
+                        icon: L.icon({
+                            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+                            iconSize: [25, 41],
+                            iconAnchor: [12, 41]
+                        })
+                    }
+                }
+            });
+            projectMap.addControl(drawControl);
+            
+            // Handle drawn items
+            projectMap.on(L.Draw.Event.CREATED, function (e) {
+                const type = e.layerType;
+                const layer = e.layer;
+                
+                if (type === 'marker') {
+                    const latlng = layer.getLatLng();
+                    setProjectMarker(latlng.lat, latlng.lng);
+                } else if (type === 'polygon') {
+                    drawnItems.addLayer(layer);
+                    saveProjectBoundary(layer.getLatLngs());
+                }
+            });
+            
+            // Add existing marker if coordinates exist
+            const latInput = document.getElementById('projectLatitude');
+            const lngInput = document.getElementById('projectLongitude');
+            
+            if (latInput.value && lngInput.value) {
+                setProjectMarker(parseFloat(latInput.value), parseFloat(lngInput.value));
+            }
+            
+            return projectMap;
+        }
+
+        function setProjectMarker(lat, lng) {
+            // Update form fields
+            document.getElementById('projectLatitude').value = lat;
+            document.getElementById('projectLongitude').value = lng;
+            
+            // Remove existing marker
+            if (projectMarker) {
+                projectMap.removeLayer(projectMarker);
+            }
+            
+            // Add new marker
+            projectMarker = L.marker([lat, lng]).addTo(projectMap)
+                .bindPopup('Project Location')
+                .openPopup();
+            
+            // Center map on marker
+            projectMap.setView([lat, lng], 10);
+        }
+
+        // NEW FUNCTION: Save project boundary
+        function saveProjectBoundary(latlngs) {
+            const boundary = latlngs[0].map(latlng => [latlng.lat, latlng.lng]);
+            
+            // Calculate area
+            const polygon = turf.polygon([boundary]);
+            const area = turf.area(polygon);
+            const areaHectares = (area / 10000).toFixed(2);
+            
+            // Show area to user
+            showToast('Project Area', `Project boundary set. Area: ${areaHectares} hectares`, 'success');
+            
+            // Store in form data (you can add a hidden field for this later)
+            console.log('Project boundary:', boundary, 'Area:', areaHectares, 'hectares');
+        }
+
+        // NEW FUNCTION: GPX/KML Import
+        function handleFileImport(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                showToast('File Import', 'GPX/KML file imported successfully. Add markers manually for now.', 'info');
+            };
+            reader.readAsText(file);
+        }
+
+        function clearProjectMarker() {
+            if (projectMarker) {
+                projectMap.removeLayer(projectMarker);
+                projectMarker = null;
+            }
+            document.getElementById('projectLatitude').value = '';
+            document.getElementById('projectLongitude').value = '';
+        }
+
+        function useCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        setProjectMarker(lat, lng);
+                    },
+                    function(error) {
+                        showToast('Location Error', 'Unable to retrieve your location: ' + error.message, 'error');
+                    }
+                );
+            } else {
+                showToast('Location Error', 'Geolocation is not supported by this browser', 'error');
+            }
+        }
+
+        function showProjectInModal(project) {
+            const modalTitle = document.getElementById('projectMapModalTitle');
+            const modalMapContainer = document.getElementById('modalProjectMap');
+            const modalCoordinates = document.getElementById('modalCoordinates');
+            
+            modalTitle.textContent = `${project.name} Location`;
+            
+            // Clear previous map
+            if (modalProjectMap) {
+                modalProjectMap.remove();
+                modalProjectMap = null;
+            }
+            
+            // Clear the map container
+            modalMapContainer.innerHTML = '';
+            
+            // Show modal first, then initialize map
+            const modal = new bootstrap.Modal(document.getElementById('projectMapModal'));
+            modal.show();
+            
+            // Initialize map after modal is fully shown
+            setTimeout(() => {
+                // Recreate the map container element
+                modalMapContainer.innerHTML = '<div id="modalMap" style="height: 100%; width: 100%;"></div>';
+                
+                // Initialize map
+                modalProjectMap = L.map('modalMap').setView([0, 0], 2);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(modalProjectMap);
+                
+                // Add marker if coordinates exist
+                if (project.latitude && project.longitude) {
+                    const lat = parseFloat(project.latitude);
+                    const lng = parseFloat(project.longitude);
+                    
+                    modalProjectMarker = L.marker([lat, lng]).addTo(modalProjectMap)
+                        .bindPopup(project.name)
+                        .openPopup();
+                    
+                    modalProjectMap.setView([lat, lng], 10);
+                    modalCoordinates.textContent = `Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                    
+                    // Force resize and invalidate map size
+                    setTimeout(() => {
+                        modalProjectMap.invalidateSize();
+                    }, 100);
+                } else {
+                    modalCoordinates.textContent = 'Coordinates: Not specified';
+                    // Force resize for default view too
+                    setTimeout(() => {
+                        modalProjectMap.invalidateSize();
+                    }, 100);
+                }
+            }, 300); // Small delay to ensure modal is visible
+        }
+
+        // ==================== UI FUNCTIONS ====================
+
+        function showToast(title, message, type = 'success') {
+            const toast = document.getElementById('liveToast');
+            const toastTitle = document.getElementById('toast-title');
+            const toastMessage = document.getElementById('toast-message');
+            
+            toastTitle.textContent = title;
+            toastMessage.innerHTML = message;
+            
+            const header = toast.querySelector('.toast-header');
+            header.className = 'toast-header';
+            
+            switch(type) {
+                case 'error':
+                    header.classList.add('bg-danger', 'text-white');
+                    break;
+                case 'warning':
+                    header.classList.add('bg-warning', 'text-dark');
+                    break;
+                case 'info':
+                    header.classList.add('bg-info', 'text-white');
+                    break;
+                default:
+                    header.classList.add('bg-success', 'text-white');
+            }
+            
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+        }
+
+        function loadProjectSelects() {
+            const projects = db.getProjects();
+            const projectSelects = document.querySelectorAll('#assessmentProject, #speciesProject, #maintenanceProject, #assessmentProjectFilter, #speciesProjectFilter, #maintenanceProjectFilter, #exportProject, #formBuilderProject');
+            
+            projectSelects.forEach(select => {
+                const isFilter = select.id.includes('Filter') || select.id === 'exportProject';
+                const currentValue = select.value;
+                
+                // Clear existing options except the first one
+                while(select.options.length > (isFilter ? 1 : 1)) {
+                    select.remove(1);
+                }
+                
+                // Add project options
+                projects.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.id;
+                    option.textContent = project.name;
+                    select.appendChild(option);
+                });
+                
+                // Try to restore previous selection
+                if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
+                    select.value = currentValue;
+                }
+            });
+        }
+
+        function getProjectName(projectId) {
+            if (!projectId) return 'Unassigned';
+            const projects = db.getProjects();
+            const project = projects.find(p => p.id === projectId);
+            return project ? project.name : 'Unknown Project';
+        }
+
+        function loadDashboard() {
+            // Update counts
+            document.getElementById('projects-count').textContent = db.getProjects().length;
+            document.getElementById('assessments-count').textContent = db.getAssessments().length;
+            document.getElementById('species-count').textContent = db.getSpecies().length;
+            document.getElementById('maintenance-count').textContent = db.getMaintenance().length;
+            
+            // Load recent activities (last 5 assessments)
+            const assessments = db.getAssessments();
+            const recentActivities = assessments.slice(-5).reverse();
+            const activitiesTable = document.getElementById('recent-activities');
+            activitiesTable.innerHTML = '';
+            
+            if (recentActivities.length === 0) {
+                activitiesTable.innerHTML = '<tr><td colspan="5" class="text-center">No activities recorded</td></tr>';
+            } else {
+                recentActivities.forEach(activity => {
+                    const row = activitiesTable.insertRow();
+                    row.innerHTML = `
+                        <td>${formatDate(activity.date)}</td>
+                        <td>Assessment</td>
+                        <td>${activity.description.substring(0, 50)}...</td>
+                        <td>${getProjectName(activity.projectId)}</td>
+                        <td><span class="badge ${getHealthBadgeClass(activity.health)}">${activity.health.charAt(0).toUpperCase() + activity.health.slice(1)}</span></td>
+                    `;
+                });
+            }
+            
+            // Load upcoming maintenance
+            const maintenanceItems = db.getMaintenance();
+            const upcomingMaintenance = maintenanceItems
+                .filter(item => item.status === 'scheduled')
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .slice(0, 5);
+                
+            const upcomingContainer = document.getElementById('upcoming-maintenance');
+            upcomingContainer.innerHTML = '';
+            
+            if (upcomingMaintenance.length === 0) {
+                upcomingContainer.innerHTML = '<p class="text-center">No upcoming maintenance</p>';
+            } else {
+                upcomingMaintenance.forEach(item => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = `maintenance-item ${getMaintenanceStatusClass(item)}`;
+                    itemElement.innerHTML = `
+                        <h6>${item.activity} (${getProjectName(item.projectId)})</h6>
+                        <p class="mb-1">${formatDate(item.date)} - ${item.type.replace('-', ' ').toUpperCase()}</p>
+                        <span class="badge ${getPriorityBadgeClass(item.priority)}">${item.priority.toUpperCase()}</span>
+                    `;
+                    upcomingContainer.appendChild(itemElement);
+                });
+            }
+            
+            // Load charts
+            loadCharts();
+        }
+
+        function loadProjects() {
+            const projects = db.getProjects();
+            const projectsTable = document.getElementById('projects-table');
+            projectsTable.innerHTML = '';
+            
+            if (projects.length === 0) {
+                projectsTable.innerHTML = '<tr><td colspan="10" class="text-center">No projects created yet</td></tr>';
+            } else {
+                projects.forEach(project => {
+                    // Count related items
+                    const assessments = db.getAssessments().filter(a => a.projectId === project.id).length;
+                    const maintenance = db.getMaintenance().filter(m => m.projectId === project.id).length;
+                    const species = db.getSpecies().filter(s => s.projectId === project.id).length;
+                    
+                    // Create location preview
+                    let locationCell = '<span class="text-muted">Not set</span>';
+                    if (project.latitude && project.longitude) {
+                        locationCell = `
+                            <div class="d-flex align-items-center">
+                                <div class="map-preview me-2" 
+                                     style="width: 100px; background-color: #f8f9fa;"
+                                     onclick="showProjectInModal(${JSON.stringify(project).replace(/"/g, '&quot;')})">
+                                    <div class="w-100 h-100 d-flex align-items-center justify-content-center">
+                                        <i class="bi bi-geo-alt-fill text-primary"></i>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="showProjectInModal(${JSON.stringify(project).replace(/"/g, '&quot;')})">
+                                    <i class="bi bi-eye"></i> View
+                                </button>
+                            </div>
+                        `;
+                    }
+                    
+                    const row = projectsTable.insertRow();
+                    row.innerHTML = `
+                        <td>${project.name}</td>
+                        <td>${project.code || '-'}</td>
+                        <td><span class="badge ${getProjectStatusBadgeClass(project.status)}">${project.status.charAt(0).toUpperCase() + project.status.slice(1)}</span></td>
+                        <td>
+                            <div class="progress" style="height: 10px;">
+                                <div class="progress-bar" role="progressbar" style="width: ${project.progress || 0}%;" 
+                                     aria-valuenow="${project.progress || 0}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <small>${project.progress || 0}%</small>
+                        </td>
+                        <td>${formatDate(project.startDate)}</td>
+                        <td>${locationCell}</td>
+                        <td>${assessments}</td>
+                        <td>${maintenance}</td>
+                        <td>${species}</td>
+                        <td>
+                            ${checkPermission('edit_projects') ? 
+                                `<button class="btn btn-sm btn-outline-primary me-1" onclick="editProject('${project.id}')">Edit</button>` : ''}
+                            ${checkPermission('create_projects') ? 
+                                `<button class="btn btn-sm btn-outline-danger" onclick="deleteProject('${project.id}')">Delete</button>` : ''}
+                        </td>
+                    `;
+                });
+            }
+            
+            // Update project selects in other forms
+            loadProjectSelects();
+        }
+
+        function editProject(id) {
+            const projects = db.getProjects();
+            const project = projects.find(p => p.id === id);
+            
+            if (project) {
+                // Populate form with project data
+                document.getElementById('projectName').value = project.name;
+                document.getElementById('projectCode').value = project.code || '';
+                document.getElementById('projectStartDate').value = project.startDate;
+                document.getElementById('projectStatus').value = project.status;
+                document.getElementById('projectProgress').value = project.progress || 0;
+                document.getElementById('progressValue').textContent = `${project.progress || 0}%`;
+                document.getElementById('projectDescription').value = project.description;
+                document.getElementById('projectBudget').value = project.budget || '';
+                document.getElementById('projectFTE').value = project.fte || '';
+                document.getElementById('fundingSource').value = project.fundingSource || '';
+                document.getElementById('approvalStatus').value = project.approvalStatus || 'draft';
+                document.getElementById('approvalComments').value = project.approvalComments || '';
+                document.getElementById('riskAssessment').value = project.riskAssessment || '';
+                
+                if (project.latitude && project.longitude) {
+                    document.getElementById('projectLatitude').value = project.latitude;
+                    document.getElementById('projectLongitude').value = project.longitude;
+                    setProjectMarker(project.latitude, project.longitude);
+                } else {
+                    clearProjectMarker();
+                }
+                
+                // Load documents
+                loadProjectDocuments(id);
+                
+                // Change form to update mode
+                const form = document.getElementById('projectForm');
+                form.dataset.editId = id;
+                form.querySelector('button[type="submit"]').textContent = 'Update Project';
+                
+                // Scroll to form
+                document.getElementById('projects').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        function loadProjectDocuments(projectId) {
+            const documentList = document.getElementById('documentList');
+            const documents = db.getDocumentsByProject(projectId);
+            
+            documentList.innerHTML = '';
+            
+            if (documents.length === 0) {
+                documentList.innerHTML = '<p class="text-muted">No documents uploaded yet</p>';
+            } else {
+                documents.forEach(doc => {
+                    const docElement = document.createElement('div');
+                    docElement.className = 'document-item';
+                    docElement.innerHTML = `
+                        <i class="bi bi-file-earmark document-icon"></i>
+                        <div class="flex-grow-1">
+                            <strong>${doc.fileName}</strong>
+                            <div class="text-muted small">
+                                Uploaded: ${formatDate(doc.uploadedAt)} • Size: ${formatFileSize(doc.size)}
+                            </div>
+                        </div>
+                    `;
+                    documentList.appendChild(docElement);
+                });
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function loadAssessments() {
+            const assessments = db.getAssessments();
+            const projectFilter = document.getElementById('assessmentProjectFilter').value;
+            
+            // Filter assessments if a specific project is selected
+            let filteredAssessments = assessments;
+            if (projectFilter !== 'all') {
+                filteredAssessments = assessments.filter(a => a.projectId === projectFilter);
+            }
+            
+            const assessmentsTable = document.getElementById('assessments-table');
+            assessmentsTable.innerHTML = '';
+            
+            if (filteredAssessments.length === 0) {
+                assessmentsTable.innerHTML = '<tr><td colspan="5" class="text-center">No assessments recorded</td></tr>';
+            } else {
+                filteredAssessments.forEach(assessment => {
+                    const row = assessmentsTable.insertRow();
+                    row.innerHTML = `
+                        <td>${formatDate(assessment.date)}</td>
+                        <td>${assessment.assessor}</td>
+                        <td><span class="badge ${getHealthBadgeClass(assessment.health)}">${assessment.health.charAt(0).toUpperCase() + assessment.health.slice(1)}</span></td>
+                        <td>${getProjectName(assessment.projectId)}</td>
+                        <td>
+                            ${checkPermission('edit_assessments') ? 
+                                `<button class="btn btn-sm btn-outline-danger" onclick="deleteAssessment('${assessment.id}')">Delete</button>` : ''}
+                        </td>
+                    `;
+                });
+            }
+        }
+
+        function loadSpecies() {
+            const species = db.getSpecies();
+            const projectFilter = document.getElementById('speciesProjectFilter').value;
+            
+            // Filter species if a specific project is selected
+            let filteredSpecies = species;
+            if (projectFilter !== 'all') {
+                filteredSpecies = species.filter(s => s.projectId === projectFilter);
+            }
+            
+            const speciesTable = document.getElementById('species-table');
+            speciesTable.innerHTML = '';
+            
+            if (filteredSpecies.length === 0) {
+                speciesTable.innerHTML = '<tr><td colspan="6" class="text-center">No species recorded</td></tr>';
+            } else {
+                filteredSpecies.forEach(s => {
+                    const row = speciesTable.insertRow();
+                    row.innerHTML = `
+                        <td>${s.name}</td>
+                        <td>${s.scientificName || '-'}</td>
+                        <td>${s.type.charAt(0).toUpperCase() + s.type.slice(1)}</td>
+                        <td><span class="badge ${getSpeciesStatusBadgeClass(s.status)}">${s.status.charAt(0).toUpperCase() + s.status.slice(1)}</span></td>
+                        <td>${getProjectName(s.projectId)}</td>
+                        <td>
+                            ${checkPermission('edit_species') ? 
+                                `<button class="btn btn-sm btn-outline-danger" onclick="deleteSpecies('${s.id}')">Delete</button>` : ''}
+                        </td>
+                    `;
+                });
+            }
+        }
+
+        function loadMaintenance() {
+            const maintenanceItems = db.getMaintenance();
+            const projectFilter = document.getElementById('maintenanceProjectFilter').value;
+            
+            // Filter maintenance if a specific project is selected
+            let filteredMaintenance = maintenanceItems;
+            if (projectFilter !== 'all') {
+                filteredMaintenance = maintenanceItems.filter(m => m.projectId === projectFilter);
+            }
+            
+            const maintenanceTable = document.getElementById('maintenance-table');
+            maintenanceTable.innerHTML = '';
+            
+            if (filteredMaintenance.length === 0) {
+                maintenanceTable.innerHTML = '<tr><td colspan="7" class="text-center">No maintenance activities scheduled</td></tr>';
+            } else {
+                filteredMaintenance.forEach(item => {
+                    const row = maintenanceTable.insertRow();
+                    row.innerHTML = `
+                        <td>${item.activity}</td>
+                        <td>${item.type.replace('-', ' ').toUpperCase()}</td>
+                        <td>${formatDate(item.date)}</td>
+                        <td><span class="badge ${getMaintenanceStatusBadgeClass(item.status)}">${item.status.charAt(0).toUpperCase() + item.status.slice(1)}</span></td>
+                        <td><span class="badge ${getPriorityBadgeClass(item.priority)}">${item.priority.toUpperCase()}</span></td>
+                        <td>${getProjectName(item.projectId)}</td>
+                        <td>
+                            ${item.status === 'scheduled' && checkPermission('complete_maintenance') ? 
+                                `<button class="btn btn-sm btn-outline-success me-1" onclick="completeMaintenance('${item.id}')">Complete</button>` : 
+                                ''}
+                            ${checkPermission('edit_maintenance') ? 
+                                `<button class="btn btn-sm btn-outline-danger" onclick="deleteMaintenance('${item.id}')">Delete</button>` : ''}
+                        </td>
+                    `;
+                });
+            }
+            
+            // Also update the calendar if it exists
+            if (calendar) {
+                calendar.refetchEvents();
+            }
+        }
+
+        function loadCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            
+            if (calendar) {
+                calendar.destroy();
+            }
+            
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                events: function(fetchInfo, successCallback, failureCallback) {
+                    const maintenanceItems = db.getMaintenance();
+                    const events = maintenanceItems.map(item => {
+                        let color;
+                        switch(item.priority) {
+                            case 'high': color = '#dc3545'; break;
+                            case 'medium': color = '#ffc107'; break;
+                            default: color = '#28a745';
+                        }
+                        
+                        if (item.status === 'completed') {
+                            color = '#6c757d';
+                        } else if (item.status === 'overdue') {
+                            color = '#dc3545';
+                        }
+                        
+                        return {
+                            id: item.id,
+                            title: `${item.activity} (${getProjectName(item.projectId)})`,
+                            start: item.date,
+                            allDay: true,
+                            backgroundColor: color,
+                            borderColor: color,
+                            extendedProps: {
+                                type: item.type,
+                                priority: item.priority,
+                                status: item.status,
+                                description: item.description,
+                                projectId: item.projectId
+                            }
+                        };
+                    });
+                    
+                    successCallback(events);
+                },
+                eventClick: function(info) {
+                    const event = info.event;
+                    const statusClass = getMaintenanceStatusBadgeClass(event.extendedProps.status);
+                    const priorityClass = getPriorityBadgeClass(event.extendedProps.priority);
+                    
+                    const modalContent = `
+                        <p><strong>Project:</strong> ${getProjectName(event.extendedProps.projectId)}</p>
+                        <p><strong>Date:</strong> ${formatDate(event.startStr)}</p>
+                        <p><strong>Type:</strong> ${event.extendedProps.type.replace('-', ' ').toUpperCase()}</p>
+                        <p><strong>Priority:</strong> <span class="badge ${priorityClass}">${event.extendedProps.priority.toUpperCase()}</span></p>
+                        <p><strong>Status:</strong> <span class="badge ${statusClass}">${event.extendedProps.status.charAt(0).toUpperCase() + event.extendedProps.status.slice(1)}</span></p>
+                        <p><strong>Description:</strong> ${event.extendedProps.description}</p>
+                    `;
+                    
+                    // Update modal content
+                    document.getElementById('modalMaintenanceTitle').textContent = event.title;
+                    document.getElementById('modalMaintenanceBody').innerHTML = modalContent;
+                    
+                    // Show/hide complete button
+                    const completeButton = document.getElementById('modalCompleteButton');
+                    if (event.extendedProps.status === 'scheduled' && checkPermission('complete_maintenance')) {
+                        completeButton.style.display = 'block';
+                        completeButton.onclick = function() {
+                            completeMaintenance(event.id);
+                            $('#maintenanceModal').modal('hide');
+                        };
+                    } else {
+                        completeButton.style.display = 'none';
+                    }
+                    
+                    // Show modal
+                    const modal = new bootstrap.Modal(document.getElementById('maintenanceModal'));
+                    modal.show();
+                }
+            });
+            
+            calendar.render();
+        }
+
+        function loadCharts() {
+            // Destroy existing charts if they exist
+            if (projectStatusChart) projectStatusChart.destroy();
+            if (healthTrendChart) healthTrendChart.destroy();
+            if (analyticsHealthTrendChart) analyticsHealthTrendChart.destroy();
+            if (speciesTypeChart) speciesTypeChart.destroy();
+            if (maintenanceTypeChart) maintenanceTypeChart.destroy();
+            if (monthlyActivityChart) monthlyActivityChart.destroy();
+            
+            // Load data
+            const projects = db.getProjects();
+            const assessments = db.getAssessments();
+            const species = db.getSpecies();
+            const maintenance = db.getMaintenance();
+            
+            // Project Status Chart
+            const projectStatusData = {
+                'planning': 0,
+                'active': 0,
+                'on-hold': 0,
+                'completed': 0
+            };
+            
+            projects.forEach(project => {
+                projectStatusData[project.status]++;
+            });
+            
+            const projectStatusColors = {
+                'planning': 'rgba(54, 162, 235, 0.8)',
+                'active': 'rgba(75, 192, 192, 0.8)',
+                'on-hold': 'rgba(255, 206, 86, 0.8)',
+                'completed': 'rgba(153, 102, 255, 0.8)'
+            };
+            
+            const projectStatusLabels = Object.keys(projectStatusData).map(key => 
+                key.charAt(0).toUpperCase() + key.slice(1)
+            );
+            
+            projectStatusChart = new Chart(document.getElementById('projectStatusChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: projectStatusLabels,
+                    datasets: [{
+                        data: Object.values(projectStatusData),
+                        backgroundColor: Object.keys(projectStatusData).map(status => projectStatusColors[status]),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Ecosystem Health Trends Chart for Dashboard
+            const sortedAssessments = [...assessments].sort((a, b) => new Date(a.date) - new Date(b.date));
+            const healthValues = {
+                'excellent': 5,
+                'good': 4,
+                'fair': 3,
+                'poor': 2,
+                'degraded': 1
+            };
+            
+            healthTrendChart = new Chart(document.getElementById('healthTrendChart'), {
+                type: 'line',
+                data: {
+                    labels: sortedAssessments.map(a => formatDate(a.date, 'short')),
+                    datasets: [{
+                        label: 'Health Score',
+                        data: sortedAssessments.map(a => healthValues[a.health]),
+                        fill: false,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1,
+                        pointBackgroundColor: sortedAssessments.map(a => {
+                            const colors = {
+                                'excellent': 'rgb(40, 167, 69)',
+                                'good': 'rgb(23, 162, 184)',
+                                'fair': 'rgb(255, 193, 7)',
+                                'poor': 'rgb(255, 132, 17)',
+                                'degraded': 'rgb(220, 53, 69)'
+                            };
+                            return colors[a.health];
+                        }),
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 6,
+                            ticks: {
+                                callback: function(value) {
+                                    const labels = {
+                                        1: 'Degraded',
+                                        2: 'Poor',
+                                        3: 'Fair',
+                                        4: 'Good',
+                                        5: 'Excellent'
+                                    };
+                                    return labels[value] || '';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Ecosystem Health Trends Chart for Analytics
+            const healthTrendData = assessments
+                .filter(a => a.healthScore)
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            if (healthTrendData.length > 0) {
+                analyticsHealthTrendChart = new Chart(document.getElementById('analyticsHealthTrendChart'), {
+                    type: 'line',
+                    data: {
+                        labels: healthTrendData.map(a => formatDate(a.date, 'short')),
+                        datasets: [{
+                            label: 'Ecosystem Health Score',
+                            data: healthTrendData.map(a => a.healthScore.total),
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                min: 0,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: 'Health Score (0-100)'
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                document.getElementById('analyticsHealthTrendChart').closest('.card-body').innerHTML = 
+                    '<p class="text-muted text-center">No ecosystem health data available yet. Create assessments with health scores to see trends.</p>';
+            }
+            
+            // Species Type Chart
+            const speciesTypeData = {
+                'plant': 0,
+                'animal': 0,
+                'bird': 0,
+                'reptile': 0,
+                'insect': 0
+            };
+            
+            species.forEach(s => {
+                speciesTypeData[s.type]++;
+            });
+            
+            speciesTypeChart = new Chart(document.getElementById('speciesTypeChart'), {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(speciesTypeData).map(key => 
+                        key.charAt(0).toUpperCase() + key.slice(1)
+                    ),
+                    datasets: [{
+                        data: Object.values(speciesTypeData),
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.8)',
+                            'rgba(54, 162, 235, 0.8)',
+                            'rgba(255, 206, 86, 0.8)',
+                            'rgba(153, 102, 255, 0.8)',
+                            'rgba(255, 159, 64, 0.8)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+            // Maintenance Type Chart
+            const maintenanceTypeData = {
+                'weed-control': 0,
+                'revegetation': 0,
+                'monitoring': 0,
+                'survey': 0,
+                'erosion-control': 0,
+                'pest-management': 0,
+                'water-quality': 0,
+                'trail-maintenance': 0,
+                'equipment': 0,
+                'other': 0
+            };
+            
+            maintenance.forEach(item => {
+                maintenanceTypeData[item.type]++;
+            });
+            
+            // Filter out types with zero count
+            const filteredMaintenanceTypes = Object.keys(maintenanceTypeData).filter(key => maintenanceTypeData[key] > 0);
+            
+            maintenanceTypeChart = new Chart(document.getElementById('maintenanceTypeChart'), {
+                type: 'bar',
+                data: {
+                    labels: filteredMaintenanceTypes.map(key => 
+                        key.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                    ),
+                    datasets: [{
+                        label: 'Number of Activities',
+                        data: filteredMaintenanceTypes.map(key => maintenanceTypeData[key]),
+                        backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Monthly Activity Chart
+            const monthlyData = {};
+            const lastSixMonths = [];
+            const now = new Date();
+            
+            // Generate last 6 months labels
+            for (let i = 5; i >= 0; i--) {
+                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                const monthLabel = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+                lastSixMonths.push(monthKey);
+                monthlyData[monthKey] = { 
+                    label: monthLabel, 
+                    assessments: 0,
+                    maintenance: 0
+                };
+            }
+            
+            // Count assessments by month
+            assessments.forEach(assessment => {
+                const date = new Date(assessment.date);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                
+                if (monthlyData[monthKey]) {
+                    monthlyData[monthKey].assessments++;
+                }
+            });
+            
+            // Count maintenance by month
+            maintenance.forEach(item => {
+                const date = new Date(item.date);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                
+                if (monthlyData[monthKey]) {
+                    monthlyData[monthKey].maintenance++;
+                }
+            });
+            
+            monthlyActivityChart = new Chart(document.getElementById('monthlyActivityChart'), {
+                type: 'bar',
+                data: {
+                    labels: lastSixMonths.map(key => monthlyData[key].label),
+                    datasets: [
+                        {
+                            label: 'Assessments',
+                            data: lastSixMonths.map(key => monthlyData[key].assessments),
+                            backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Maintenance',
+                            data: lastSixMonths.map(key => monthlyData[key].maintenance),
+                            backgroundColor: 'rgba(255, 159, 64, 0.8)',
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ==================== DATA EXPORT/IMPORT FUNCTIONS ====================
+
+        function exportData() {
+            if (!checkPermission('export_data')) {
+                showToast('Permission Denied', 'You do not have permission to export data.', 'error');
+                return;
+            }
+            
+            const projectId = document.getElementById('exportProject').value;
+            const exportFormat = document.querySelector('input[name="exportFormat"]:checked').value;
+            
+            if (exportFormat === 'json') {
+                exportToJSON(projectId);
+            } else if (exportFormat === 'pdf') {
+                exportToPDF(projectId);
+            } else if (exportFormat === 'excel') {
+                exportToExcel(projectId);
+            }
+        }
+
+        function exportToJSON(projectId) {
+            const data = {
+                projects: projectId === 'all' ? db.getProjects() : db.getProjects().filter(p => p.id === projectId),
+                assessments: projectId === 'all' ? db.getAssessments() : db.getAssessments().filter(a => a.projectId === projectId),
+                species: projectId === 'all' ? db.getSpecies() : db.getSpecies().filter(s => s.projectId === projectId),
+                maintenance: projectId === 'all' ? db.getMaintenance() : db.getMaintenance().filter(m => m.projectId === projectId),
+                exportedAt: new Date().toISOString(),
+                exportedBy: currentUser.role,
+                app: 'EcoManager Pro'
+            };
+            
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = `ecomanager-${projectId === 'all' ? 'all-projects' : 'project-' + projectId}-${new Date().toISOString().slice(0, 10)}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            
+            auditLog.log('EXPORT_DATA', {
+                format: 'json',
+                projectId: projectId,
+                fileSize: dataStr.length
+            });
+            
+            showToast('Export Successful', 'Data has been exported successfully', 'success');
+        }
+
+        function exportToPDF(projectId) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Add title
+            doc.setFontSize(20);
+            doc.text('EcoManager Pro Report', 105, 15, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, 22, { align: 'center' });
+            doc.text(`Generated by: ${currentUser.role}`, 105, 28, { align: 'center' });
+            
+            let yPosition = 35;
+            
+            // Project information
+            const projects = projectId === 'all' ? db.getProjects() : db.getProjects().filter(p => p.id === projectId);
+            
+            if (projects.length > 0) {
+                doc.setFontSize(16);
+                doc.text('Projects', 14, yPosition);
+                yPosition += 10;
+                
+                projects.forEach((project, index) => {
+                    if (yPosition > 260) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    doc.setFontSize(12);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(`${index + 1}. ${project.name}`, 14, yPosition);
+                    doc.setFont(undefined, 'normal');
+                    
+                    yPosition += 7;
+                    doc.text(`Status: ${project.status}`, 14, yPosition);
+                    yPosition += 7;
+                    doc.text(`Progress: ${project.progress || 0}%`, 14, yPosition);
+                    yPosition += 7;
+                    doc.text(`Start Date: ${formatDate(project.startDate)}`, 14, yPosition);
+                    yPosition += 7;
+                    doc.text(`Budget: $${project.budget || '0'}`, 14, yPosition);
+                    
+                    // Add location information if available
+                    if (project.latitude && project.longitude) {
+                        yPosition += 7;
+                        doc.text(`Location: ${project.latitude}, ${project.longitude}`, 14, yPosition);
+                    }
+                    
+                    yPosition += 7;
+                    doc.text(`Description: ${project.description}`, 14, yPosition);
+                    yPosition += 10;
+                });
+            }
+            
+            // Add a new page if we're at the bottom
+            if (yPosition > 260) {
+                doc.addPage();
+                yPosition = 20;
+            }
+            
+            // Assessments information
+            const assessments = projectId === 'all' ? db.getAssessments() : db.getAssessments().filter(a => a.projectId === projectId);
+            
+            if (assessments.length > 0) {
+                doc.setFontSize(16);
+                doc.text('Assessments', 14, yPosition);
+                yPosition += 10;
+                
+                assessments.forEach((assessment, index) => {
+                    if (yPosition > 260) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    doc.setFontSize(12);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(`${index + 1}. ${formatDate(assessment.date)} - ${assessment.assessor}`, 14, yPosition);
+                    doc.setFont(undefined, 'normal');
+                    
+                    yPosition += 7;
+                    doc.text(`Health Status: ${assessment.health}`, 14, yPosition);
+                    yPosition += 7;
+                    doc.text(`Project: ${getProjectName(assessment.projectId)}`, 14, yPosition);
+                    yPosition += 7;
+                    doc.text(`Description: ${assessment.description.substring(0, 100)}...`, 14, yPosition);
+                    yPosition += 10;
+                });
+            }
+            
+            // Save the PDF
+            const fileName = `ecomanager-report-${projectId === 'all' ? 'all-projects' : 'project-' + projectId}-${new Date().toISOString().slice(0, 10)}.pdf`;
+            doc.save(fileName);
+            
+            auditLog.log('EXPORT_DATA', {
+                format: 'pdf',
+                projectId: projectId
+            });
+            
+            showToast('PDF Export Successful', 'PDF report has been generated successfully', 'success');
+        }
+
+        function exportToExcel(projectId) {
+            // Create a new workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Projects sheet
+            const projects = projectId === 'all' ? db.getProjects() : db.getProjects().filter(p => p.id === projectId);
+            const projectsData = projects.map(p => ({
+                Name: p.name,
+                Code: p.code || '',
+                Status: p.status,
+                Progress: p.progress || 0,
+                'Start Date': formatDate(p.startDate),
+                Budget: p.budget || 0,
+                'FTE Allocation': p.fte || 0,
+                'Funding Source': p.fundingSource || '',
+                Latitude: p.latitude || '',
+                Longitude: p.longitude || '',
+                Description: p.description
+            }));
+            
+            const projectsSheet = XLSX.utils.json_to_sheet(projectsData);
+            XLSX.utils.book_append_sheet(wb, projectsSheet, 'Projects');
+            
+            // Assessments sheet
+            const assessments = projectId === 'all' ? db.getAssessments() : db.getAssessments().filter(a => a.projectId === projectId);
+            const assessmentsData = assessments.map(a => ({
+                Date: formatDate(a.date),
+                Assessor: a.assessor,
+                'Health Status': a.health,
+                Project: getProjectName(a.projectId),
+                Description: a.description
+            }));
+            
+            const assessmentsSheet = XLSX.utils.json_to_sheet(assessmentsData);
+            XLSX.utils.book_append_sheet(wb, assessmentsSheet, 'Assessments');
+            
+            // Species sheet
+            const species = projectId === 'all' ? db.getSpecies() : db.getSpecies().filter(s => s.projectId === projectId);
+            const speciesData = species.map(s => ({
+                'Common Name': s.name,
+                'Scientific Name': s.scientificName || '',
+                Type: s.type,
+                Status: s.status,
+                Project: getProjectName(s.projectId),
+                Description: s.description
+            }));
+            
+            const speciesSheet = XLSX.utils.json_to_sheet(speciesData);
+            XLSX.utils.book_append_sheet(wb, speciesSheet, 'Species');
+            
+            // Maintenance sheet
+            const maintenance = projectId === 'all' ? db.getMaintenance() : db.getMaintenance().filter(m => m.projectId === projectId);
+            const maintenanceData = maintenance.map(m => ({
+                Activity: m.activity,
+                Type: m.type,
+                'Scheduled Date': formatDate(m.date),
+                Status: m.status,
+                Priority: m.priority,
+                Project: getProjectName(m.projectId),
+                Description: m.description
+            }));
+            
+            const maintenanceSheet = XLSX.utils.json_to_sheet(maintenanceData);
+            XLSX.utils.book_append_sheet(wb, maintenanceSheet, 'Maintenance');
+            
+            // Generate and download the Excel file
+            const fileName = `ecomanager-${projectId === 'all' ? 'all-projects' : 'project-' + projectId}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            
+            auditLog.log('EXPORT_DATA', {
+                format: 'excel',
+                projectId: projectId
+            });
+            
+            showToast('Excel Export Successful', 'Excel spreadsheet has been generated successfully', 'success');
+        }
+
+        function importData() {
+            const fileInput = document.getElementById('importFile');
+            const overwriteData = document.getElementById('overwriteData').checked;
+            
+            if (!fileInput.files.length) {
+                showToast('Import Error', 'Please select a file to import', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    // Validate the imported data structure
+                    if (!data.projects || !data.assessments || !data.species || !data.maintenance) {
+                        throw new Error('Invalid file format');
+                    }
+                    
+                    if (overwriteData) {
+                        // Completely replace existing data
+                        localStorage.setItem('projects', JSON.stringify(data.projects));
+                        localStorage.setItem('assessments', JSON.stringify(data.assessments));
+                        localStorage.setItem('species', JSON.stringify(data.species));
+                        localStorage.setItem('maintenance', JSON.stringify(data.maintenance));
+                    } else {
+                        // Merge with existing data
+                        const existingProjects = db.getProjects();
+                        const existingAssessments = db.getAssessments();
+                        const existingSpecies = db.getSpecies();
+                        const existingMaintenance = db.getMaintenance();
+                        
+                        // Merge projects, avoiding duplicates by ID
+                        const mergedProjects = [...existingProjects];
+                        data.projects.forEach(newProject => {
+                            if (!existingProjects.find(p => p.id === newProject.id)) {
+                                mergedProjects.push(newProject);
+                            }
+                        });
+                        
+                        // Merge assessments
+                        const mergedAssessments = [...existingAssessments];
+                        data.assessments.forEach(newAssessment => {
+                            if (!existingAssessments.find(a => a.id === newAssessment.id)) {
+                                mergedAssessments.push(newAssessment);
+                            }
+                        });
+                        
+                        // Merge species
+                        const mergedSpecies = [...existingSpecies];
+                        data.species.forEach(newSpecies => {
+                            if (!existingSpecies.find(s => s.id === newSpecies.id)) {
+                                mergedSpecies.push(newSpecies);
+                            }
+                        });
+                        
+                        // Merge maintenance
+                        const mergedMaintenance = [...existingMaintenance];
+                        data.maintenance.forEach(newMaintenance => {
+                            if (!existingMaintenance.find(m => m.id === newMaintenance.id)) {
+                                mergedMaintenance.push(newMaintenance);
+                            }
+                        });
+                        
+                        // Save merged data
+                        localStorage.setItem('projects', JSON.stringify(mergedProjects));
+                        localStorage.setItem('assessments', JSON.stringify(mergedAssessments));
+                        localStorage.setItem('species', JSON.stringify(mergedSpecies));
+                        localStorage.setItem('maintenance', JSON.stringify(mergedMaintenance));
+                    }
+                    
+                    // Refresh the UI
+                    loadDashboard();
+                    loadProjects();
+                    loadAssessments();
+                    loadSpecies();
+                    loadMaintenance();
+                    loadProjectSelects();
+                    
+                    auditLog.log('IMPORT_DATA', {
+                        fileName: file.name,
+                        fileSize: file.size,
+                        overwrite: overwriteData
+                    });
+                    
+                    showToast('Import Successful', 'Data has been imported successfully', 'success');
+                    
+                    // Clear the file input
+                    fileInput.value = '';
+                    
+                } catch (error) {
+                    console.error('Import error:', error);
+                    showToast('Import Error', 'Failed to import data. Please check the file format.', 'error');
+                }
+            };
+            
+            reader.onerror = function() {
+                showToast('Import Error', 'Failed to read the file', 'error');
+            };
+            
+            reader.readAsText(file);
+        }
+
+        function loadDataSummary() {
+            document.getElementById('data-projects-count').textContent = db.getProjects().length;
+            document.getElementById('data-assessments-count').textContent = db.getAssessments().length;
+            document.getElementById('data-species-count').textContent = db.getSpecies().length;
+            document.getElementById('data-maintenance-count').textContent = db.getMaintenance().length;
+        }
+
+        // ==================== FORM HANDLERS ====================
+
+        document.getElementById('projectForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Check permission
+            const isEdit = this.dataset.editId;
+            if (isEdit && !checkPermission('edit_projects')) {
+                showToast('Permission Denied', 'You do not have permission to edit projects.', 'error');
+                return;
+            } else if (!isEdit && !checkPermission('create_projects')) {
+                showToast('Permission Denied', 'You do not have permission to create projects.', 'error');
+                return;
+            }
+            
+            const project = {
+                name: document.getElementById('projectName').value,
+                code: document.getElementById('projectCode').value,
+                startDate: document.getElementById('projectStartDate').value,
+                status: document.getElementById('projectStatus').value,
+                progress: parseInt(document.getElementById('projectProgress').value) || 0,
+                description: document.getElementById('projectDescription').value,
+                latitude: document.getElementById('projectLatitude').value,
+                longitude: document.getElementById('projectLongitude').value,
+                budget: document.getElementById('projectBudget').value ? parseInt(document.getElementById('projectBudget').value) : null,
+                fte: document.getElementById('projectFTE').value ? parseFloat(document.getElementById('projectFTE').value) : null,
+                fundingSource: document.getElementById('fundingSource').value,
+                approvalStatus: document.getElementById('approvalStatus').value,
+                riskAssessment: document.getElementById('riskAssessment').value
+            };
+            
+            // Check if we're updating an existing project
+            const editId = this.dataset.editId;
+            if (editId) {
+                const success = db.updateProject(editId, project, currentUser.role);
+                if (success) {
+                    delete this.dataset.editId;
+                    this.querySelector('button[type="submit"]').textContent = 'Save Project';
+                    showToast('Success', 'Project updated successfully');
+                }
+            } else {
+                const savedProject = db.saveProject(project, currentUser.role);
+                if (savedProject) {
+                    showToast('Success', 'Project created successfully');
+                }
+            }
+            
+            if (editId || project) {
+                this.reset();
+                clearProjectMarker();
+                document.getElementById('projectProgress').value = 0;
+                document.getElementById('progressValue').textContent = '0%';
+                loadProjects();
+                loadDataSummary();
+            }
+        });
+
+        document.getElementById('assessmentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!checkPermission('create_assessments')) {
+                showToast('Permission Denied', 'You do not have permission to create assessments.', 'error');
+                return;
+            }
+            
+            // Collect scoring data
+            const scoringData = {
+                vegetationCover: document.getElementById('vegetationCover').value,
+                nativeSpecies: document.getElementById('nativeSpecies').value,
+                weedCover: document.getElementById('weedCover').value,
+                soilStability: document.getElementById('soilStability').value,
+                speciesRichness: document.getElementById('speciesRichness').value
+            };
+            
+            // Calculate health score
+            const healthScore = ecosystemScoring.calculateHealthScore(scoringData);
+            
+            const assessment = {
+                date: document.getElementById('assessmentDate').value,
+                assessor: document.getElementById('assessor').value,
+                health: healthScore.rating, // Use calculated rating
+                projectId: document.getElementById('assessmentProject').value,
+                description: document.getElementById('assessmentDescription').value,
+                // Store detailed scoring data
+                scoringData: scoringData,
+                healthScore: healthScore
+            };
+            
+            const savedAssessment = db.saveAssessment(assessment, currentUser.role);
+            if (savedAssessment) {
+                this.reset();
+                loadAssessments();
+                loadDataSummary();
+                
+                // Show score summary
+                showToast(
+                    'Assessment Saved', 
+                    `Health Score: ${healthScore.total}/100 (${healthScore.rating})`, 
+                    ecosystemScoring.getHealthColor(healthScore.total)
+                );
+            }
+        });
+
+        document.getElementById('speciesForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!checkPermission('create_species')) {
+                showToast('Permission Denied', 'You do not have permission to add species.', 'error');
+                return;
+            }
+            
+            const species = {
+                name: document.getElementById('speciesName').value,
+                scientificName: document.getElementById('scientificName').value,
+                type: document.getElementById('speciesType').value,
+                status: document.getElementById('speciesStatus').value,
+                projectId: document.getElementById('speciesProject').value,
+                description: document.getElementById('speciesDescription').value
+            };
+            
+            const savedSpecies = db.saveSpecies(species, currentUser.role);
+            if (savedSpecies) {
+                this.reset();
+                loadSpecies();
+                loadDataSummary();
+                showToast('Success', 'Species added successfully');
+            }
+        });
+
+        document.getElementById('maintenanceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!checkPermission('create_maintenance')) {
+                showToast('Permission Denied', 'You do not have permission to schedule maintenance.', 'error');
+                return;
+            }
+            
+            const maintenance = {
+                activity: document.getElementById('maintenanceActivity').value,
+                type: document.getElementById('maintenanceType').value,
+                date: document.getElementById('maintenanceDate').value,
+                priority: document.getElementById('maintenancePriority').value,
+                projectId: document.getElementById('maintenanceProject').value,
+                description: document.getElementById('maintenanceDescription').value
+            };
+            
+            const savedMaintenance = db.saveMaintenance(maintenance, currentUser.role);
+            if (savedMaintenance) {
+                this.reset();
+                loadMaintenance();
+                loadDataSummary();
+                showToast('Success', 'Maintenance activity scheduled successfully');
+            }
+        });
+
+        // Document upload handler
+        document.getElementById('documentUpload').addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (!files.length) return;
+            
+            const projectId = document.getElementById('formBuilderProject').value;
+            if (!projectId) {
+                showToast('Error', 'Please select a project first', 'error');
+                this.value = '';
+                return;
+            }
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                // Validate file size (10MB max)
+                if (file.size > 10 * 1024 * 1024) {
+                    showToast('Error', `File "${file.name}" exceeds 10MB limit`, 'error');
+                    continue;
+                }
+                
+                const document = {
+                    projectId: projectId,
+                    fileName: file.name,
+                    size: file.size,
+                    type: file.type,
+                    lastModified: file.lastModified
+                };
+                
+                db.saveDocument(document, currentUser.role);
+            }
+            
+            // Reload documents
+            loadProjectDocuments(projectId);
+            showToast('Success', `${files.length} document(s) uploaded`, 'success');
+            this.value = '';
+        });
+
+        // Map button handlers
+        document.getElementById('useCurrentLocation').addEventListener('click', useCurrentLocation);
+        document.getElementById('clearLocation').addEventListener('click', clearProjectMarker);
+
+        // Add GPX/KML import functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.gpx,.kml';
+            fileInput.style.display = 'none';
+            fileInput.id = 'mapFileImport';
+            document.body.appendChild(fileInput);
+            
+            fileInput.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    handleFileImport(e.target.files[0]);
+                }
+            });
+            
+            // Add import button next to existing map buttons
+            const importButton = document.createElement('button');
+            importButton.type = 'button';
+            importButton.className = 'btn btn-outline-secondary btn-sm ms-2';
+            importButton.innerHTML = '<i class="bi bi-upload"></i> Import GPX/KML';
+            importButton.onclick = function() {
+                document.getElementById('mapFileImport').click();
+            };
+            
+            // Find the button group and add our new button
+            const buttonGroup = document.querySelector('#useCurrentLocation').parentNode;
+            buttonGroup.appendChild(importButton);
+        });
+
+        // Progress slider handler
+        document.getElementById('projectProgress').addEventListener('input', function() {
+            document.getElementById('progressValue').textContent = `${this.value}%`;
+        });
+
+        // Quick action handlers
+        document.querySelectorAll('.quick-action-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const target = this.dataset.target;
+                document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+                document.querySelector(`[data-target="${target}"]`).classList.add('active');
+                
+                document.querySelectorAll('.content-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                
+                setTimeout(() => {
+                    document.getElementById(target).classList.add('active');
+                    
+                    // Load data for the section
+                    if (target === 'dashboard') loadDashboard();
+                    if (target === 'projects') {
+                        loadProjects();
+                        // Initialize map when projects section is shown
+                        setTimeout(() => {
+                            initProjectMap();
+                        }, 100);
+                    }
+                    if (target === 'assessments') loadAssessments();
+                    if (target === 'species') loadSpecies();
+                    if (target === 'maintenance') {
+                        loadMaintenance();
+                        // Reset to list view when navigating to maintenance
+                        document.querySelector('[data-view="list-view"]').click();
+                    }
+                    if (target === 'charts') loadCharts();
+                    if (target === 'data') {
+                        loadDataSummary();
+                        loadProjectSelects();
+                    }
+                    if (target === 'weather') loadWeatherData();
+                }, 50);
+            });
+        });
+
+        // Filter handlers
+        document.getElementById('assessmentProjectFilter').addEventListener('change', loadAssessments);
+        document.getElementById('speciesProjectFilter').addEventListener('change', loadSpecies);
+        document.getElementById('maintenanceProjectFilter').addEventListener('change', loadMaintenance);
+
+        // Search handler
+        document.getElementById('projectSearch').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#projects-table tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+
+        // Data section handlers
+        document.getElementById('exportButton').addEventListener('click', exportData);
+        document.getElementById('importButton').addEventListener('click', importData);
+
+        // Weather control handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            const refreshBtn = document.getElementById('refreshWeather');
+            const locationSelect = document.getElementById('weatherLocationSelect');
+            const manualCoordsBtn = document.getElementById('useManualCoords');
+            
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', loadWeatherData);
+            }
+            
+            if (locationSelect) {
+                locationSelect.addEventListener('change', function() {
+                    localStorage.setItem('weatherLocation', this.value);
+                    loadWeatherData();
+                });
+            }
+            
+            if (manualCoordsBtn) {
+                manualCoordsBtn.addEventListener('click', function() {
+                    const lat = document.getElementById('manualLat').value;
+                    const lon = document.getElementById('manualLon').value;
+                    
+                    if (lat && lon) {
+                        // Create a temporary option for manual coordinates
+                        const select = document.getElementById('weatherLocationSelect');
+                        const manualOption = document.createElement('option');
+                        manualOption.value = 'manual';
+                        manualOption.textContent = `Manual (${lat}, ${lon})`;
+                        manualOption.dataset.lat = lat;
+                        manualOption.dataset.lon = lon;
+                        
+                        // Remove existing manual option if present
+                        const existingManual = Array.from(select.options).find(opt => opt.value === 'manual');
+                        if (existingManual) {
+                            select.removeChild(existingManual);
+                        }
+                        
+                        select.appendChild(manualOption);
+                        select.value = 'manual';
+                        localStorage.setItem('weatherLocation', 'manual');
+                        
+                        loadWeatherData();
+                    }
+                });
+            }
+        });
+
+        // ==================== DELETE FUNCTIONS ====================
+
+        function deleteProject(id) {
+            if (!checkPermission('create_projects')) {
+                showToast('Permission Denied', 'You do not have permission to delete projects.', 'error');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to delete this project? This will also delete all associated assessments, species, and maintenance activities.')) {
+                // Delete associated items
+                const assessments = db.getAssessments();
+                assessments.forEach(assessment => {
+                    if (assessment.projectId === id) {
+                        db.deleteAssessment(assessment.id, currentUser.role);
+                    }
+                });
+                
+                const species = db.getSpecies();
+                species.forEach(s => {
+                    if (s.projectId === id) {
+                        db.deleteSpecies(s.id, currentUser.role);
+                    }
+                });
+                
+                const maintenance = db.getMaintenance();
+                maintenance.forEach(item => {
+                    if (item.projectId === id) {
+                        db.deleteMaintenance(item.id, currentUser.role);
+                    }
+                });
+                
+                // Delete the project
+                const success = db.deleteProject(id, currentUser.role);
+                if (success) {
+                    loadProjects();
+                    loadAssessments();
+                    loadSpecies();
+                    loadMaintenance();
+                    loadDataSummary();
+                    showToast('Success', 'Project and all associated items deleted successfully');
+                }
+            }
+        }
+
+        function deleteAssessment(id) {
+            if (!checkPermission('edit_assessments')) {
+                showToast('Permission Denied', 'You do not have permission to delete assessments.', 'error');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to delete this assessment?')) {
+                const success = db.deleteAssessment(id, currentUser.role);
+                if (success) {
+                    loadAssessments();
+                    loadDataSummary();
+                    showToast('Success', 'Assessment deleted successfully');
+                }
+            }
+        }
+
+        function deleteSpecies(id) {
+            if (!checkPermission('edit_species')) {
+                showToast('Permission Denied', 'You do not have permission to delete species.', 'error');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to delete this species?')) {
+                const success = db.deleteSpecies(id, currentUser.role);
+                if (success) {
+                    loadSpecies();
+                    loadDataSummary();
+                    showToast('Success', 'Species deleted successfully');
+                }
+            }
+        }
+
+        function deleteMaintenance(id) {
+            if (!checkPermission('edit_maintenance')) {
+                showToast('Permission Denied', 'You do not have permission to delete maintenance activities.', 'error');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to delete this maintenance activity?')) {
+                const success = db.deleteMaintenance(id, currentUser.role);
+                if (success) {
+                    loadMaintenance();
+                    loadDataSummary();
+                    showToast('Success', 'Maintenance activity deleted successfully');
+                }
+            }
+        }
+
+        function completeMaintenance(id) {
+            if (!checkPermission('complete_maintenance')) {
+                showToast('Permission Denied', 'You do not have permission to complete maintenance activities.', 'error');
+                return;
+            }
+            
+            if (confirm('Mark this maintenance activity as completed?')) {
+                const success = db.updateMaintenanceStatus(id, 'completed', currentUser.role);
+                if (success) {
+                    loadMaintenance();
+                    showToast('Success', 'Maintenance activity marked as completed');
+                }
+            }
+        }
+
+        // ==================== UTILITY FUNCTIONS ====================
+
+        function formatDate(dateString, format = 'full') {
+            if (!dateString) return 'Not specified';
+            const date = new Date(dateString);
+            
+            if (format === 'short') {
+                return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit' });
+            }
+            
+            return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        function getProjectStatusBadgeClass(status) {
+            const statusMap = {
+                'planning': 'bg-info',
+                'active': 'bg-success',
+                'on-hold': 'bg-warning',
+                'completed': 'bg-secondary'
+            };
+            return statusMap[status] || 'bg-secondary';
+        }
+
+        function getHealthBadgeClass(health) {
+            const healthMap = {
+                'excellent': 'bg-success',
+                'good': 'bg-info',
+                'fair': 'bg-warning',
+                'poor': 'bg-danger',
+                'degraded': 'bg-dark'
+            };
+            return healthMap[health] || 'bg-secondary';
+        }
+
+        function getSpeciesStatusBadgeClass(status) {
+            const statusMap = {
+                'native': 'bg-success',
+                'introduced': 'bg-secondary',
+                'weed': 'bg-danger',
+                'pest': 'bg-warning'
+            };
+            return statusMap[status] || 'bg-secondary';
+        }
+
+        function getMaintenanceStatusBadgeClass(status) {
+            const statusMap = {
+                'scheduled': 'bg-warning',
+                'completed': 'bg-success',
+                'overdue': 'bg-danger'
+            };
+            return statusMap[status] || 'bg-secondary';
+        }
+
+        function getPriorityBadgeClass(priority) {
+            const priorityMap = {
+                'low': 'bg-info',
+                'medium': 'bg-warning',
+                'high': 'bg-danger'
+            };
+            return priorityMap[priority] || 'bg-secondary';
+        }
+
+        function getMaintenanceStatusClass(item) {
+            const today = new Date();
+            const scheduledDate = new Date(item.date);
+            
+            if (item.status === 'completed') return 'maintenance-completed';
+            if (scheduledDate < today && item.status !== 'completed') return 'maintenance-overdue';
+            return 'maintenance-pending';
+        }
+
+        // View toggle functionality
+        function setupViewToggle() {
+            const viewButtons = document.querySelectorAll('.view-toggle button');
+            const listView = document.getElementById('list-view');
+            const calendarView = document.getElementById('calendar-view');
+            
+            viewButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetView = this.getAttribute('data-view');
+                    
+                    // Update button states
+                    viewButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Show/hide views
+                    if (targetView === 'list-view') {
+                        listView.style.display = 'block';
+                        calendarView.style.display = 'none';
+                    } else if (targetView === 'calendar-view') {
+                        listView.style.display = 'none';
+                        calendarView.style.display = 'block';
+                        loadCalendar();
+                    }
+                });
+            });
+        }
+
+        // ==================== FORM BUILDER SYSTEM ====================
+
+        const formBuilder = {
+            currentForm: [],
+            
+            init: function() {
+                this.loadFormTemplates();
+                this.setupFormBuilder();
+            },
+            
+            setupFormBuilder: function() {
+                const projectSelect = document.getElementById('formBuilderProject');
+                if (projectSelect) {
+                    this.loadProjectsIntoSelect(projectSelect);
+                    projectSelect.addEventListener('change', (e) => {
+                        this.showFormBuilder(e.target.value);
+                    });
+                }
+            },
+            
+            loadProjectsIntoSelect: function(selectElement) {
+                const projects = db.getProjects();
+                selectElement.innerHTML = '<option value="">Choose a project...</option>';
+                projects.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.id;
+                    option.textContent = project.name;
+                    selectElement.appendChild(option);
+                });
+            },
+            
+            showFormBuilder: function(projectId) {
+                const interfaceDiv = document.getElementById('form-builder-interface');
+                if (!projectId) {
+                    interfaceDiv.style.display = 'none';
+                    return;
+                }
+                
+                interfaceDiv.style.display = 'block';
+                interfaceDiv.innerHTML = this.createFormBuilderHTML(projectId);
+                this.loadExistingForm(projectId);
+            },
+            
+            createFormBuilderHTML: function(projectId) {
+                return `
+                    <div class="border p-3 mb-3">
+                        <h6>Form Builder</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Form Title:</label>
+                            <input type="text" class="form-control" id="formTitle" value="Custom Monitoring Form">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Add Field:</label>
+                            <div class="btn-group mb-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="formBuilder.addField('text')">
+                                    <i class="bi bi-text-paragraph"></i> Text
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="formBuilder.addField('number')">
+                                    <i class="bi bi-123"></i> Number
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="formBuilder.addField('select')">
+                                    <i class="bi bi-menu-down"></i> Dropdown
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="formBuilder.addField('checkbox')">
+                                    <i class="bi bi-check-square"></i> Checkbox
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="form-preview" class="border p-3 bg-light">
+                            <h6>Form Preview</h6>
+                            <form id="custom-form-preview"></form>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <button class="btn btn-success" onclick="formBuilder.saveForm('${projectId}')">
+                                <i class="bi bi-save"></i> Save Form Template
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="formBuilder.clearForm()">
+                                <i class="bi bi-trash"></i> Clear Form
+                            </button>
+                        </div>
+                    </div>
+                `;
+            },
+            
+            addField: function(type) {
+                const fieldId = 'field_' + Date.now();
+                const field = {
+                    id: fieldId,
+                    type: type,
+                    label: 'New Field',
+                    required: false,
+                    options: type === 'select' ? ['Option 1', 'Option 2'] : []
+                };
+                
+                this.currentForm.push(field);
+                this.updateFormPreview();
+            },
+            
+            updateFormPreview: function() {
+                const preview = document.getElementById('custom-form-preview');
+                preview.innerHTML = '';
+                
+                this.currentForm.forEach((field, index) => {
+                    const fieldHTML = this.createFieldHTML(field, index);
+                    preview.innerHTML += fieldHTML;
+                });
+            },
+            
+            createFieldHTML: function(field, index) {
+                let inputHTML = '';
+                
+                switch(field.type) {
+                    case 'text':
+                        inputHTML = `<input type="text" class="form-control" placeholder="Enter text">`;
+                        break;
+                    case 'number':
+                        inputHTML = `<input type="number" class="form-control" placeholder="Enter number">`;
+                        break;
+                    case 'select':
+                        const options = field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('');
+                        inputHTML = `<select class="form-select">${options}</select>`;
+                        break;
+                    case 'checkbox':
+                        inputHTML = `<div class="form-check">
+                            <input class="form-check-input" type="checkbox">
+                            <label class="form-check-label">${field.label}</label>
+                        </div>`;
+                        break;
+                }
+                
+                return `
+                    <div class="mb-3 form-builder-field" data-field-id="${field.id}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label class="form-label">${field.label}</label>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="formBuilder.removeField(${index})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                        ${inputHTML}
+                    </div>
+                `;
+            },
+            
+            removeField: function(index) {
+                this.currentForm.splice(index, 1);
+                this.updateFormPreview();
+            },
+            
+            saveForm: function(projectId) {
+                const formTitle = document.getElementById('formTitle').value || 'Custom Form';
+                const formConfig = {
+                    title: formTitle,
+                    fields: this.currentForm,
+                    createdAt: new Date().toISOString(),
+                    createdBy: currentUser.role
+                };
+                
+                const templates = JSON.parse(localStorage.getItem('formTemplates') || '{}');
+                templates[projectId] = formConfig;
+                localStorage.setItem('formTemplates', JSON.stringify(templates));
+                
+                auditLog.log('SAVE_FORM_TEMPLATE', {
+                    projectId: projectId,
+                    formTitle: formTitle,
+                    fieldCount: this.currentForm.length
+                });
+                
+                showToast('Form Saved', `Custom form "${formTitle}" has been saved for this project`, 'success');
+            },
+            
+            loadExistingForm: function(projectId) {
+                const templates = JSON.parse(localStorage.getItem('formTemplates') || '{}');
+                const existingForm = templates[projectId];
+                
+                if (existingForm) {
+                    this.currentForm = existingForm.fields || [];
+                    document.getElementById('formTitle').value = existingForm.title;
+                    this.updateFormPreview();
+                } else {
+                    this.currentForm = [];
+                    document.getElementById('formTitle').value = 'Custom Monitoring Form';
+                    this.updateFormPreview();
+                }
+            },
+            
+            clearForm: function() {
+                if (confirm('Are you sure you want to clear the entire form?')) {
+                    this.currentForm = [];
+                    this.updateFormPreview();
+                }
+            },
+            
+            loadFormTemplates: function() {
+                if (!localStorage.getItem('formTemplates')) {
+                    localStorage.setItem('formTemplates', JSON.stringify({}));
+                }
+            }
+        };
+
+        // ==================== ECOSYSTEM SCORING SYSTEM ====================
+
+        const ecosystemScoring = {
+            calculateHealthScore: function(assessmentData) {
+                const scores = {
+                    vegetation: this.scoreVegetation(
+                        parseFloat(assessmentData.vegetationCover || 0),
+                        parseFloat(assessmentData.nativeSpecies || 0)
+                    ),
+                    weeds: this.scoreWeeds(parseFloat(assessmentData.weedCover || 0)),
+                    soil: this.scoreSoil(parseInt(assessmentData.soilStability || 3)),
+                    biodiversity: this.scoreBiodiversity(parseInt(assessmentData.speciesRichness || 0))
+                };
+                
+                // Calculate weighted total
+                const totalScore = (
+                    scores.vegetation * 0.3 +      // 30% weight
+                    scores.weeds * 0.3 +           // 30% weight  
+                    scores.soil * 0.2 +            // 20% weight
+                    scores.biodiversity * 0.2      // 20% weight
+                );
+                
+                return {
+                    total: Math.round(totalScore),
+                    breakdown: scores,
+                    rating: this.getHealthRating(totalScore)
+                };
+            },
+            
+            scoreVegetation: function(cover, nativeSpecies) {
+                let score = 0;
+                // Cover component (0-50 points)
+                score += Math.min(cover * 0.5, 50);
+                // Native species component (0-50 points)
+                score += Math.min(nativeSpecies * 0.5, 50);
+                return Math.min(score, 100);
+            },
+            
+            scoreWeeds: function(cover) {
+                // Inverse relationship: lower weed cover = higher score
+                return Math.max(0, 100 - (cover * 1.5));
+            },
+            
+            scoreSoil: function(stability) {
+                // Convert 1-5 scale to 0-100 points
+                return (stability - 1) * 25;
+            },
+            
+            scoreBiodiversity: function(richness) {
+                // Cap at 20 species for 100 points
+                return Math.min(richness * 5, 100);
+            },
+            
+            getHealthRating: function(score) {
+                if (score >= 80) return 'excellent';
+                if (score >= 60) return 'good';
+                if (score >= 40) return 'fair';
+                if (score >= 20) return 'poor';
+                return 'degraded';
+            },
+            
+            getHealthColor: function(score) {
+                if (score >= 80) return 'success';
+                if (score >= 60) return 'info';
+                if (score >= 40) return 'warning';
+                if (score >= 20) return 'danger';
+                return 'dark';
+            }
+        };
+
+        // Real-time score preview
+        function setupHealthScorePreview() {
+            const inputs = ['vegetationCover', 'nativeSpecies', 'weedCover', 'soilStability', 'speciesRichness'];
+            
+            inputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.addEventListener('input', updateHealthScorePreview);
+                }
+            });
+        }
+
+        function updateHealthScorePreview() {
+            const scoringData = {
+                vegetationCover: document.getElementById('vegetationCover').value,
+                nativeSpecies: document.getElementById('nativeSpecies').value,
+                weedCover: document.getElementById('weedCover').value,
+                soilStability: document.getElementById('soilStability').value,
+                speciesRichness: document.getElementById('speciesRichness').value
+            };
+            
+            // Only calculate if we have some data
+            const hasData = Object.values(scoringData).some(val => val && val > 0);
+            
+            if (hasData) {
+                const score = ecosystemScoring.calculateHealthScore(scoringData);
+                
+                document.getElementById('scoreValue').textContent = score.total;
+                document.getElementById('scoreRating').textContent = score.rating;
+                
+                const progressBar = document.getElementById('scoreProgress');
+                progressBar.style.width = `${score.total}%`;
+                progressBar.className = `progress-bar bg-${ecosystemScoring.getHealthColor(score.total)}`;
+                
+                document.getElementById('scoreDisplay').classList.remove('d-none');
+                document.getElementById('healthScorePreview').querySelector('.text-muted').classList.add('d-none');
+            } else {
+                document.getElementById('scoreDisplay').classList.add('d-none');
+                document.getElementById('healthScorePreview').querySelector('.text-muted').classList.remove('d-none');
+            }
+        }
+
+        // ==================== USER ONBOARDING ====================
+
+        const userOnboarding = {
+            showTour: function() {
+                introJs().setOptions({
+                    steps: [
+                        {
+                            element: document.querySelector('.logo'),
+                            intro: 'Welcome to EcoManager Pro! This is your council ecosystem management system.',
+                            position: 'right'
+                        },
+                        {
+                            element: document.querySelector('.sidebar'),
+                            intro: 'Use the sidebar to navigate between different sections of the application.',
+                            position: 'right'
+                        },
+                        {
+                            element: document.querySelector('#dashboard'),
+                            intro: 'The Dashboard gives you an overview of all your ecosystem management activities.',
+                            position: 'bottom'
+                        },
+                        {
+                            element: document.querySelector('.quick-actions'),
+                            intro: 'Quick Actions let you quickly create new projects, assessments, species, and maintenance tasks.',
+                            position: 'bottom'
+                        },
+                        {
+                            element: document.querySelector('#projects'),
+                            intro: 'Manage all your restoration projects here. Add locations, budgets, and track progress.',
+                            position: 'top'
+                        },
+                        {
+                            element: document.querySelector('#assessments'),
+                            intro: 'Conduct ecosystem health assessments and track changes over time.',
+                            position: 'top'
+                        },
+                        {
+                            element: document.querySelector('#weather'),
+                            intro: 'Monitor weather conditions and environmental factors that may affect your projects.',
+                            position: 'top'
+                        },
+                        {
+                            element: document.querySelector('#currentUserRole'),
+                            intro: 'Your current role determines what actions you can perform. Switch roles in the login screen to explore different permissions.',
+                            position: 'left'
+                        },
+                        {
+                            element: document.querySelector('#userGuideBtn'),
+                            intro: 'Access the full user guide for detailed instructions on using all features.',
+                            position: 'right'
+                        }
+                    ],
+                    showProgress: true,
+                    showBullets: true,
+                    exitOnOverlayClick: true,
+                    keyboardNavigation: true,
+                    tooltipClass: 'customTooltip'
+                }).start();
+            },
+            
+            showTooltips: function() {
+                // Add contextual help tooltips
+                const tooltipElements = document.querySelectorAll('[data-help]');
+                tooltipElements.forEach(el => {
+                    el.setAttribute('title', el.getAttribute('data-help'));
+                    el.setAttribute('data-bs-toggle', 'tooltip');
+                });
+                
+                // Initialize Bootstrap tooltips
+                var tooltipList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+            }
+        };
+
+        // ==================== NAVIGATION ====================
+
+        // Navigation
+        document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Update active state
+                document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Show the corresponding section
+                const target = this.getAttribute('data-target');
+                document.querySelectorAll('.content-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                
+                setTimeout(() => {
+                    document.getElementById(target).classList.add('active');
+                    
+                    // Load data for the section
+                    if (target === 'dashboard') loadDashboard();
+                    if (target === 'projects') {
+                        loadProjects();
+                        // Initialize map when projects section is shown
+                        setTimeout(() => {
+                            initProjectMap();
+                        }, 100);
+                    }
+                    if (target === 'assessments') loadAssessments();
+                    if (target === 'species') loadSpecies();
+                    if (target === 'maintenance') {
+                        loadMaintenance();
+                        // Reset to list view when navigating to maintenance
+                        document.querySelector('[data-view="list-view"]').click();
+                    }
+                    if (target === 'charts') loadCharts();
+                    if (target === 'data') {
+                        loadDataSummary();
+                        loadProjectSelects();
+                    }
+                    if (target === 'weather') loadWeatherData();
+                }, 50);
+                
+                // Update page title
+                document.title = `${this.querySelector('span').textContent} | EcoManager Pro`;
+            });
+        });
+
+        // ==================== INITIALIZATION ====================
+
+        // Initialize the application
+        function initApp() {
+            db.init();
+            auditLog.init();
+            loadDashboard();
+            loadProjectSelects();
+            setupViewToggle();
+            loadDataSummary();
+            
+            // Initialize features
+            formBuilder.init();
+            setupHealthScorePreview();
+            
+            // Weather initialization
+            setupWeatherLocationSelector();
+            
+            // User onboarding
+            userOnboarding.showTooltips();
+            
+            // Initialize tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+
+        // Start the app when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
