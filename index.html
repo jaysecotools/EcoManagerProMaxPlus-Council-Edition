@@ -1,3 +1,5 @@
+<!-- HISTORICAL WEATHER DATA GRAPH NOW FIXED -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2599,581 +2601,589 @@
             });
         }
 
-        // ==================== WEATHER API FUNCTIONS ====================
+// ==================== WEATHER API FUNCTIONS ====================
 
-        // Enhanced weather functions with backend proxy pattern
-        async function getWeatherByCoords(lat, lon) {
-            if (weatherConfig.useProxy) {
-                try {
-                    // In production, this would call your backend
-                    // const response = await fetch(`${weatherConfig.proxyUrl}?lat=${lat}&lon=${lon}`);
-                    // return await response.json();
-                    
-                    // For demo, simulate API call with example data
-                    return simulateWeatherAPI(lat, lon);
-                } catch (error) {
-                    console.error('Weather proxy error:', error);
-                    if (weatherConfig.fallbackToExample) {
-                        return showExampleWeatherData();
-                    }
-                    return null;
-                }
-            } else {
-                // Direct API call (not recommended for production)
-                console.warn('Direct API calls are disabled for security. Using example data.');
+// Enhanced weather functions with backend proxy pattern
+async function getWeatherByCoords(lat, lon) {
+    if (weatherConfig.useProxy) {
+        try {
+            // For demo, simulate API call with example data
+            return simulateWeatherAPI(lat, lon);
+        } catch (error) {
+            console.error('Weather proxy error:', error);
+            if (weatherConfig.fallbackToExample) {
                 return showExampleWeatherData();
             }
+            return null;
         }
+    } else {
+        console.warn('Direct API calls are disabled for security. Using example data.');
+        return showExampleWeatherData();
+    }
+}
 
-        function simulateWeatherAPI(lat, lon) {
-            // Simulate API response with realistic data
-            return {
-                current: {
-                    temp_c: 18 + Math.sin(Date.now() / 1000000) * 5,
-                    condition: {
-                        text: "Partly Cloudy",
-                        code: "1003"
+function simulateWeatherAPI(lat, lon) {
+    return {
+        current: {
+            temp_c: 18 + Math.sin(Date.now() / 1000000) * 5,
+            condition: {
+                text: "Partly Cloudy",
+                code: "1003"
+            },
+            humidity: 65 + Math.sin(Date.now() / 2000000) * 10,
+            wind_kph: 12 + Math.random() * 8,
+            pressure_mb: 1015 + Math.random() * 10,
+            uv: 6 + Math.random() * 4,
+            vis_km: 10 + Math.random() * 5,
+            air_quality: {
+                'us-epa-index': 2
+            }
+        },
+        location: {
+            name: "Burnie, Tasmania",
+            region: "Tasmania",
+            country: "Australia"
+        }
+    };
+}
+
+// Function to show example weather data
+function showExampleWeatherData() {
+    const exampleData = {
+        current: {
+            temp_c: 18,
+            condition: {
+                text: "Partly Cloudy",
+                code: "1003"
+            },
+            humidity: 65,
+            wind_kph: 12,
+            pressure_mb: 1015,
+            uv: 6,
+            vis_km: 10,
+            air_quality: {
+                'us-epa-index': 2
+            }
+        },
+        location: {
+            name: "Burnie, Tasmania",
+            region: "Tasmania",
+            country: "Australia"
+        }
+    };
+    
+    document.getElementById('current-temp').textContent = `${exampleData.current.temp_c}°C`;
+    document.getElementById('weather-description').textContent = exampleData.current.condition.text;
+    document.getElementById('humidity').textContent = `${exampleData.current.humidity}%`;
+    document.getElementById('wind-speed').textContent = `${exampleData.current.wind_kph} km/h`;
+    document.getElementById('pressure').textContent = `${exampleData.current.pressure_mb} hPa`;
+
+    const weatherIcon = document.querySelector('.weather-icon i');
+    if (weatherIcon) {
+        weatherIcon.className = `bi ${getWeatherIcon(exampleData.current.condition.code)}`;
+    }
+    
+    const lastUpdateEl = document.getElementById('lastUpdate');
+    if (lastUpdateEl) {
+        lastUpdateEl.textContent = 'Showing example data • Configure backend for live weather';
+        lastUpdateEl.style.fontStyle = 'italic';
+        lastUpdateEl.style.color = '#666';
+    }
+    
+    return exampleData;
+}
+
+// Icon mapping for WeatherAPI.com
+function getWeatherIcon(conditionCode) {
+    const iconMap = {
+        '1000': 'bi-sun',
+        '1003': 'bi-cloud-sun',
+        '1006': 'bi-cloud',
+        '1009': 'bi-clouds',
+        '1030': 'bi-cloud-haze',
+        '1063': 'bi-cloud-drizzle',
+        '1066': 'bi-snow',
+        '1069': 'bi-cloud-sleet',
+        '1072': 'bi-cloud-drizzle',
+        '1087': 'bi-cloud-lightning',
+        '1114': 'bi-wind',
+        '1117': 'bi-wind',
+        '1135': 'bi-cloud-haze',
+        '1147': 'bi-cloud-haze',
+        '1150': 'bi-cloud-drizzle',
+        '1153': 'bi-cloud-drizzle',
+        '1168': 'bi-cloud-haze',
+        '1171': 'bi-cloud-haze',
+        '1180': 'bi-cloud-drizzle',
+        '1183': 'bi-cloud-rain',
+        '1186': 'bi-cloud-rain',
+        '1189': 'bi-cloud-rain-heavy',
+        '1192': 'bi-cloud-rain-heavy',
+        '1195': 'bi-cloud-rain-heavy',
+        '1198': 'bi-cloud-haze',
+        '1201': 'bi-cloud-haze',
+        '1204': 'bi-cloud-sleet',
+        '1207': 'bi-cloud-sleet',
+        '1210': 'bi-snow',
+        '1213': 'bi-snow',
+        '1216': 'bi-snow',
+        '1219': 'bi-snow',
+        '1222': 'bi-snow',
+        '1225': 'bi-snow',
+        '1237': 'bi-snow',
+        '1240': 'bi-cloud-rain',
+        '1243': 'bi-cloud-rain-heavy',
+        '1246': 'bi-cloud-rain-heavy',
+        '1249': 'bi-cloud-sleet',
+        '1252': 'bi-cloud-sleet',
+        '1255': 'bi-snow',
+        '1258': 'bi-snow',
+        '1261': 'bi-snow',
+        '1264': 'bi-snow',
+        '1273': 'bi-cloud-lightning-rain',
+        '1276': 'bi-cloud-lightning-rain',
+        '1279': 'bi-cloud-lightning-rain',
+        '1282': 'bi-cloud-lightning-rain',
+    };
+    return iconMap[conditionCode] || 'bi-cloud';
+}
+
+// Updated display function
+function updateWeatherDisplay(weatherData) {
+    if (!weatherData || !weatherData.current) {
+        const exampleData = showExampleWeatherData();
+        updateEnvironmentalAlerts(exampleData);
+        return;
+    }
+
+    const current = weatherData.current;
+    
+    document.getElementById('current-temp').textContent = `${Math.round(current.temp_c)}°C`;
+    document.getElementById('weather-description').textContent = current.condition.text;
+    document.getElementById('humidity').textContent = `${current.humidity}%`;
+    document.getElementById('wind-speed').textContent = `${Math.round(current.wind_kph)} km/h`;
+    document.getElementById('pressure').textContent = `${current.pressure_mb} hPa`;
+
+    const weatherIcon = document.querySelector('.weather-icon i');
+    if (weatherIcon) {
+        weatherIcon.className = `bi ${getWeatherIcon(current.condition.code)}`;
+    }
+    
+    const lastUpdateEl = document.getElementById('lastUpdate');
+    if (lastUpdateEl) {
+        lastUpdateEl.textContent = `Last updated: ${new Date().toLocaleTimeString('en-AU')}`;
+        lastUpdateEl.style.fontStyle = 'normal';
+        lastUpdateEl.style.color = '';
+    }
+}
+
+// Enhanced environmental alerts
+function updateEnvironmentalAlerts(weatherData) {
+    const alertsContainer = document.getElementById('environmental-alerts');
+    alertsContainer.innerHTML = '';
+
+    const alerts = [];
+
+    if (!weatherData || !weatherData.current) {
+        alerts.push({
+            type: 'info',
+            icon: 'bi-info-circle',
+            title: 'Example Data',
+            message: 'Showing example weather data. Configure backend API for live updates.'
+        });
+        
+        alerts.push({
+            type: 'success',
+            icon: 'bi-check-circle',
+            title: 'Favorable Conditions',
+            message: 'Example weather conditions are suitable for most ecosystem management activities.'
+        });
+        
+        alerts.forEach(alert => {
+            const alertElement = document.createElement('div');
+            alertElement.className = `alert alert-${alert.type} mb-2`;
+            alertElement.innerHTML = `
+                <i class="bi ${alert.icon} me-2"></i>
+                <strong>${alert.title}</strong>
+                <p class="mb-0">${alert.message}</p>
+            `;
+            alertsContainer.appendChild(alertElement);
+        });
+        return;
+    }
+
+    const current = weatherData.current;
+
+    if (current.temp_c > 35) {
+        alerts.push({
+            type: 'danger',
+            icon: 'bi-thermometer-high',
+            title: 'Extreme Heat Warning',
+            message: `Temperature is ${Math.round(current.temp_c)}°C. Avoid strenuous fieldwork.`
+        });
+    } else if (current.temp_c > 30) {
+        alerts.push({
+            type: 'warning',
+            icon: 'bi-thermometer-sun',
+            title: 'High Temperature Alert',
+            message: `Temperature is ${Math.round(current.temp_c)}°C. Consider adjusting schedules.`
+        });
+    } else if (current.temp_c < 5) {
+        alerts.push({
+            type: 'info',
+            icon: 'bi-thermometer-snow',
+            title: 'Low Temperature Alert',
+            message: `Temperature is ${Math.round(current.temp_c)}°C. Frost may affect sensitive species.`
+        });
+    }
+
+    if (current.condition.text.toLowerCase().includes('rain')) {
+        alerts.push({
+            type: 'info',
+            icon: 'bi-cloud-rain',
+            title: 'Rainfall Detected',
+            message: 'Current rainfall may affect field work and monitoring activities.'
+        });
+    }
+
+    if (current.wind_kph > 20) {
+        alerts.push({
+            type: 'warning',
+            icon: 'bi-wind',
+            title: 'Windy Conditions',
+            message: `Wind speed is ${Math.round(current.wind_kph)} km/h. May affect fieldwork safety.`
+        });
+    }
+
+    if (current.humidity > 85) {
+        alerts.push({
+            type: 'info',
+            icon: 'bi-droplet',
+            title: 'High Humidity',
+            message: `Humidity is ${current.humidity}%. Monitor for fungal diseases.`
+        });
+    } else if (current.humidity < 30) {
+        alerts.push({
+            type: 'warning',
+            icon: 'bi-droplet',
+            title: 'Low Humidity',
+            message: `Humidity is ${current.humidity}%. Increased fire risk.`
+        });
+    }
+
+    if (alerts.length === 0) {
+        alerts.push({
+            type: 'success',
+            icon: 'bi-check-circle',
+            title: 'Favorable Conditions',
+            message: 'Weather conditions are suitable for most ecosystem management activities.'
+        });
+    }
+
+    alerts.forEach(alert => {
+        const alertElement = document.createElement('div');
+        alertElement.className = `alert alert-${alert.type} mb-2`;
+        alertElement.innerHTML = `
+            <i class="bi ${alert.icon} me-2"></i>
+            <strong>${alert.title}</strong>
+            <p class="mb-0">${alert.message}</p>
+        `;
+        alertsContainer.appendChild(alertElement);
+    });
+}
+
+// Main loadWeatherData function
+async function loadWeatherData() {
+    const projects = db.getProjects();
+    let lat, lon;
+    
+    const projectWithCoords = projects.find(p => p.latitude && p.longitude);
+    
+    if (projectWithCoords) {
+        lat = projectWithCoords.latitude;
+        lon = projectWithCoords.longitude;
+    } else {
+        lat = -41.0521;
+        lon = 145.9061;
+    }
+
+    document.getElementById('weather-description').textContent = 'Loading weather data...';
+    document.getElementById('lastUpdate').textContent = 'Updating...';
+
+    try {
+        const weatherData = await getWeatherByCoords(lat, lon);
+        
+        updateWeatherDisplay(weatherData);
+        updateEnvironmentalAlerts(weatherData);
+        
+        const updateTime = new Date().toLocaleTimeString('en-AU');
+        localStorage.setItem('lastWeatherUpdate', new Date().toISOString());
+        localStorage.setItem('weatherData', JSON.stringify(weatherData));
+        document.getElementById('lastUpdate').textContent = `Last updated: ${updateTime}`;
+        
+        updateForecastChart(weatherData);
+        updateHistoricalWeatherChart();
+        
+    } catch (error) {
+        console.error('Failed to load weather data:', error);
+        document.getElementById('lastUpdate').textContent = 'Using example data';
+        showExampleWeatherData();
+        loadMockWeatherData();
+    }
+}
+
+// Weather location management
+function setupWeatherLocationSelector() {
+    const select = document.getElementById('weatherLocationSelect');
+    const projects = db.getProjects();
+    
+    while (select.options.length > 1) {
+        select.remove(1);
+    }
+    
+    projects.forEach(project => {
+        if (project.latitude && project.longitude) {
+            const option = document.createElement('option');
+            option.value = project.id;
+            option.textContent = `${project.name} (${project.latitude.toFixed(4)}, ${project.longitude.toFixed(4)})`;
+            option.dataset.lat = project.latitude;
+            option.dataset.lon = project.longitude;
+            select.appendChild(option);
+        }
+    });
+    
+    const savedLocation = localStorage.getItem('weatherLocation');
+    if (savedLocation) {
+        select.value = savedLocation;
+    }
+}
+
+function getCurrentWeatherLocation() {
+    const select = document.getElementById('weatherLocationSelect');
+    const selectedOption = select.options[select.selectedIndex];
+    
+    if (select.value === 'default') {
+        return { lat: -41.0521, lon: 145.9061 };
+    }
+    
+    if (selectedOption.dataset.lat && selectedOption.dataset.lon) {
+        return {
+            lat: parseFloat(selectedOption.dataset.lat),
+            lon: parseFloat(selectedOption.dataset.lon)
+        };
+    }
+    
+    const project = db.getProjects().find(p => p.id === select.value);
+    if (project && project.latitude && project.longitude) {
+        return {
+            lat: project.latitude,
+            lon: project.longitude
+        };
+    }
+    
+    return { lat: -41.0521, lon: 145.9061 };
+}
+
+// Fallback mock data for charts
+function loadMockWeatherData() {
+    if (temperatureChart) temperatureChart.destroy();
+    
+    temperatureChart = new Chart(document.getElementById('temperatureChart'), {
+        type: 'line',
+        data: {
+            labels: ['6 AM', '9 AM', '12 PM', '3 PM', '6 PM', '9 PM'],
+            datasets: [{
+                label: 'Temperature (°C)',
+                data: [12, 15, 18, 19, 17, 14],
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+    
+    if (historicalWeatherChart) historicalWeatherChart.destroy();
+    
+    historicalWeatherChart = new Chart(document.getElementById('historicalWeatherChart'), {
+        type: 'bar',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            datasets: [
+                {
+                    label: 'Rainfall (mm)',
+                    data: [45, 52, 48, 62, 75, 82, 97, 94, 78, 64, 52, 48],
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Avg Temp (°C)',
+                    data: [22, 22, 20, 17, 14, 12, 11, 12, 14, 16, 18, 20],
+                    type: 'line',
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Rainfall (mm)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Temperature (°C)'
                     },
-                    humidity: 65 + Math.sin(Date.now() / 2000000) * 10,
-                    wind_kph: 12 + Math.random() * 8,
-                    pressure_mb: 1015 + Math.random() * 10,
-                    uv: 6 + Math.random() * 4,
-                    vis_km: 10 + Math.random() * 5,
-                    air_quality: {
-                        'us-epa-index': 2
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateForecastChart(weatherData) {
+    const labels = ['Now', '+3h', '+6h', '+9h', '+12h', '+15h', '+18h', '+21h'];
+    const temperatures = [18, 19, 20, 21, 19, 17, 16, 15];
+
+    if (temperatureChart) temperatureChart.destroy();
+
+    temperatureChart = new Chart(document.getElementById('temperatureChart'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Temperature (°C)',
+                data: temperatures,
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+}
+
+function updateHistoricalWeatherChart() {
+    const ctx = document.getElementById('historicalWeatherChart');
+    
+    if (!ctx) return;
+    
+    if (historicalWeatherChart) {
+        historicalWeatherChart.destroy();
+    }
+    
+    historicalWeatherChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            datasets: [
+                {
+                    label: 'Rainfall (mm)',
+                    data: [45, 52, 48, 62, 75, 82, 97, 94, 78, 64, 52, 48],
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Average Temperature (°C)',
+                    data: [22, 22, 20, 17, 14, 12, 11, 12, 14, 16, 18, 20],
+                    type: 'line',
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    tension: 0.4,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Rainfall (mm)'
                     }
                 },
-                location: {
-                    name: "Burnie, Tasmania",
-                    region: "Tasmania",
-                    country: "Australia"
-                }
-            };
-        }
-
-        // Function to show example weather data
-        function showExampleWeatherData() {
-            // Create realistic example data structure
-            const exampleData = {
-                current: {
-                    temp_c: 18,
-                    condition: {
-                        text: "Partly Cloudy",
-                        code: "1003" // Partly cloudy code
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Temperature (°C)'
                     },
-                    humidity: 65,
-                    wind_kph: 12,
-                    pressure_mb: 1015,
-                    uv: 6,
-                    vis_km: 10,
-                    air_quality: {
-                        'us-epa-index': 2
-                    }
-                },
-                location: {
-                    name: "Burnie, Tasmania",
-                    region: "Tasmania",
-                    country: "Australia"
-                }
-            };
-            
-            // Update display with example data
-            document.getElementById('current-temp').textContent = `${exampleData.current.temp_c}°C`;
-            document.getElementById('weather-description').textContent = exampleData.current.condition.text;
-            document.getElementById('humidity').textContent = `${exampleData.current.humidity}%`;
-            document.getElementById('wind-speed').textContent = `${exampleData.current.wind_kph} km/h`;
-            document.getElementById('pressure').textContent = `${exampleData.current.pressure_mb} hPa`;
-
-            // Update weather icon
-            const weatherIcon = document.querySelector('.weather-icon i');
-            if (weatherIcon) {
-                weatherIcon.className = `bi ${getWeatherIcon(exampleData.current.condition.code)}`;
-            }
-            
-            // Add a subtle "example data" notification
-            const lastUpdateEl = document.getElementById('lastUpdate');
-            if (lastUpdateEl) {
-                lastUpdateEl.textContent = 'Showing example data • Configure backend for live weather';
-                lastUpdateEl.style.fontStyle = 'italic';
-                lastUpdateEl.style.color = '#666';
-            }
-            
-            return exampleData;
-        }
-
-        // Updated icon mapping for WeatherAPI.com
-        function getWeatherIcon(conditionCode) {
-            const iconMap = {
-                '1000': 'bi-sun', // Sunny
-                '1003': 'bi-cloud-sun', // Partly cloudy
-                '1006': 'bi-cloud', // Cloudy
-                '1009': 'bi-clouds', // Overcast
-                '1030': 'bi-cloud-haze', // Mist
-                '1063': 'bi-cloud-drizzle', // Patchy rain
-                '1066': 'bi-snow', // Patchy snow
-                '1069': 'bi-cloud-sleet', // Sleet
-                '1072': 'bi-cloud-drizzle', // Freezing drizzle
-                '1087': 'bi-cloud-lightning', // Thundery outbreaks
-                '1114': 'bi-wind', // Blowing snow
-                '1117': 'bi-wind', // Blizzard
-                '1135': 'bi-cloud-haze', // Fog
-                '1147': 'bi-cloud-haze', // Freezing fog
-                '1150': 'bi-cloud-drizzle', // Patchy light drizzle
-                '1153': 'bi-cloud-drizzle', // Light drizzle
-                '1168': 'bi-cloud-haze', // Freezing drizzle
-                '1171': 'bi-cloud-haze', // Heavy freezing drizzle
-                '1180': 'bi-cloud-drizzle', // Patchy light rain
-                '1183': 'bi-cloud-rain', // Light rain
-                '1186': 'bi-cloud-rain', // Moderate rain
-                '1189': 'bi-cloud-rain-heavy', // Heavy rain
-                '1192': 'bi-cloud-rain-heavy', // Heavy rain
-                '1195': 'bi-cloud-rain-heavy', // Heavy rain
-                '1198': 'bi-cloud-haze', // Light freezing rain
-                '1201': 'bi-cloud-haze', // Moderate/heavy freezing rain
-                '1204': 'bi-cloud-sleet', // Light sleet
-                '1207': 'bi-cloud-sleet', // Moderate/heavy sleet
-                '1210': 'bi-snow', // Patchy light snow
-                '1213': 'bi-snow', // Light snow
-                '1216': 'bi-snow', // Moderate snow
-                '1219': 'bi-snow', // Heavy snow
-                '1222': 'bi-snow', // Ice pellets
-                '1225': 'bi-snow', // Heavy snow
-                '1237': 'bi-snow', // Ice pellets
-                '1240': 'bi-cloud-rain', // Light rain shower
-                '1243': 'bi-cloud-rain-heavy', // Moderate/heavy rain shower
-                '1246': 'bi-cloud-rain-heavy', // Torrential rain shower
-                '1249': 'bi-cloud-sleet', // Light sleet showers
-                '1252': 'bi-cloud-sleet', // Moderate/heavy sleet showers
-                '1255': 'bi-snow', // Light snow showers
-                '1258': 'bi-snow', // Moderate/heavy snow showers
-                '1261': 'bi-snow', // Light showers of ice pellets
-                '1264': 'bi-snow', // Moderate/heavy showers of ice pellets
-                '1273': 'bi-cloud-lightning-rain', // Patchy light rain with thunder
-                '1276': 'bi-cloud-lightning-rain', // Moderate/heavy rain with thunder
-                '1279': 'bi-cloud-lightning-rain', // Patchy light snow with thunder
-                '1282': 'bi-cloud-lightning-rain', // Moderate/heavy snow with thunder,
-            };
-            
-            return iconMap[conditionCode] || 'bi-cloud';
-        }
-
-        // Updated display function
-        function updateWeatherDisplay(weatherData) {
-            if (!weatherData || !weatherData.current) {
-                // Show example data instead of just "Data unavailable"
-                const exampleData = showExampleWeatherData();
-                updateEnvironmentalAlerts(exampleData);
-                return;
-            }
-
-            const current = weatherData.current;
-            
-            // Update current weather
-            document.getElementById('current-temp').textContent = `${Math.round(current.temp_c)}°C`;
-            document.getElementById('weather-description').textContent = 
-                current.condition.text;
-            document.getElementById('humidity').textContent = `${current.humidity}%`;
-            document.getElementById('wind-speed').textContent = `${Math.round(current.wind_kph)} km/h`;
-            document.getElementById('pressure').textContent = `${current.pressure_mb} hPa`;
-
-            // Update weather icon
-            const weatherIcon = document.querySelector('.weather-icon i');
-            if (weatherIcon) {
-                weatherIcon.className = `bi ${getWeatherIcon(current.condition.code)}`;
-            }
-            
-            // Update last update text to show it's live data
-            const lastUpdateEl = document.getElementById('lastUpdate');
-            if (lastUpdateEl) {
-                lastUpdateEl.textContent = `Last updated: ${new Date().toLocaleTimeString('en-AU')}`;
-                lastUpdateEl.style.fontStyle = 'normal';
-                lastUpdateEl.style.color = '';
-            }
-        }
-
-        // Enhanced environmental alerts
-        function updateEnvironmentalAlerts(weatherData) {
-            const alertsContainer = document.getElementById('environmental-alerts');
-            alertsContainer.innerHTML = '';
-
-            const alerts = [];
-
-            if (!weatherData || !weatherData.current) {
-                // Show example alerts
-                alerts.push({
-                    type: 'info',
-                    icon: 'bi-info-circle',
-                    title: 'Example Data',
-                    message: 'Showing example weather data. Configure backend API for live updates.'
-                });
-                
-                alerts.push({
-                    type: 'success',
-                    icon: 'bi-check-circle',
-                    title: 'Favorable Conditions',
-                    message: 'Example weather conditions are suitable for most ecosystem management activities.'
-                });
-                
-                // Create alert elements
-                alerts.forEach(alert => {
-                    const alertElement = document.createElement('div');
-                    alertElement.className = `alert alert-${alert.type} mb-2`;
-                    alertElement.innerHTML = `
-                        <i class="bi ${alert.icon} me-2"></i>
-                        <strong>${alert.title}</strong>
-                        <p class="mb-0">${alert.message}</p>
-                    `;
-                    alertsContainer.appendChild(alertElement);
-                });
-                return;
-            }
-
-            const current = weatherData.current;
-
-            // Temperature alerts
-            if (current.temp_c > 35) {
-                alerts.push({
-                    type: 'danger',
-                    icon: 'bi-thermometer-high',
-                    title: 'Extreme Heat Warning',
-                    message: `Temperature is ${Math.round(current.temp_c)}°C. Avoid strenuous fieldwork and monitor water-dependent species.`
-                });
-            } else if (current.temp_c > 30) {
-                alerts.push({
-                    type: 'warning',
-                    icon: 'bi-thermometer-sun',
-                    title: 'High Temperature Alert',
-                    message: `Temperature is ${Math.round(current.temp_c)}°C. Consider adjusting maintenance schedules and hydration breaks.`
-                });
-            } else if (current.temp_c < 5) {
-                alerts.push({
-                    type: 'info',
-                    icon: 'bi-thermometer-snow',
-                    title: 'Low Temperature Alert',
-                    message: `Temperature is ${Math.round(current.temp_c)}°C. Frost may affect sensitive species and fieldwork.`
-                });
-            }
-
-            // Rainfall alerts
-            if (current.condition.text.toLowerCase().includes('rain')) {
-                alerts.push({
-                    type: 'info',
-                    icon: 'bi-cloud-rain',
-                    title: 'Rainfall Detected',
-                    message: 'Current rainfall may affect field work, monitoring activities, and chemical applications.'
-                });
-            }
-
-            // Wind alerts
-            if (current.wind_kph > 20) {
-                alerts.push({
-                    type: 'warning',
-                    icon: 'bi-wind',
-                    title: 'Windy Conditions',
-                    message: `Wind speed is ${Math.round(current.wind_kph)} km/h. May affect spraying accuracy and fieldwork safety.`
-                });
-            }
-
-            // Humidity alerts
-            if (current.humidity > 85) {
-                alerts.push({
-                    type: 'info',
-                    icon: 'bi-droplet',
-                    title: 'High Humidity',
-                    message: `Humidity is ${current.humidity}%. Monitor for fungal diseases in susceptible species.`
-                });
-            } else if (current.humidity < 30) {
-                alerts.push({
-                    type: 'warning',
-                    icon: 'bi-droplet',
-                    title: 'Low Humidity',
-                    message: `Humidity is ${current.humidity}%. Increased fire risk and plant water stress.`
-                });
-            }
-
-            // Air Quality alerts (if available)
-            if (current.air_quality && current.air_quality['us-epa-index']) {
-                const aqi = current.air_quality['us-epa-index'];
-                if (aqi >= 4) {
-                    alerts.push({
-                        type: 'danger',
-                        icon: 'bi-mask',
-                        title: 'Poor Air Quality',
-                        message: 'Air quality may affect fieldwork. Consider postponing outdoor activities.'
-                    });
-                } else if (aqi >= 3) {
-                    alerts.push({
-                        type: 'warning',
-                        icon: 'bi-mask',
-                        title: 'Moderate Air Quality',
-                        message: 'Sensitive individuals may be affected by air quality conditions.'
-                    });
-                }
-            }
-
-            // UV Index alerts
-            if (current.uv > 8) {
-                alerts.push({
-                    type: 'warning',
-                    icon: 'bi-sun',
-                    title: 'High UV Index',
-                    message: `UV index is ${current.uv}. Ensure sun protection during fieldwork.`
-                });
-            }
-
-            // Visibility alerts
-            if (current.vis_km < 5) {
-                alerts.push({
-                    type: 'warning',
-                    icon: 'bi-eye',
-                    title: 'Reduced Visibility',
-                    message: `Visibility is ${current.vis_km}km. Exercise caution during fieldwork and driving.`
-                });
-            }
-
-            // If no alerts, show all clear
-            if (alerts.length === 0) {
-                alerts.push({
-                    type: 'success',
-                    icon: 'bi-check-circle',
-                    title: 'Favorable Conditions',
-                    message: 'Weather conditions are suitable for most ecosystem management activities.'
-                });
-            }
-
-            // Create alert elements
-            alerts.forEach(alert => {
-                const alertElement = document.createElement('div');
-                alertElement.className = `alert alert-${alert.type} mb-2`;
-                alertElement.innerHTML = `
-                    <i class="bi ${alert.icon} me-2"></i>
-                    <strong>${alert.title}</strong>
-                    <p class="mb-0">${alert.message}</p>
-                `;
-                alertsContainer.appendChild(alertElement);
-            });
-        }
-
-        // Enhanced loadWeatherData function
-        async function loadWeatherData() {
-            // Try to get location from projects first
-            const projects = db.getProjects();
-            let lat, lon;
-            
-            // Find first project with coordinates
-            const projectWithCoords = projects.find(p => p.latitude && p.longitude);
-            
-            if (projectWithCoords) {
-                lat = projectWithCoords.latitude;
-                lon = projectWithCoords.longitude;
-            } else {
-                // Default to Burnie, Tasmania if no project coordinates
-                lat = -41.0521;
-                lon = 145.9061;
-            }
-
-            // Show loading state
-            document.getElementById('weather-description').textContent = 'Loading weather data...';
-            document.getElementById('lastUpdate').textContent = 'Updating...';
-
-            try {
-                const weatherData = await getWeatherByCoords(lat, lon);
-                
-                updateWeatherDisplay(weatherData);
-                updateEnvironmentalAlerts(weatherData);
-                
-                // Store weather data for later use
-                const updateTime = new Date().toLocaleTimeString('en-AU');
-                localStorage.setItem('lastWeatherUpdate', new Date().toISOString());
-                localStorage.setItem('weatherData', JSON.stringify(weatherData));
-                document.getElementById('lastUpdate').textContent = `Last updated: ${updateTime}`;
-                
-                // Update forecast chart
-                updateForecastChart(weatherData);
-                
-            } catch (error) {
-                console.error('Failed to load weather data:', error);
-                document.getElementById('lastUpdate').textContent = 'Using example data';
-                
-                // Always use example data when API fails
-                showExampleWeatherData();
-                loadMockWeatherData();
-            }
-        }
-
-        // Weather location management
-        function setupWeatherLocationSelector() {
-            const select = document.getElementById('weatherLocationSelect');
-            const projects = db.getProjects();
-            
-            // Clear existing options except default
-            while (select.options.length > 1) {
-                select.remove(1);
-            }
-            
-            // Add projects with coordinates
-            projects.forEach(project => {
-                if (project.latitude && project.longitude) {
-                    const option = document.createElement('option');
-                    option.value = project.id;
-                    option.textContent = `${project.name} (${project.latitude.toFixed(4)}, ${project.longitude.toFixed(4)})`;
-                    option.dataset.lat = project.latitude;
-                    option.dataset.lon = project.longitude;
-                    select.appendChild(option);
-                }
-            });
-            
-            // Load saved location preference
-            const savedLocation = localStorage.getItem('weatherLocation');
-            if (savedLocation) {
-                select.value = savedLocation;
-            }
-        }
-
-        function getCurrentWeatherLocation() {
-            const select = document.getElementById('weatherLocationSelect');
-            const selectedOption = select.options[select.selectedIndex];
-            
-            if (select.value === 'default') {
-                return { lat: -41.0521, lon: 145.9061 }; // Default to Burnie
-            }
-            
-            if (selectedOption.dataset.lat && selectedOption.dataset.lon) {
-                return {
-                    lat: parseFloat(selectedOption.dataset.lat),
-                    lon: parseFloat(selectedOption.dataset.lon)
-                };
-            }
-            
-            // Fallback: try to get from project data
-            const project = db.getProjects().find(p => p.id === select.value);
-            if (project && project.latitude && project.longitude) {
-                return {
-                    lat: project.latitude,
-                    lon: project.longitude
-                };
-            }
-            
-            // Ultimate fallback
-            return { lat: -41.0521, lon: 145.9061 };
-        }
-
-        // Fallback mock data for charts
-        function loadMockWeatherData() {
-            // Mock temperature chart
-            if (temperatureChart) temperatureChart.destroy();
-            
-            temperatureChart = new Chart(document.getElementById('temperatureChart'), {
-                type: 'line',
-                data: {
-                    labels: ['6 AM', '9 AM', '12 PM', '3 PM', '6 PM', '9 PM'],
-                    datasets: [{
-                        label: 'Temperature (°C)',
-                        data: [12, 15, 18, 19, 17, 14],
-                        borderColor: 'rgb(255, 99, 132)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: false
-                        }
+                    grid: {
+                        drawOnChartArea: false
                     }
                 }
-            });
-            
-            // Mock historical weather chart
-            if (historicalWeatherChart) historicalWeatherChart.destroy();
-            
-            historicalWeatherChart = new Chart(document.getElementById('historicalWeatherChart'), {
-                type: 'bar',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                    datasets: [
-                        {
-                            label: 'Rainfall (mm)',
-                            data: [45, 52, 48, 62, 75, 82, 97, 94, 78, 64, 52, 48],
-                            backgroundColor: 'rgba(54, 162, 235, 0.8)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'Avg Temp (°C)',
-                            data: [22, 22, 20, 17, 14, 12, 11, 12, 14, 16, 18, 20],
-                            type: 'line',
-                            borderColor: 'rgb(255, 99, 132)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            yAxisID: 'y1'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Rainfall (mm)'
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
                             }
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: 'Temperature (°C)'
-                            },
-                            grid: {
-                                drawOnChartArea: false
+                            if (context.parsed.y !== null) {
+                                if (context.dataset.label.includes('Rainfall')) {
+                                    label += context.parsed.y + ' mm';
+                                } else {
+                                    label += context.parsed.y + '°C';
+                                }
                             }
+                            return label;
                         }
                     }
                 }
-            });
+            }
         }
-
-        function updateForecastChart(weatherData) {
-            // Mock forecast data for demo
-            const labels = ['Now', '+3h', '+6h', '+9h', '+12h', '+15h', '+18h', '+21h'];
-            const temperatures = [18, 19, 20, 21, 19, 17, 16, 15];
-
-            if (temperatureChart) temperatureChart.destroy();
-
-            temperatureChart = new Chart(document.getElementById('temperatureChart'), {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Temperature (°C)',
-                        data: temperatures,
-                        borderColor: 'rgb(255, 99, 132)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: false
-                        }
-                    }
-                }
-            });
-        }
+    });
+}
 
         // ==================== MAP FUNCTIONS ====================
 
@@ -5309,8 +5319,6 @@
                 return 'dark';
             }
         };
-
-        // ADD THESE NEW FUNCTIONS RIGHT AFTER THE ECOSYSTEM SCORING OBJECT:
 
         // Real-time score preview
         function setupHealthScorePreview() {
