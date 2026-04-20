@@ -1,0 +1,319 @@
+Looking at your EcoManager Pro app, I can see you already have a Weather section with a weather widget, but you want to connect it to a real Weather API. Here's how to add your Weather API key and integrate it properly:
+
+Step 1: Get Your Weather API Key
+
+Sign up for a free API key at WeatherAPI.com (they offer 1 million free calls per month).
+
+Step 2: Update the Weather Configuration
+
+Find this section in your code (around line 2150-2160):
+
+```javascript
+// WeatherAPI.com configuration - FIXED: Moved API key handling to backend proxy pattern
+const weatherConfig = {
+    useProxy: true, // Set to true to use backend proxy
+    proxyUrl: '/api/weather', // Your backend endpoint
+    fallbackToExample: true // Fall back to example data if API fails
+};
+```
+
+Replace it with:
+
+```javascript
+// WeatherAPI.com configuration - DIRECT API ACCESS
+const weatherConfig = {
+    apiKey: 'YOUR_API_KEY_HERE', // <-- PASTE YOUR API KEY HERE
+    baseUrl: 'https://api.weatherapi.com/v1',
+    useProxy: false, // Set to false for direct API access
+    fallbackToExample: true
+};
+```
+
+Step 3: Update the getWeatherByCoords Function
+
+Replace the existing getWeatherByCoords function (around line 2200) with this enhanced version:
+
+```javascript
+async function getWeatherByCoords(lat, lon) {
+    if (!weatherConfig.useProxy && weatherConfig.apiKey && weatherConfig.apiKey !== 'YOUR_API_KEY_HERE') {
+        // Direct API call with your key
+        try {
+            const url = `${weatherConfig.baseUrl}/current.json?key=${weatherConfig.apiKey}&q=${lat},${lon}&aqi=yes`;
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Also fetch forecast for historical data
+            const forecastUrl = `${weatherConfig.baseUrl}/forecast.json?key=${weatherConfig.apiKey}&q=${lat},${lon}&days=7&aqi=no`;
+            const forecastResponse = await fetch(forecastUrl);
+            
+            if (forecastResponse.ok) {
+                const forecastData = await forecastResponse.json();
+                data.forecast = forecastData.forecast;
+            }
+            
+            // Store in localStorage for offline access
+            localStorage.setItem('lastWeatherData', JSON.stringify(data));
+            localStorage.setItem('lastWeatherUpdate', new Date().toISOString());
+            
+            return data;
+        } catch (error) {
+            console.error('Weather API error:', error);
+            if (weatherConfig.fallbackToExample) {
+                showToast('Weather API', 'Using example data. Check your API key.', 'warning');
+                return getExampleWeatherData(lat, lon);
+            }
+            return null;
+        }
+    } else {
+        console.warn('API key not configured. Using example data.');
+        showToast('Weather API', 'Please add your WeatherAPI.com API key to see live data.', 'info');
+        return getExampleWeatherData(lat, lon);
+    }
+}
+
+function getExampleWeatherData(lat, lon) {
+    return {
+        current: {
+            temp_c: 18,
+            condition: {
+                text: "Partly Cloudy",
+                code: 1003
+            },
+            humidity: 65,
+            wind_kph: 12,
+            pressure_mb: 1015,
+            uv: 6,
+            vis_km: 10,
+            air_quality: {
+                'us-epa-index': 2
+            }
+        },
+        location: {
+            name: getLocationNameFromCoords(lat, lon),
+            region: "Demo Region",
+            country: "Demo"
+        },
+        forecast: {
+            forecastday: generateDemoForecast()
+        }
+    };
+}
+
+function getLocationNameFromCoords(lat, lon) {
+    // Simple location name mapping for demo
+    const locations = {
+        '-41.0521,145.9061': 'Burnie, Tasmania',
+        '-42.8821,147.3272': 'Hobart, Tasmania'
+    };
+    const key = `${lat},${lon}`;
+    return locations[key] || 'Selected Location';
+}
+
+function generateDemoForecast() {
+    const days = [];
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        days.push({
+            date: date.toISOString().split('T')[0],
+            day: {
+                maxtemp_c: 18 + Math.sin(i) * 3,
+                mintemp_c: 10 + Math.cos(i) * 2,
+                condition: { text: 'Partly cloudy' }
+            }
+        });
+    }
+    return { forecastday: days };
+}
+```
+
+Step 4: Update the updateForecastChart Function
+
+Replace the existing function with this version that uses real forecast data:
+
+```javascript
+function updateForecastChart(weatherData) {
+    const tempChartCanvas = document.getElementById('temperatureChart');
+    if (!tempChartCanvas) return;
+    
+    if (temperatureChart) temperatureChart.destroy();
+    
+    // Try to use real forecast data
+    let labels = [];
+    let temperatures = [];
+    
+    if (weatherData && weatherData.forecast && weatherData.forecast.forecastday) {
+        // Use real forecast data
+        labels = weatherData.forecast.forecastday.map(day => {
+            const date = new Date(day.date);
+            return date.toLocaleDateString('en-AU', { weekday: 'short' });
+        });
+        temperatures = weatherData.forecast.forecastday.map(day => day.day.avgtemp_c || day.day.maxtemp_c);
+    } else {
+        // Fallback to demo data
+        labels = ['Today', '+1 day', '+2 days', '+3 days', '+4 days', '+5 days'];
+        temperatures = [18, 19, 20, 19, 17, 16];
+    }
+    
+    temperatureChart = new Chart(tempChartCanvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Temperature (°C)',
+                data: temperatures,
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: 'Temperature (°C)'
+                    }
+                }
+            }
+        }
+    });
+}
+```
+
+Step 5: Add API Key Input UI (Optional but Recommended)
+
+Add this to your Weather section (around line 1300) for easy API key management:
+
+```html
+<!-- Add after the weather location selector card -->
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="card-title mb-0">Weather API Settings</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <label class="form-label">WeatherAPI.com API Key:</label>
+                <div class="input-group">
+                    <input type="password" class="form-control" id="apiKeyInput" 
+                           placeholder="Enter your API key from weatherapi.com">
+                    <button class="btn btn-outline-secondary" type="button" id="saveApiKeyBtn">
+                        <i class="bi bi-save"></i> Save
+                    </button>
+                </div>
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i> 
+                    Get a free API key at <a href="https://www.weatherapi.com/" target="_blank">WeatherAPI.com</a>
+                </small>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check mt-4">
+                    <input class="form-check-input" type="checkbox" id="useDemoData" checked>
+                    <label class="form-check-label" for="useDemoData">
+                        Use demo data (no API key required)
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+And add this JavaScript to handle API key storage:
+
+```javascript
+// API Key management
+function initApiKeyManagement() {
+    const savedKey = localStorage.getItem('weatherApiKey');
+    const useDemo = localStorage.getItem('useDemoData') !== 'false';
+    
+    if (savedKey && !useDemo) {
+        weatherConfig.apiKey = savedKey;
+        weatherConfig.useProxy = false;
+        document.getElementById('apiKeyInput').value = '••••••••••••••••';
+        document.getElementById('useDemoData').checked = false;
+    } else {
+        document.getElementById('useDemoData').checked = true;
+        weatherConfig.useProxy = true;
+    }
+    
+    document.getElementById('saveApiKeyBtn').addEventListener('click', function() {
+        const apiKey = document.getElementById('apiKeyInput').value;
+        const useDemoData = document.getElementById('useDemoData').checked;
+        
+        if (!useDemoData && (!apiKey || apiKey === '••••••••••••••••')) {
+            showToast('API Key Required', 'Please enter a valid API key from weatherapi.com', 'warning');
+            return;
+        }
+        
+        if (!useDemoData) {
+            localStorage.setItem('weatherApiKey', apiKey);
+            weatherConfig.apiKey = apiKey;
+            weatherConfig.useProxy = false;
+            showToast('API Key Saved', 'Your API key has been saved. Refresh weather data to see live conditions.', 'success');
+        } else {
+            localStorage.setItem('weatherApiKey', '');
+            localStorage.setItem('useDemoData', 'true');
+            weatherConfig.useProxy = true;
+            showToast('Demo Mode', 'Using demo weather data', 'info');
+        }
+        
+        loadWeatherData();
+    });
+    
+    document.getElementById('useDemoData').addEventListener('change', function() {
+        if (this.checked) {
+            document.getElementById('apiKeyInput').disabled = true;
+        } else {
+            document.getElementById('apiKeyInput').disabled = false;
+        }
+    });
+    
+    // Initial state
+    document.getElementById('apiKeyInput').disabled = document.getElementById('useDemoData').checked;
+}
+
+// Call this in your initApp function
+// Add: initApiKeyManagement();
+```
+
+Step 6: Initialize the API Key Management
+
+Add this line to your initApp() function:
+
+```javascript
+function initApp() {
+    // ... existing code ...
+    initApiKeyManagement(); // Add this line
+    // ... rest of existing code ...
+}
+```
+
+Summary
+
+To add your Weather API to your app:
+
+1. Sign up at WeatherAPI.com and get your free API key
+2. Replace 'YOUR_API_KEY_HERE' in the weatherConfig with your actual key
+3. Set useProxy: false in the weatherConfig
+4. Optional: Add the API Key management UI for runtime configuration
+
+The app will now fetch live weather data including:
+
+· Current temperature, humidity, wind speed, pressure
+· 7-day forecast
+· Air quality data
+· Environmental alerts based on conditions
+
+If you don't want to hardcode your API key, use the optional UI component I provided to let users enter their own key at runtime.
