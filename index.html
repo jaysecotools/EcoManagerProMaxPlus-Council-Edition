@@ -1,3 +1,4 @@
+<!-- TEST VERSION ONLY - TESTING THAT RECENT ACTIVITY AND UPCOMING MAINTENANCE DO NOT SHOW IN ALL TABS ON MOBILE -->
 <!-- DUPLICATE FUNCTIONS REMOVED AND MINOR ERRORS FIXED -->
 <!-- ABILITY TO INPUT AND SAVE WEATHER API KEY ADDED - FALLBACK TO DEMO WEATHER DATA INCLUDED - DEMO WEATHER ISSUE NOW FIXED -->
 
@@ -6771,24 +6772,6 @@ function fixLayout() {
 window.addEventListener('resize', fixLayout);
 window.addEventListener('load', fixLayout);
 
-// Call in your navigation code
-function ensureProperLayout() {
-    setTimeout(function() {
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            mainContent.style.opacity = '0.99';
-            setTimeout(function() {
-                mainContent.style.opacity = '1';
-                fixLayout(); // Add this line
-            }, 10);
-        }
-        
-        window.dispatchEvent(new Event('resize'));
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        fixTableScrolling();
-        fixLayout(); // Add this line
-    }, 50);
-}
 
 // FIXED initApiKeyManagement
 function initApiKeyManagement() {
