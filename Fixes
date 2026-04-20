@@ -1,583 +1,234 @@
-// ==================== WEATHER API FUNCTIONS ====================
+The issue is that your sidebar has a fixed width of 280px, but the main content margin doesn't account for pages that might need extra space or have content that extends beyond the viewport. Here's the fix:
 
-// Enhanced weather functions with backend proxy pattern
-async function getWeatherByCoords(lat, lon) {
-    if (weatherConfig.useProxy) {
-        try {
-            // For demo, simulate API call with example data
-            return simulateWeatherAPI(lat, lon);
-        } catch (error) {
-            console.error('Weather proxy error:', error);
-            if (weatherConfig.fallbackToExample) {
-                return showExampleWeatherData();
-            }
-            return null;
+CSS Fix - Update your main content styles:
+
+Add these CSS rules to your existing <style> section:
+
+```css
+/* Fix for main content being covered by sidebar */
+.main-content {
+    margin-left: var(--sidebar-width);
+    padding: 30px;
+    transition: var(--transition);
+    min-height: 100vh;
+    width: calc(100% - var(--sidebar-width));
+    max-width: calc(100% - var(--sidebar-width));
+    overflow-x: auto;
+}
+
+/* Ensure content sections don't get cut off */
+.content-section {
+    display: none;
+    animation: fadeIn 0.5s ease;
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Make tables responsive */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Fix for card containers */
+.card {
+    margin-bottom: 25px;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    transition: var(--transition);
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Fix for map containers */
+.map-container {
+    height: 300px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 15px;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Fix for forms */
+form {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Fix for row containers */
+.row {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+}
+
+/* Fix for col containers */
+[class*="col-"] {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* Mobile responsive fix */
+@media (max-width: 992px) {
+    .main-content {
+        width: calc(100% - 70px);
+        max-width: calc(100% - 70px);
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 0;
+        margin-bottom: 70px;
+        padding: 15px;
+        width: 100%;
+        max-width: 100%;
+    }
+}
+```
+
+Additional JavaScript Fix
+
+Add this function to ensure all pages properly handle their layout when switching sections:
+
+```javascript
+// Add this function to ensure proper layout when switching pages
+function ensureProperLayout() {
+    // Force a reflow to fix any layout issues
+    setTimeout(function() {
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.style.opacity = '0.99';
+            setTimeout(function() {
+                mainContent.style.opacity = '1';
+            }, 10);
         }
-    } else {
-        console.warn('Direct API calls are disabled for security. Using example data.');
-        return showExampleWeatherData();
-    }
+        
+        // Trigger window resize event to force any responsive adjustments
+        window.dispatchEvent(new Event('resize'));
+        
+        // Scroll to top of page when changing sections
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 50);
 }
 
-function simulateWeatherAPI(lat, lon) {
-    return {
-        current: {
-            temp_c: 18 + Math.sin(Date.now() / 1000000) * 5,
-            condition: {
-                text: "Partly Cloudy",
-                code: "1003"
-            },
-            humidity: 65 + Math.sin(Date.now() / 2000000) * 10,
-            wind_kph: 12 + Math.random() * 8,
-            pressure_mb: 1015 + Math.random() * 10,
-            uv: 6 + Math.random() * 4,
-            vis_km: 10 + Math.random() * 5,
-            air_quality: {
-                'us-epa-index': 2
-            }
-        },
-        location: {
-            name: "Burnie, Tasmania",
-            region: "Tasmania",
-            country: "Australia"
-        }
-    };
-}
+// Update your navigation code to call this function
+// Find where you handle navigation (around line 2530-2560) and add ensureProperLayout()
+```
 
-// Function to show example weather data
-function showExampleWeatherData() {
-    const exampleData = {
-        current: {
-            temp_c: 18,
-            condition: {
-                text: "Partly Cloudy",
-                code: "1003"
-            },
-            humidity: 65,
-            wind_kph: 12,
-            pressure_mb: 1015,
-            uv: 6,
-            vis_km: 10,
-            air_quality: {
-                'us-epa-index': 2
-            }
-        },
-        location: {
-            name: "Burnie, Tasmania",
-            region: "Tasmania",
-            country: "Australia"
-        }
-    };
-    
-    document.getElementById('current-temp').textContent = `${exampleData.current.temp_c}°C`;
-    document.getElementById('weather-description').textContent = exampleData.current.condition.text;
-    document.getElementById('humidity').textContent = `${exampleData.current.humidity}%`;
-    document.getElementById('wind-speed').textContent = `${exampleData.current.wind_kph} km/h`;
-    document.getElementById('pressure').textContent = `${exampleData.current.pressure_mb} hPa`;
+Then update your navigation event listeners to include the layout fix. Find the navigation code (around line 2530-2560) and update it:
 
-    const weatherIcon = document.querySelector('.weather-icon i');
-    if (weatherIcon) {
-        weatherIcon.className = `bi ${getWeatherIcon(exampleData.current.condition.code)}`;
-    }
-    
-    const lastUpdateEl = document.getElementById('lastUpdate');
-    if (lastUpdateEl) {
-        lastUpdateEl.textContent = 'Showing example data • Configure backend for live weather';
-        lastUpdateEl.style.fontStyle = 'italic';
-        lastUpdateEl.style.color = '#666';
-    }
-    
-    return exampleData;
-}
-
-// Icon mapping for WeatherAPI.com
-function getWeatherIcon(conditionCode) {
-    const iconMap = {
-        '1000': 'bi-sun',
-        '1003': 'bi-cloud-sun',
-        '1006': 'bi-cloud',
-        '1009': 'bi-clouds',
-        '1030': 'bi-cloud-haze',
-        '1063': 'bi-cloud-drizzle',
-        '1066': 'bi-snow',
-        '1069': 'bi-cloud-sleet',
-        '1072': 'bi-cloud-drizzle',
-        '1087': 'bi-cloud-lightning',
-        '1114': 'bi-wind',
-        '1117': 'bi-wind',
-        '1135': 'bi-cloud-haze',
-        '1147': 'bi-cloud-haze',
-        '1150': 'bi-cloud-drizzle',
-        '1153': 'bi-cloud-drizzle',
-        '1168': 'bi-cloud-haze',
-        '1171': 'bi-cloud-haze',
-        '1180': 'bi-cloud-drizzle',
-        '1183': 'bi-cloud-rain',
-        '1186': 'bi-cloud-rain',
-        '1189': 'bi-cloud-rain-heavy',
-        '1192': 'bi-cloud-rain-heavy',
-        '1195': 'bi-cloud-rain-heavy',
-        '1198': 'bi-cloud-haze',
-        '1201': 'bi-cloud-haze',
-        '1204': 'bi-cloud-sleet',
-        '1207': 'bi-cloud-sleet',
-        '1210': 'bi-snow',
-        '1213': 'bi-snow',
-        '1216': 'bi-snow',
-        '1219': 'bi-snow',
-        '1222': 'bi-snow',
-        '1225': 'bi-snow',
-        '1237': 'bi-snow',
-        '1240': 'bi-cloud-rain',
-        '1243': 'bi-cloud-rain-heavy',
-        '1246': 'bi-cloud-rain-heavy',
-        '1249': 'bi-cloud-sleet',
-        '1252': 'bi-cloud-sleet',
-        '1255': 'bi-snow',
-        '1258': 'bi-snow',
-        '1261': 'bi-snow',
-        '1264': 'bi-snow',
-        '1273': 'bi-cloud-lightning-rain',
-        '1276': 'bi-cloud-lightning-rain',
-        '1279': 'bi-cloud-lightning-rain',
-        '1282': 'bi-cloud-lightning-rain',
-    };
-    return iconMap[conditionCode] || 'bi-cloud';
-}
-
-// Updated display function
-function updateWeatherDisplay(weatherData) {
-    if (!weatherData || !weatherData.current) {
-        const exampleData = showExampleWeatherData();
-        updateEnvironmentalAlerts(exampleData);
-        return;
-    }
-
-    const current = weatherData.current;
-    
-    document.getElementById('current-temp').textContent = `${Math.round(current.temp_c)}°C`;
-    document.getElementById('weather-description').textContent = current.condition.text;
-    document.getElementById('humidity').textContent = `${current.humidity}%`;
-    document.getElementById('wind-speed').textContent = `${Math.round(current.wind_kph)} km/h`;
-    document.getElementById('pressure').textContent = `${current.pressure_mb} hPa`;
-
-    const weatherIcon = document.querySelector('.weather-icon i');
-    if (weatherIcon) {
-        weatherIcon.className = `bi ${getWeatherIcon(current.condition.code)}`;
-    }
-    
-    const lastUpdateEl = document.getElementById('lastUpdate');
-    if (lastUpdateEl) {
-        lastUpdateEl.textContent = `Last updated: ${new Date().toLocaleTimeString('en-AU')}`;
-        lastUpdateEl.style.fontStyle = 'normal';
-        lastUpdateEl.style.color = '';
-    }
-}
-
-// Enhanced environmental alerts
-function updateEnvironmentalAlerts(weatherData) {
-    const alertsContainer = document.getElementById('environmental-alerts');
-    alertsContainer.innerHTML = '';
-
-    const alerts = [];
-
-    if (!weatherData || !weatherData.current) {
-        alerts.push({
-            type: 'info',
-            icon: 'bi-info-circle',
-            title: 'Example Data',
-            message: 'Showing example weather data. Configure backend API for live updates.'
+```javascript
+// Navigation - UPDATED with layout fix
+document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Update active state
+        document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Show the corresponding section
+        const target = this.getAttribute('data-target');
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
         });
         
-        alerts.push({
-            type: 'success',
-            icon: 'bi-check-circle',
-            title: 'Favorable Conditions',
-            message: 'Example weather conditions are suitable for most ecosystem management activities.'
-        });
-        
-        alerts.forEach(alert => {
-            const alertElement = document.createElement('div');
-            alertElement.className = `alert alert-${alert.type} mb-2`;
-            alertElement.innerHTML = `
-                <i class="bi ${alert.icon} me-2"></i>
-                <strong>${alert.title}</strong>
-                <p class="mb-0">${alert.message}</p>
-            `;
-            alertsContainer.appendChild(alertElement);
-        });
-        return;
-    }
-
-    const current = weatherData.current;
-
-    if (current.temp_c > 35) {
-        alerts.push({
-            type: 'danger',
-            icon: 'bi-thermometer-high',
-            title: 'Extreme Heat Warning',
-            message: `Temperature is ${Math.round(current.temp_c)}°C. Avoid strenuous fieldwork.`
-        });
-    } else if (current.temp_c > 30) {
-        alerts.push({
-            type: 'warning',
-            icon: 'bi-thermometer-sun',
-            title: 'High Temperature Alert',
-            message: `Temperature is ${Math.round(current.temp_c)}°C. Consider adjusting schedules.`
-        });
-    } else if (current.temp_c < 5) {
-        alerts.push({
-            type: 'info',
-            icon: 'bi-thermometer-snow',
-            title: 'Low Temperature Alert',
-            message: `Temperature is ${Math.round(current.temp_c)}°C. Frost may affect sensitive species.`
-        });
-    }
-
-    if (current.condition.text.toLowerCase().includes('rain')) {
-        alerts.push({
-            type: 'info',
-            icon: 'bi-cloud-rain',
-            title: 'Rainfall Detected',
-            message: 'Current rainfall may affect field work and monitoring activities.'
-        });
-    }
-
-    if (current.wind_kph > 20) {
-        alerts.push({
-            type: 'warning',
-            icon: 'bi-wind',
-            title: 'Windy Conditions',
-            message: `Wind speed is ${Math.round(current.wind_kph)} km/h. May affect fieldwork safety.`
-        });
-    }
-
-    if (current.humidity > 85) {
-        alerts.push({
-            type: 'info',
-            icon: 'bi-droplet',
-            title: 'High Humidity',
-            message: `Humidity is ${current.humidity}%. Monitor for fungal diseases.`
-        });
-    } else if (current.humidity < 30) {
-        alerts.push({
-            type: 'warning',
-            icon: 'bi-droplet',
-            title: 'Low Humidity',
-            message: `Humidity is ${current.humidity}%. Increased fire risk.`
-        });
-    }
-
-    if (alerts.length === 0) {
-        alerts.push({
-            type: 'success',
-            icon: 'bi-check-circle',
-            title: 'Favorable Conditions',
-            message: 'Weather conditions are suitable for most ecosystem management activities.'
-        });
-    }
-
-    alerts.forEach(alert => {
-        const alertElement = document.createElement('div');
-        alertElement.className = `alert alert-${alert.type} mb-2`;
-        alertElement.innerHTML = `
-            <i class="bi ${alert.icon} me-2"></i>
-            <strong>${alert.title}</strong>
-            <p class="mb-0">${alert.message}</p>
-        `;
-        alertsContainer.appendChild(alertElement);
-    });
-}
-
-// Main loadWeatherData function
-async function loadWeatherData() {
-    const projects = db.getProjects();
-    let lat, lon;
-    
-    const projectWithCoords = projects.find(p => p.latitude && p.longitude);
-    
-    if (projectWithCoords) {
-        lat = projectWithCoords.latitude;
-        lon = projectWithCoords.longitude;
-    } else {
-        lat = -41.0521;
-        lon = 145.9061;
-    }
-
-    document.getElementById('weather-description').textContent = 'Loading weather data...';
-    document.getElementById('lastUpdate').textContent = 'Updating...';
-
-    try {
-        const weatherData = await getWeatherByCoords(lat, lon);
-        
-        updateWeatherDisplay(weatherData);
-        updateEnvironmentalAlerts(weatherData);
-        
-        const updateTime = new Date().toLocaleTimeString('en-AU');
-        localStorage.setItem('lastWeatherUpdate', new Date().toISOString());
-        localStorage.setItem('weatherData', JSON.stringify(weatherData));
-        document.getElementById('lastUpdate').textContent = `Last updated: ${updateTime}`;
-        
-        updateForecastChart(weatherData);
-        updateHistoricalWeatherChart();
-        
-    } catch (error) {
-        console.error('Failed to load weather data:', error);
-        document.getElementById('lastUpdate').textContent = 'Using example data';
-        showExampleWeatherData();
-        loadMockWeatherData();
-    }
-}
-
-// Weather location management
-function setupWeatherLocationSelector() {
-    const select = document.getElementById('weatherLocationSelect');
-    const projects = db.getProjects();
-    
-    while (select.options.length > 1) {
-        select.remove(1);
-    }
-    
-    projects.forEach(project => {
-        if (project.latitude && project.longitude) {
-            const option = document.createElement('option');
-            option.value = project.id;
-            option.textContent = `${project.name} (${project.latitude.toFixed(4)}, ${project.longitude.toFixed(4)})`;
-            option.dataset.lat = project.latitude;
-            option.dataset.lon = project.longitude;
-            select.appendChild(option);
-        }
-    });
-    
-    const savedLocation = localStorage.getItem('weatherLocation');
-    if (savedLocation) {
-        select.value = savedLocation;
-    }
-}
-
-function getCurrentWeatherLocation() {
-    const select = document.getElementById('weatherLocationSelect');
-    const selectedOption = select.options[select.selectedIndex];
-    
-    if (select.value === 'default') {
-        return { lat: -41.0521, lon: 145.9061 };
-    }
-    
-    if (selectedOption.dataset.lat && selectedOption.dataset.lon) {
-        return {
-            lat: parseFloat(selectedOption.dataset.lat),
-            lon: parseFloat(selectedOption.dataset.lon)
-        };
-    }
-    
-    const project = db.getProjects().find(p => p.id === select.value);
-    if (project && project.latitude && project.longitude) {
-        return {
-            lat: project.latitude,
-            lon: project.longitude
-        };
-    }
-    
-    return { lat: -41.0521, lon: 145.9061 };
-}
-
-// Fallback mock data for charts
-function loadMockWeatherData() {
-    if (temperatureChart) temperatureChart.destroy();
-    
-    temperatureChart = new Chart(document.getElementById('temperatureChart'), {
-        type: 'line',
-        data: {
-            labels: ['6 AM', '9 AM', '12 PM', '3 PM', '6 PM', '9 PM'],
-            datasets: [{
-                label: 'Temperature (°C)',
-                data: [12, 15, 18, 19, 17, 14],
-                borderColor: 'rgb(255, 99, 132)',
-                backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: false
-                }
+        setTimeout(() => {
+            const targetSection = document.getElementById(target);
+            if (targetSection) targetSection.classList.add('active');
+            
+            // Load data for the section
+            if (target === 'dashboard') loadDashboard();
+            if (target === 'projects') {
+                loadProjects();
+                setTimeout(() => {
+                    initProjectMap();
+                }, 100);
             }
-        }
-    });
-    
-    if (historicalWeatherChart) historicalWeatherChart.destroy();
-    
-    historicalWeatherChart = new Chart(document.getElementById('historicalWeatherChart'), {
-        type: 'bar',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            datasets: [
-                {
-                    label: 'Rainfall (mm)',
-                    data: [45, 52, 48, 62, 75, 82, 97, 94, 78, 64, 52, 48],
-                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1,
-                    yAxisID: 'y'
-                },
-                {
-                    label: 'Avg Temp (°C)',
-                    data: [22, 22, 20, 17, 14, 12, 11, 12, 14, 16, 18, 20],
-                    type: 'line',
-                    borderColor: 'rgb(255, 99, 132)',
-                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                    yAxisID: 'y1'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    title: {
-                        display: true,
-                        text: 'Rainfall (mm)'
-                    }
-                },
-                y1: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    title: {
-                        display: true,
-                        text: 'Temperature (°C)'
-                    },
-                    grid: {
-                        drawOnChartArea: false
-                    }
-                }
+            if (target === 'assessments') loadAssessments();
+            if (target === 'species') loadSpecies();
+            if (target === 'maintenance') {
+                loadMaintenance();
+                const listViewBtn = document.querySelector('[data-view="list-view"]');
+                if (listViewBtn) listViewBtn.click();
             }
-        }
-    });
-}
-
-function updateForecastChart(weatherData) {
-    const labels = ['Now', '+3h', '+6h', '+9h', '+12h', '+15h', '+18h', '+21h'];
-    const temperatures = [18, 19, 20, 21, 19, 17, 16, 15];
-
-    if (temperatureChart) temperatureChart.destroy();
-
-    temperatureChart = new Chart(document.getElementById('temperatureChart'), {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Temperature (°C)',
-                data: temperatures,
-                borderColor: 'rgb(255, 99, 132)',
-                backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: false
-                }
+            if (target === 'charts') loadCharts();
+            if (target === 'data') {
+                loadDataSummary();
+                loadProjectSelects();
             }
+            if (target === 'weather') loadWeatherData();
+            
+            // ADD THIS LINE - Fix layout after navigation
+            ensureProperLayout();
+        }, 50);
+        
+        // Update page title
+        const spanText = this.querySelector('span');
+        if (spanText) {
+            document.title = `${spanText.textContent} | EcoManager Pro`;
         }
     });
-}
+});
+```
 
-function updateHistoricalWeatherChart() {
-    const ctx = document.getElementById('historicalWeatherChart');
-    
-    if (!ctx) return;
-    
-    if (historicalWeatherChart) {
-        historicalWeatherChart.destroy();
-    }
-    
-    historicalWeatherChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            datasets: [
-                {
-                    label: 'Rainfall (mm)',
-                    data: [45, 52, 48, 62, 75, 82, 97, 94, 78, 64, 52, 48],
-                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1,
-                    yAxisID: 'y'
-                },
-                {
-                    label: 'Average Temperature (°C)',
-                    data: [22, 22, 20, 17, 14, 12, 11, 12, 14, 16, 18, 20],
-                    type: 'line',
-                    borderColor: 'rgb(255, 99, 132)',
-                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                    tension: 0.4,
-                    yAxisID: 'y1'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-            scales: {
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    title: {
-                        display: true,
-                        text: 'Rainfall (mm)'
-                    }
-                },
-                y1: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    title: {
-                        display: true,
-                        text: 'Temperature (°C)'
-                    },
-                    grid: {
-                        drawOnChartArea: false
-                    }
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                if (context.dataset.label.includes('Rainfall')) {
-                                    label += context.parsed.y + ' mm';
-                                } else {
-                                    label += context.parsed.y + '°C';
-                                }
-                            }
-                            return label;
-                        }
-                    }
-                }
+Also update the quick-action buttons navigation:
+
+```javascript
+// Quick action handlers - ADD ensureProperLayout()
+document.querySelectorAll('.quick-action-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const target = this.dataset.target;
+        document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+        const targetLink = document.querySelector(`[data-target="${target}"]`);
+        if (targetLink) targetLink.classList.add('active');
+        
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
+        });
+        
+        setTimeout(() => {
+            const targetSection = document.getElementById(target);
+            if (targetSection) targetSection.classList.add('active');
+            
+            // Load data for the section
+            if (target === 'dashboard') loadDashboard();
+            if (target === 'projects') {
+                loadProjects();
+                setTimeout(() => {
+                    initProjectMap();
+                }, 100);
             }
-        }
+            if (target === 'assessments') loadAssessments();
+            if (target === 'species') loadSpecies();
+            if (target === 'maintenance') {
+                loadMaintenance();
+                const listViewBtn = document.querySelector('[data-view="list-view"]');
+                if (listViewBtn) listViewBtn.click();
+            }
+            if (target === 'charts') loadCharts();
+            if (target === 'data') {
+                loadDataSummary();
+                loadProjectSelects();
+            }
+            if (target === 'weather') loadWeatherData();
+            
+            // ADD THIS LINE
+            ensureProperLayout();
+        }, 50);
     });
-}
+});
+```
+
+These fixes will:
+
+1. Ensure the main content area properly calculates its width
+2. Add horizontal scrolling for content that might be too wide
+3. Force a layout recalculation when switching between pages
+4. Scroll to the top when changing sections
+5. Make sure all forms and tables are fully visible
+
+The main issue was that some pages (like Projects, Assessments, Species, Maintenance) have wider content (tables with many columns, forms with many fields) that were extending beyond the viewport, making them appear "covered" by the sidebar. The overflow-x properties will add scrollbars when needed so users can scroll horizontally to see all content.
