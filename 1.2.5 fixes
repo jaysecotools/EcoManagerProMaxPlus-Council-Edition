@@ -1,139 +1,174 @@
-You're right! The issue is that the CSS is forcing no gaps at a higher level. Let me provide the CSS fixes you need:
-
-Add this CSS to your <style> section (around line 260, before the closing </style> tag):
+Great idea! Let's improve those page headings with better spacing and styling. Here's the CSS to add to your <style> section:
 
 ```css
-/* Fix for health chart filter gaps */
-.main-content .d-flex.gap-3 {
-    gap: 1rem !important;
+/* Improved Page Headers - Better spacing and styling */
+.section-header {
+    margin-bottom: 1.5rem;
+    padding-left: 0.5rem;
+    border-left: 4px solid var(--accent);
+    transition: var(--transition);
 }
 
-.main-content .vr {
-    display: inline-block;
-    align-self: stretch;
-    width: 1px;
-    min-height: 1em;
-    background-color: currentColor;
-    opacity: 0.25;
-    margin: 0 0.25rem;
-}
-
-/* Ensure proper spacing between filter elements */
-#dashboardHealthFilter,
-.btn-group,
-#chartModeIndicator {
-    margin: 0;
-}
-
-.main-content .flex-wrap .btn-group {
-    margin: 0 0.25rem;
-}
-
-/* Add spacing specifically for the info badge */
-#chartModeIndicator .badge {
-    margin-left: 0.5rem;
-    padding: 0.5rem 1rem;
-}
-
-/* Alternative: Add margin to the info container */
-.main-content .flex-grow-1 {
-    margin-left: 0.5rem;
-}
-
-/* Ensure the info text has proper spacing */
-#chartModeIndicator {
+.section-header h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 0.25rem;
     display: inline-flex;
     align-items: center;
-    white-space: nowrap;
+    gap: 0.5rem;
+}
+
+.section-header h2::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 28px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    border-radius: 4px;
+}
+
+.section-header p {
+    color: #6c757d;
+    margin-bottom: 0;
+    font-size: 0.9rem;
+    padding-left: 0.75rem;
+}
+
+/* Alternative if you want icons instead of the colored bar */
+.section-header.with-icon h2::before {
+    display: none;
+}
+
+.section-header.with-icon h2 i {
+    font-size: 1.5rem;
+    color: var(--accent);
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .main-content .d-flex.gap-3 {
-        gap: 0.75rem !important;
+    .section-header {
+        padding-left: 0.75rem;
+        margin-bottom: 1.25rem;
     }
     
-    #chartModeIndicator {
-        white-space: normal;
+    .section-header h2 {
+        font-size: 1.4rem;
+    }
+    
+    .section-header h2::before {
+        height: 24px;
     }
 }
 ```
 
-If that doesn't work, add this more specific override at the end of your CSS:
+If you prefer a more modern, card-like header with background:
 
 ```css
-/* Force gaps in health chart filter section - HIGHEST PRIORITY */
-.card.bg-light .d-flex.gap-3 {
-    gap: 1.5rem !important;
+/* Modern Card-style Page Headers */
+.section-header {
+    background: linear-gradient(135deg, rgba(44, 85, 48, 0.03), rgba(74, 124, 89, 0.05));
+    padding: 1.25rem 1.5rem;
+    border-radius: 16px;
+    margin-bottom: 1.75rem;
+    border: 1px solid rgba(44, 85, 48, 0.1);
+    backdrop-filter: blur(2px);
 }
 
-.card.bg-light .d-flex.gap-3 > * {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+.section-header h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    margin-bottom: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
-/* Specific spacing between elements */
-.card.bg-light #dashboardHealthFilter {
-    margin-right: 0.5rem !important;
+.section-header h2 i {
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    font-size: 1.8rem;
 }
 
-.card.bg-light .btn-group {
-    margin-left: 0.5rem !important;
-    margin-right: 0.5rem !important;
-}
-
-.card.bg-light .vr {
-    margin-left: 0.5rem !important;
-    margin-right: 0.5rem !important;
-}
-
-.card.bg-light .flex-grow-1 {
-    margin-left: 0.5rem !important;
+.section-header p {
+    color: #6c757d;
+    margin-bottom: 0;
+    padding-left: 2.55rem;
+    font-size: 0.9rem;
 }
 ```
 
-Alternative solution - modify the HTML slightly:
+Or a minimal, elegant version with just proper spacing:
 
-If the CSS overrides still don't work, try this HTML modification with explicit margins:
+```css
+/* Minimal clean headers with proper spacing */
+.section-header {
+    margin-bottom: 2rem;
+    padding-left: 1rem;
+}
 
-```html
-<div class="row mb-3">
-    <div class="col-md-12">
-        <div class="card bg-light border-0 shadow-sm">
-            <div class="card-body py-3">
-                <div class="d-flex flex-wrap align-items-center">
-                    <div class="d-flex align-items-center me-3">
-                        <i class="bi bi-funnel-fill text-primary me-2"></i>
-                        <label class="form-label fw-semibold mb-0">Health Chart Filter:</label>
-                    </div>
-                    
-                    <select class="form-select form-select-sm w-auto me-3" id="dashboardHealthFilter" style="min-width: 200px;">
-                        <option value="all">📊 All Projects (Aggregated)</option>
-                    </select>
-                    
-                    <div class="btn-group btn-group-sm me-3" role="group">
-                        <button type="button" class="btn btn-outline-secondary active" id="viewAggregatedBtn">
-                            <i class="bi bi-bar-chart"></i> Aggregated
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" id="viewComparisonBtn">
-                            <i class="bi bi-graph-up"></i> Compare
-                        </button>
-                    </div>
-                    
-                    <div class="flex-grow-1">
-                        <small class="text-muted" id="chartModeIndicator">
-                            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
-                                <i class="bi bi-bar-chart me-1"></i> Showing all projects combined
-                            </span>
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+.section-header h2 {
+    font-size: 1.85rem;
+    font-weight: 600;
+    color: #1e2b1e;
+    letter-spacing: -0.3px;
+    margin-bottom: 0.5rem;
+}
+
+.section-header p {
+    color: #6c757d;
+    font-size: 0.95rem;
+    margin-bottom: 0;
+    border-left: 2px solid var(--accent-light);
+    padding-left: 1rem;
+}
 ```
 
-Notice I added me-3 (margin-right) classes to each element. This is the most reliable approach since it doesn't rely on CSS overrides that might be blocked by your existing layout CSS.
+To add icons to each section header automatically, add this JavaScript:
 
-The me-3 class applies margin-right: 1rem which will create the visible gaps you're looking for between the dropdown, buttons, and info text.
+```javascript
+// Add icons to section headers (add this to your initApp function or after DOM loads)
+function enhanceSectionHeaders() {
+    const sectionIcons = {
+        'dashboard': 'bi-speedometer2',
+        'projects': 'bi-folder',
+        'assessments': 'bi-clipboard-check',
+        'species': 'bi-tree',
+        'maintenance': 'bi-tools',
+        'charts': 'bi-bar-chart',
+        'data': 'bi-database',
+        'weather': 'bi-cloud-sun'
+    };
+    
+    document.querySelectorAll('.content-section').forEach(section => {
+        const header = section.querySelector('.section-header');
+        if (header && !header.querySelector('h2 i')) {
+            const h2 = header.querySelector('h2');
+            const sectionId = section.id;
+            const icon = sectionIcons[sectionId];
+            
+            if (h2 && icon) {
+                // Add icon to the beginning of h2
+                const iconElement = document.createElement('i');
+                iconElement.className = `${icon} me-2`;
+                iconElement.style.color = 'var(--accent)';
+                h2.insertBefore(iconElement, h2.firstChild);
+                
+                // Add the with-icon class if using that version
+                header.classList.add('with-icon');
+            }
+        }
+    });
+}
+
+// Call this after loading content sections
+// Add to your initApp function or call it when sections become active
+```
+
+The first CSS option (with the colored left border) is probably the best balance - it adds visual separation from the sidebar, creates a clear hierarchy, and looks professional without being too flashy. The 4px colored border on the left creates a subtle but effective visual gap that makes the header feel separate from the sidebar.
