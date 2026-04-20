@@ -1,38 +1,85 @@
-After a thorough review of your entire codebase, I'm pleased to say it's well-structured and functional. The weather demo data fix you implemented is working correctly. Here's my comprehensive assessment:
+HIGHEST PRIORITY FIXES
 
-✅ What's Working Well
+1. REMOVE Duplicate Function (Line ~3170)
 
-1. Weather Demo Data - Fixed and displaying correctly
-2. Authentication System - Role-based permissions working
-3. CRUD Operations - Projects, Assessments, Species, Maintenance all functional
-4. Data Persistence - localStorage working properly
-5. Maps Integration - Leaflet maps with drawing tools functional
-6. Charts - All Chart.js visualizations rendering
-7. Export/Import - JSON, PDF, Excel exports working
-8. Form Builder - Custom form creation functional
-9. Calendar View - FullCalendar integration working
-10. Responsive Design - Mobile breakpoints properly implemented
-
-🔍 Minor Issues Found
-
-1. Duplicate Function Declaration
-
-You have getLocationNameFromCoords defined twice (lines ~3100 and ~3170). Remove the duplicate:
+Find and DELETE this entire block (it appears twice in your code):
 
 ```javascript
-// Remove the second declaration (around line 3170) - keep only the first one
+function getLocationNameFromCoords(lat, lon) {
+    // Simple function to return a location name based on coordinates
+    if (Math.abs(lat + 41.0521) < 0.1 && Math.abs(lon - 145.9061) < 0.1) {
+        return "Burnie";
+    } else if (Math.abs(lat + 42.8821) < 0.1 && Math.abs(lon - 147.3272) < 0.1) {
+        return "Hobart";
+    } else if (Math.abs(lat + 37.8136) < 0.1 && Math.abs(lon - 144.9631) < 0.1) {
+        return "Melbourne";
+    }
+    return `Location (${lat.toFixed(2)}, ${lon.toFixed(2)})`;
+}
 ```
 
-2. Unused Variable in showNoDataMessage
+Keep only the first one (around line 3100).
+
+---
+
+2. REMOVE Unused Variable (Line ~4450)
+
+Find this code in the showNoDataMessage function:
 
 ```javascript
-// Line ~4450 - 'parent' variable declared but never used
-const parent = canvas.parentElement; // Remove this line
+function showNoDataMessage(customMessage = null) {
+    const ctx = document.getElementById('healthTrendChart');
+    if (!ctx) return;
+    
+    if (healthTrendChart) healthTrendChart.destroy();
+    
+    // Display a message in the chart area
+    const canvas = ctx;
+    const parent = canvas.parentElement;  // <-- DELETE THIS LINE
+    
+    // Clear and show message
+    healthTrendChart = new Chart(ctx, {
 ```
 
-3. Missing Error Handling in loadCalendar
+REPLACE with:
 
-The calendar initialization could fail silently. Add error handling:
+```javascript
+function showNoDataMessage(customMessage = null) {
+    const ctx = document.getElementById('healthTrendChart');
+    if (!ctx) return;
+    
+    if (healthTrendChart) healthTrendChart.destroy();
+    
+    // Clear and show message
+    healthTrendChart = new Chart(ctx, {
+```
+
+---
+
+MEDIUM PRIORITY FIXES
+
+3. ADD Error Handling to loadCalendar Function
+
+Find this function (around line 3950):
+
+```javascript
+function loadCalendar() {
+    const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) return;
+    
+    if (calendar) {
+        calendar.destroy();
+    }
+    
+    calendar = new FullCalendar.Calendar(calendarEl, {
+        // ... rest of config
+    });
+    
+    calendar.render();
+}
+```
+
+REPLACE with:
 
 ```javascript
 function loadCalendar() {
@@ -48,7 +95,83 @@ function loadCalendar() {
         }
         
         calendar = new FullCalendar.Calendar(calendarEl, {
-            // ... existing config
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            events: function(fetchInfo, successCallback, failureCallback) {
+                const maintenanceItems = db.getMaintenance();
+                const events = maintenanceItems.map(item => {
+                    let color;
+                    switch(item.priority) {
+                        case 'high': color = '#dc3545'; break;
+                        case 'medium': color = '#ffc107'; break;
+                        default: color = '#28a745';
+                    }
+                    
+                    if (item.status === 'completed') {
+                        color = '#6c757d';
+                    } else if (item.status === 'overdue') {
+                        color = '#dc3545';
+                    }
+                    
+                    return {
+                        id: item.id,
+                        title: `${item.activity} (${getProjectName(item.projectId)})`,
+                        start: item.date,
+                        allDay: true,
+                        backgroundColor: color,
+                        borderColor: color,
+                        extendedProps: {
+                            type: item.type,
+                            priority: item.priority,
+                            status: item.status,
+                            description: item.description,
+                            projectId: item.projectId
+                        }
+                    };
+                });
+                
+                successCallback(events);
+            },
+            eventClick: function(info) {
+                const event = info.event;
+                const statusClass = getMaintenanceStatusBadgeClass(event.extendedProps.status);
+                const priorityClass = getPriorityBadgeClass(event.extendedProps.priority);
+                
+                const modalContent = `
+                    <p><strong>Project:</strong> ${getProjectName(event.extendedProps.projectId)}</p>
+                    <p><strong>Date:</strong> ${formatDate(event.startStr)}</p>
+                    <p><strong>Type:</strong> ${event.extendedProps.type.replace('-', ' ').toUpperCase()}</p>
+                    <p><strong>Priority:</strong> <span class="badge ${priorityClass}">${event.extendedProps.priority.toUpperCase()}</span></p>
+                    <p><strong>Status:</strong> <span class="badge ${statusClass}">${event.extendedProps.status.charAt(0).toUpperCase() + event.extendedProps.status.slice(1)}</span></p>
+                    <p><strong>Description:</strong> ${event.extendedProps.description}</p>
+                `;
+                
+                const modalTitle = document.getElementById('modalMaintenanceTitle');
+                const modalBody = document.getElementById('modalMaintenanceBody');
+                if (modalTitle) modalTitle.textContent = event.title;
+                if (modalBody) modalBody.innerHTML = modalContent;
+                
+                const completeButton = document.getElementById('modalCompleteButton');
+                if (completeButton) {
+                    if (event.extendedProps.status === 'scheduled' && checkPermission('complete_maintenance')) {
+                        completeButton.style.display = 'block';
+                        completeButton.onclick = function() {
+                            completeMaintenance(event.id);
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('maintenanceModal'));
+                            if (modal) modal.hide();
+                        };
+                    } else {
+                        completeButton.style.display = 'none';
+                    }
+                }
+                
+                const modal = new bootstrap.Modal(document.getElementById('maintenanceModal'));
+                modal.show();
+            }
         });
         
         calendar.render();
@@ -59,9 +182,26 @@ function loadCalendar() {
 }
 ```
 
-4. Health Score Preview Initial State
+---
 
-The health score preview shows default values but doesn't calculate initial score. Add this to setupHealthScorePreview:
+4. ADD Initial Health Score Calculation
+
+Find this function (around line 4950):
+
+```javascript
+function setupHealthScorePreview() {
+    const inputs = ['vegetationCover', 'nativeSpecies', 'weedCover', 'soilStability', 'speciesRichness'];
+    
+    inputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('input', updateHealthScorePreview);
+        }
+    });
+}
+```
+
+REPLACE with:
 
 ```javascript
 function setupHealthScorePreview() {
@@ -74,27 +214,60 @@ function setupHealthScorePreview() {
         }
     });
     
-    // Add this line to calculate initial preview
+    // Calculate initial preview after a short delay
     setTimeout(updateHealthScorePreview, 100);
 }
 ```
 
-5. Document Upload Project ID Reference
+---
 
-In the document upload handler, you're using formBuilderProject value, but this might not be set when uploading documents from the project form. Consider using the current project being edited:
+LOW PRIORITY FIXES (Optional but Recommended)
+
+5. IMPROVE Document Upload Handler
+
+Find this code (around line 4750):
 
 ```javascript
-// In document upload handler, replace:
-const projectId = document.getElementById('formBuilderProject').value;
-
-// With:
-const projectId = document.getElementById('formBuilderProject').value || 
-                  document.getElementById('projectForm').dataset.editId;
+document.getElementById('documentUpload').addEventListener('change', function(e) {
+    const files = e.target.files;
+    if (!files.length) return;
+    
+    const projectId = document.getElementById('formBuilderProject').value;
+    if (!projectId) {
+        showToast('Error', 'Please select a project first', 'error');
+        this.value = '';
+        return;
+    }
 ```
 
-6. Missing Bootstrap JS Dependency Check
+REPLACE with:
 
-Some modals might fail if Bootstrap JS loads slowly. Add a check:
+```javascript
+document.getElementById('documentUpload').addEventListener('change', function(e) {
+    const files = e.target.files;
+    if (!files.length) return;
+    
+    // Try to get project ID from multiple sources
+    let projectId = document.getElementById('formBuilderProject').value;
+    if (!projectId) {
+        const projectForm = document.getElementById('projectForm');
+        if (projectForm && projectForm.dataset.editId) {
+            projectId = projectForm.dataset.editId;
+        }
+    }
+    
+    if (!projectId) {
+        showToast('Error', 'Please select a project first or open a project for editing', 'error');
+        this.value = '';
+        return;
+    }
+```
+
+---
+
+6. ADD Bootstrap Loading Check (Add this function near the top with other functions, around line 3150)
+
+ADD this function after your other utility functions:
 
 ```javascript
 function ensureBootstrapLoaded() {
@@ -105,39 +278,87 @@ function ensureBootstrapLoaded() {
     }
     return true;
 }
+```
 
-// Use in modal functions:
+Then MODIFY the showProjectInModal function (around line 3700):
+
+Find:
+
+```javascript
+function showProjectInModal(project) {
+    const modalTitle = document.getElementById('projectMapModalTitle');
+    const modalMapContainer = document.getElementById('modalProjectMap');
+```
+
+Replace with:
+
+```javascript
 function showProjectInModal(project) {
     if (!ensureBootstrapLoaded()) return;
-    // ... rest of function
+    
+    const modalTitle = document.getElementById('projectMapModalTitle');
+    const modalMapContainer = document.getElementById('modalProjectMap');
+```
+
+---
+
+7. ADD Loading Spinner for Weather (Optional Enhancement)
+
+ADD this CSS at the end of your <style> section:
+
+```css
+/* Loading spinner for weather */
+.weather-loading {
+    position: relative;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.weather-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 30px;
+    height: 30px;
+    margin: -15px 0 0 -15px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 ```
 
-📊 Performance Observations
+MODIFY the loadWeatherData function - add these lines at the beginning and end:
 
-· Good: Lazy loading of charts and maps
-· Good: Efficient localStorage usage
-· Minor: Some duplicate DOM queries that could be cached
-· Minor: Event listeners attached inside loops could be optimized
+At the start of the function (after the opening {):
 
-🔒 Security Notes
+```javascript
+const weatherWidget = document.querySelector('.weather-widget');
+if (weatherWidget) weatherWidget.classList.add('weather-loading');
+```
 
-· XSS protection implemented via sanitizeInput
-· Role-based access control working
-· Consider adding CSRF protection if deploying to production
-· API keys stored in localStorage (acceptable for demo, but consider backend proxy for production)
+At the end of the function (before the closing } in both success and error blocks):
 
-🎨 UI/UX Suggestions
+```javascript
+if (weatherWidget) weatherWidget.classList.remove('weather-loading');
+```
 
-1. Loading States - Add spinners when loading weather data
-2. Form Validation - Add real-time validation feedback
-3. Keyboard Shortcuts - Consider adding common shortcuts
-4. Offline Support - Service worker could cache static assets
+---
 
-✅ Final Verdict
+Summary Checklist
 
-Your application is production-ready for demonstration purposes. The weather demo data issue is resolved, and all core features are functional. The code is well-organized with proper separation of concerns, good error handling, and comprehensive feature set.
+Priority Action Location
+HIGH Delete duplicate getLocationNameFromCoords Line ~3170
+HIGH Delete const parent = canvas.parentElement; Line ~4450
+MEDIUM Replace loadCalendar function ~3950
+MEDIUM Add setTimeout(updateHealthScorePreview, 100); ~4950
+LOW Update document upload handler ~4750
+LOW Add ensureBootstrapLoaded function ~3150
+LOW Add weather loading spinner CSS End of style section
 
-The minor issues noted above don't affect core functionality but would improve robustness. The duplicate function and unused variable are the only items that might cause console warnings.
-
-Great work on this comprehensive ecosystem management system!
+These fixes will eliminate console warnings and improve the robustness of your application without breaking any existing functionality.
