@@ -604,3 +604,375 @@ document.addEventListener('DOMContentLoaded', function() {
 Summary
 
 The problem is your mobile CSS is too aggressive and overrides the hiding mechanism. By adding a specific data-dashboard-only attribute and targeting it with high-specificity CSS that works on mobile, you'll solve the issue without breaking your responsive layout.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Clear Instructions for Fixing the Mobile Layout Issue
+
+Step 1: Add a Data Attribute to Your HTML
+
+Locate lines approximately 686-750 (the Dashboard section with Recent Activities and Upcoming Maintenance).
+
+Find this code block:
+
+```html
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card" data-aos="fade-up">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Recent Activities</h5>
+            </div>
+            <!-- ... rest of Recent Activities card ... -->
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card" data-aos="fade-up">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Upcoming Maintenance</h5>
+            </div>
+            <!-- ... rest of Upcoming Maintenance card ... -->
+        </div>
+    </div>
+</div>
+```
+
+Replace it with this (just add data-dashboard-only="true" to the opening div):
+
+```html
+<div class="row mt-4" data-dashboard-only="true">
+    <div class="col-md-6">
+        <div class="card" data-aos="fade-up">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Recent Activities</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Project</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-activities">
+                            <!-- Activities will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card" data-aos="fade-up">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Upcoming Maintenance</h5>
+            </div>
+            <div class="card-body">
+                <div id="upcoming-maintenance">
+                    <!-- Upcoming maintenance will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+---
+
+Step 2: Add New CSS Rules
+
+Locate the end of your <style> section (near the bottom, before </style>).
+
+Add this CSS code right before the closing </style> tag:
+
+```css
+/* ======================================== */
+/* FIX FOR MOBILE - HIDE DASHBOARD SECTIONS */
+/* ======================================== */
+
+/* Hide dashboard-only elements on ALL non-dashboard pages */
+.content-section:not(#dashboard) [data-dashboard-only="true"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Show dashboard-only elements on dashboard page */
+#dashboard [data-dashboard-only="true"] {
+    display: flex !important;
+    visibility: visible !important;
+    height: auto !important;
+    overflow: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* MOBILE-SPECIFIC OVERRIDES */
+@media (max-width: 768px) {
+    /* Force hide on mobile for non-dashboard pages */
+    .content-section:not(#dashboard) [data-dashboard-only="true"] {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        position: absolute !important;
+        opacity: 0 !important;
+    }
+    
+    /* Ensure proper display when on dashboard page */
+    #dashboard [data-dashboard-only="true"] {
+        display: flex !important;
+        flex-direction: column !important;
+        visibility: visible !important;
+        height: auto !important;
+        position: relative !important;
+        opacity: 1 !important;
+    }
+    
+    /* Make columns stack vertically on mobile when visible */
+    #dashboard [data-dashboard-only="true"] .col-md-6 {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+        margin-bottom: 15px !important;
+    }
+}
+```
+
+---
+
+Step 3: Add JavaScript Function
+
+Locate your JavaScript section (near the bottom of the file, where all the other functions are).
+
+Add this function somewhere before the initApp() function (around line 2500-2600):
+
+```javascript
+// ========================================
+// FIX FOR MOBILE - ENFORCE DASHBOARD HIDE
+// ========================================
+
+function enforceMobileDashboardHide() {
+    // Only run on mobile devices
+    if (window.innerWidth <= 768) {
+        const activeSection = document.querySelector('.content-section.active');
+        const dashboardOnlyElements = document.querySelectorAll('[data-dashboard-only="true"]');
+        
+        if (activeSection && activeSection.id !== 'dashboard') {
+            // Not on dashboard - hide the sections
+            dashboardOnlyElements.forEach(el => {
+                el.style.display = 'none';
+                el.style.visibility = 'hidden';
+                el.style.height = '0';
+                el.style.overflow = 'hidden';
+                el.style.margin = '0';
+                el.style.padding = '0';
+                el.style.opacity = '0';
+                el.style.pointerEvents = 'none';
+            });
+        } else if (activeSection && activeSection.id === 'dashboard') {
+            // On dashboard - show the sections
+            dashboardOnlyElements.forEach(el => {
+                el.style.display = 'flex';
+                el.style.visibility = 'visible';
+                el.style.height = 'auto';
+                el.style.overflow = 'visible';
+                el.style.margin = '';
+                el.style.padding = '';
+                el.style.opacity = '1';
+                el.style.pointerEvents = 'auto';
+            });
+        }
+    }
+}
+```
+
+---
+
+Step 4: Update Your Navigation Handler
+
+Find your existing navigation click handler (search for document.querySelectorAll('.sidebar .nav-link').forEach - around line 2900-2950).
+
+Locate this section where you have the code that shows the target section and loads data:
+
+```javascript
+setTimeout(() => {
+    const targetSection = document.getElementById(target);
+    if (targetSection) targetSection.classList.add('active');
+    
+    // Load data for the section
+    if (target === 'dashboard') loadDashboard();
+    // ... other sections ...
+}, 50);
+```
+
+Add the enforceMobileDashboardHide() call right after loading the data:
+
+```javascript
+setTimeout(() => {
+    const targetSection = document.getElementById(target);
+    if (targetSection) targetSection.classList.add('active');
+    
+    // Load data for the section
+    if (target === 'dashboard') loadDashboard();
+    if (target === 'projects') {
+        loadProjects();
+        setTimeout(() => {
+            initProjectMap();
+        }, 100);
+    }
+    if (target === 'assessments') loadAssessments();
+    if (target === 'species') loadSpecies();
+    if (target === 'maintenance') {
+        loadMaintenance();
+        const listViewBtn = document.querySelector('[data-view="list-view"]');
+        if (listViewBtn) listViewBtn.click();
+    }
+    if (target === 'charts') loadCharts();
+    if (target === 'data') {
+        loadDataSummary();
+        loadProjectSelects();
+    }
+    if (target === 'weather') loadWeatherData();
+    
+    // ADD THIS LINE RIGHT HERE
+    enforceMobileDashboardHide();
+    
+}, 50);
+```
+
+---
+
+Step 5: Update Quick Action Handlers
+
+Find your quick action handlers (search for document.querySelectorAll('.quick-action-btn') - around line 2850-2900).
+
+Add the same line inside the setTimeout:
+
+```javascript
+setTimeout(() => {
+    const targetSection = document.getElementById(target);
+    if (targetSection) targetSection.classList.add('active');
+    
+    // Load data for the section
+    if (target === 'dashboard') loadDashboard();
+    if (target === 'projects') {
+        loadProjects();
+        setTimeout(() => {
+            initProjectMap();
+        }, 100);
+    }
+    if (target === 'assessments') loadAssessments();
+    if (target === 'species') loadSpecies();
+    if (target === 'maintenance') {
+        loadMaintenance();
+        const listViewBtn = document.querySelector('[data-view="list-view"]');
+        if (listViewBtn) listViewBtn.click();
+    }
+    if (target === 'charts') loadCharts();
+    if (target === 'data') {
+        loadDataSummary();
+        loadProjectSelects();
+    }
+    if (target === 'weather') loadWeatherData();
+    
+    // ADD THIS LINE RIGHT HERE
+    enforceMobileDashboardHide();
+    
+}, 50);
+```
+
+---
+
+Step 6: Add Event Listeners for Window Resize and Load
+
+Find where you have window.addEventListener('load', ...) and window.addEventListener('resize', ...) near the end of your JavaScript (around line 3200-3300).
+
+Add these event listeners (or modify existing ones):
+
+```javascript
+// Add this after your existing event listeners
+window.addEventListener('resize', function() {
+    setTimeout(enforceMobileDashboardHide, 100);
+});
+
+// Also call on initial load (add this inside your existing load event)
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(enforceMobileDashboardHide, 200);
+});
+```
+
+If you already have a DOMContentLoaded event listener, just add the enforceMobileDashboardHide() call inside it.
+
+---
+
+Step 7: Update the ensureProperLayout Function
+
+Find your ensureProperLayout() function (around line 3100-3150).
+
+Add this line at the end of the function:
+
+```javascript
+function ensureProperLayout() {
+    setTimeout(function() {
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.style.opacity = '0.99';
+            setTimeout(function() {
+                mainContent.style.opacity = '1';
+            }, 10);
+        }
+        
+        window.dispatchEvent(new Event('resize'));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        fixTableScrolling();
+        fixLayout();
+        
+        // ADD THIS LINE
+        enforceMobileDashboardHide();
+        
+    }, 50);
+}
+```
+
+---
+
+Summary of Changes
+
+Step What to do
+1 Add data-dashboard-only="true" to the row containing Recent Activities and Upcoming Maintenance
+2 Add new CSS rules at the end of your <style> section
+3 Add the enforceMobileDashboardHide() JavaScript function
+4 Add enforceMobileDashboardHide() call in navigation handler
+5 Add enforceMobileDashboardHide() call in quick action handlers
+6 Add resize and load event listeners
+7 Add enforceMobileDashboardHide() call in ensureProperLayout()
+
+After making these changes, save and test on mobile. The Recent Activities and Upcoming Maintenance sections should only appear on the Dashboard page, not on any other pages.
