@@ -1,4 +1,5 @@
-<!-- ABILITY TO INPUT AND SAVE WEATHER API KEY ADDED - FALLBACK TO DEMO WEATHER DATA INCLUDED -->
+<!-- DUPLICATE FUNCTIONS REMOVED AND MINOR ERRORS FIXED -->
+<!-- ABILITY TO INPUT AND SAVE WEATHER API KEY ADDED - FALLBACK TO DEMO WEATHER DATA INCLUDED - DEMO WEATHER ISSUE NOW FIXED -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -969,6 +970,46 @@ body {
     margin-bottom: 0;
     padding-left: 2.55rem;
     font-size: 0.9rem;
+}
+
+/* Force weather widget visibility */
+#weather .weather-widget {
+    display: block !important;
+    visibility: visible !important;
+    min-height: 200px;
+}
+
+#weather .card {
+    display: block !important;
+    overflow: visible !important;
+}
+
+#weather .card-body {
+    overflow: visible !important;
+}
+
+/* Ensure weather section is visible */
+#weather.content-section {
+    display: none;
+}
+
+#weather.content-section.active {
+    display: block !important;
+    min-height: 500px;
+}
+
+/* Fix for weather chart containers */
+#weather .chart-container {
+    height: 300px;
+    width: 100%;
+    position: relative;
+}
+
+/* Ensure temperature chart is visible */
+#temperatureChart {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
 }
     </style>
 </head>
@@ -2315,6 +2356,18 @@ body {
     let modalProjectMap = null;
     let modalProjectMarker = null;
 
+function getLocationNameFromCoords(lat, lon) {
+    // Simple function to return a location name based on coordinates
+    if (Math.abs(lat + 41.0521) < 0.1 && Math.abs(lon - 145.9061) < 0.1) {
+        return "Burnie";
+    } else if (Math.abs(lat + 42.8821) < 0.1 && Math.abs(lon - 147.3272) < 0.1) {
+        return "Hobart";
+    } else if (Math.abs(lat + 37.8136) < 0.1 && Math.abs(lon - 144.9631) < 0.1) {
+        return "Melbourne";
+    }
+    return `Location (${lat.toFixed(2)}, ${lon.toFixed(2)})`;
+}
+
 // WeatherAPI.com configuration - DIRECT API ACCESS
 const weatherConfig = {
     apiKey: 'YOUR_API_KEY_HERE', // <-- PASTE YOUR API KEY HERE
@@ -3005,14 +3058,13 @@ const weatherConfig = {
 async function getWeatherByCoords(lat, lon) {
     // Check if we should use demo data
     const useDemoData = localStorage.getItem('useDemoData') !== 'false';
-    const hasValidApiKey = weatherConfig.apiKey && 
-                          weatherConfig.apiKey !== 'YOUR_API_KEY_HERE' && 
-                          weatherConfig.apiKey !== '';
+    const savedApiKey = localStorage.getItem('weatherApiKey');
+    const hasValidApiKey = savedApiKey && savedApiKey !== '' && savedApiKey !== 'YOUR_API_KEY_HERE';
     
     if (!useDemoData && hasValidApiKey) {
-        // Direct API call with your key
         try {
-            const url = `${weatherConfig.baseUrl}/current.json?key=${weatherConfig.apiKey}&q=${lat},${lon}&aqi=yes`;
+            // Use the saved API key from localStorage
+            const url = `https://api.weatherapi.com/v1/current.json?key=${savedApiKey}&q=${lat},${lon}&aqi=yes`;
             const response = await fetch(url);
             
             if (!response.ok) {
@@ -3021,8 +3073,8 @@ async function getWeatherByCoords(lat, lon) {
             
             const data = await response.json();
             
-            // Also fetch forecast for historical data
-            const forecastUrl = `${weatherConfig.baseUrl}/forecast.json?key=${weatherConfig.apiKey}&q=${lat},${lon}&days=7&aqi=no`;
+            // Also fetch forecast
+            const forecastUrl = `https://api.weatherapi.com/v1/forecast.json?key=${savedApiKey}&q=${lat},${lon}&days=7&aqi=no`;
             const forecastResponse = await fetch(forecastUrl);
             
             if (forecastResponse.ok) {
@@ -3030,46 +3082,53 @@ async function getWeatherByCoords(lat, lon) {
                 data.forecast = forecastData.forecast;
             }
             
-            // Store in localStorage for offline access
             localStorage.setItem('lastWeatherData', JSON.stringify(data));
             localStorage.setItem('lastWeatherUpdate', new Date().toISOString());
             
             return data;
         } catch (error) {
             console.error('Weather API error:', error);
-            showToast('Weather API', 'API call failed. Using example data.', 'warning');
-            return getExampleWeatherData(lat, lon);
+            showToast('Weather API', 'API call failed. Using demo data.', 'warning');
+            return getDemoWeatherData(lat, lon);
         }
     } else {
-        // Use example/demo data
-        if (!useDemoData) {
+        // Use demo data
+        if (!useDemoData && !hasValidApiKey) {
             showToast('Weather API', 'Please enter a valid API key in Weather API Settings to see live data.', 'info');
         }
-        return getExampleWeatherData(lat, lon);
+        return getDemoWeatherData(lat, lon);
     }
 }
 
-function getExampleWeatherData(lat, lon) {
+function getDemoWeatherData(lat, lon) {
+    console.log("Generating demo weather data for:", lat, lon);
+    
+    // Get location name from coordinates or use default
+    let locationName = getLocationNameFromCoords(lat, lon);
+    
+    // Return properly structured weather data
     return {
         current: {
-            temp_c: 18,
+            temp_c: Math.round(15 + Math.random() * 10), // Random temp between 15-25°C
             condition: {
-                text: "Partly Cloudy",
-                code: 1003
+                text: getRandomWeatherCondition(),
+                code: getRandomWeatherCode()
             },
-            humidity: 65,
-            wind_kph: 12,
-            pressure_mb: 1015,
-            uv: 6,
-            vis_km: 10,
+            humidity: Math.round(40 + Math.random() * 40), // 40-80%
+            wind_kph: Math.round(5 + Math.random() * 25), // 5-30 km/h
+            pressure_mb: 1000 + Math.round(Math.random() * 30), // 1000-1030 hPa
+            uv: Math.round(1 + Math.random() * 10),
+            vis_km: Math.round(5 + Math.random() * 15),
             air_quality: {
-                'us-epa-index': 2
+                'us-epa-index': Math.round(1 + Math.random() * 5)
             }
         },
         location: {
-            name: getLocationNameFromCoords(lat, lon),
+            name: locationName,
             region: "Demo Region",
-            country: "Demo"
+            country: "Australia",
+            lat: lat,
+            lon: lon
         },
         forecast: {
             forecastday: generateDemoForecast()
@@ -3077,28 +3136,38 @@ function getExampleWeatherData(lat, lon) {
     };
 }
 
-function getLocationNameFromCoords(lat, lon) {
-    // Simple location name mapping for demo
-    const locations = {
-        '-41.0521,145.9061': 'Burnie, Tasmania',
-        '-42.8821,147.3272': 'Hobart, Tasmania'
-    };
-    const key = `${lat},${lon}`;
-    return locations[key] || 'Selected Location';
+function getRandomWeatherCondition() {
+    const conditions = ['Sunny', 'Partly Cloudy', 'Cloudy', 'Light Rain', 'Clear', 'Overcast'];
+    return conditions[Math.floor(Math.random() * conditions.length)];
+}
+
+function getRandomWeatherCode() {
+    const codes = [1000, 1003, 1006, 1009, 1063, 1135];
+    return codes[Math.floor(Math.random() * codes.length)];
 }
 
 function generateDemoForecast() {
     const days = [];
     const today = new Date();
+    const baseTemp = 18;
+    
     for (let i = 0; i < 7; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
+        
+        const dayTemp = baseTemp + Math.sin(i * Math.PI / 3) * 3;
+        const nightTemp = dayTemp - 5 + Math.random() * 2;
+        
         days.push({
             date: date.toISOString().split('T')[0],
             day: {
-                maxtemp_c: 18 + Math.sin(i) * 3,
-                mintemp_c: 10 + Math.cos(i) * 2,
-                condition: { text: 'Partly cloudy' }
+                maxtemp_c: Math.round(dayTemp + 2),
+                mintemp_c: Math.round(nightTemp),
+                avgtemp_c: Math.round((dayTemp + nightTemp) / 2),
+                condition: {
+                    text: getRandomWeatherCondition(),
+                    code: getRandomWeatherCode()
+                }
             }
         });
     }
@@ -3160,41 +3229,56 @@ function generateDemoForecast() {
         return iconMap[conditionCode] || 'bi-cloud';
     }
 
-    // Updated display function
-    function updateWeatherDisplay(weatherData) {
-        if (!weatherData || !weatherData.current) {
-            const exampleData = showExampleWeatherData();
-            updateEnvironmentalAlerts(exampleData);
-            return;
-        }
-
-        const current = weatherData.current;
-        
+    // FIXED updateWeatherDisplay function
+function updateWeatherDisplay(weatherData) {
+    console.log("updateWeatherDisplay called with:", weatherData);
+    
+    if (!weatherData || !weatherData.current) {
+        console.error("No weather data available in updateWeatherDisplay");
+        // Set fallback values
         const currentTemp = document.getElementById('current-temp');
         const weatherDesc = document.getElementById('weather-description');
         const humidity = document.getElementById('humidity');
         const windSpeed = document.getElementById('wind-speed');
         const pressure = document.getElementById('pressure');
         
-        if (currentTemp) currentTemp.textContent = `${Math.round(current.temp_c)}°C`;
-        if (weatherDesc) weatherDesc.textContent = current.condition.text;
-        if (humidity) humidity.textContent = `${current.humidity}%`;
-        if (windSpeed) windSpeed.textContent = `${Math.round(current.wind_kph)} km/h`;
-        if (pressure) pressure.textContent = `${current.pressure_mb} hPa`;
-
-        const weatherIcon = document.querySelector('.weather-icon i');
-        if (weatherIcon) {
-            weatherIcon.className = `bi ${getWeatherIcon(current.condition.code)}`;
-        }
-        
-        const lastUpdateEl = document.getElementById('lastUpdate');
-        if (lastUpdateEl) {
-            lastUpdateEl.textContent = `Last updated: ${new Date().toLocaleTimeString('en-AU')}`;
-            lastUpdateEl.style.fontStyle = 'normal';
-            lastUpdateEl.style.color = '';
-        }
+        if (currentTemp) currentTemp.textContent = '22°C';
+        if (weatherDesc) weatherDesc.textContent = 'Demo Data';
+        if (humidity) humidity.textContent = '65%';
+        if (windSpeed) windSpeed.textContent = '12 km/h';
+        if (pressure) pressure.textContent = '1013 hPa';
+        return;
     }
 
+    const current = weatherData.current;
+    
+    const currentTemp = document.getElementById('current-temp');
+    const weatherDesc = document.getElementById('weather-description');
+    const humidity = document.getElementById('humidity');
+    const windSpeed = document.getElementById('wind-speed');
+    const pressure = document.getElementById('pressure');
+    
+    console.log("Updating DOM elements with values:", {
+        temp: current.temp_c,
+        desc: current.condition.text,
+        humidity: current.humidity,
+        wind: current.wind_kph,
+        pressure: current.pressure_mb
+    });
+    
+    if (currentTemp) currentTemp.textContent = `${Math.round(current.temp_c)}°C`;
+    if (weatherDesc) weatherDesc.textContent = current.condition.text;
+    if (humidity) humidity.textContent = `${current.humidity}%`;
+    if (windSpeed) windSpeed.textContent = `${Math.round(current.wind_kph)} km/h`;
+    if (pressure) pressure.textContent = `${current.pressure_mb} hPa`;
+
+    const weatherIcon = document.querySelector('.weather-icon i');
+    if (weatherIcon) {
+        weatherIcon.className = 'bi bi-cloud-sun'; // Default icon for demo
+    }
+    
+    console.log("Weather display updated successfully");
+}
     // Enhanced environmental alerts
     function updateEnvironmentalAlerts(weatherData) {
         const alertsContainer = document.getElementById('environmental-alerts');
@@ -3312,48 +3396,157 @@ function generateDemoForecast() {
         });
     }
 
-    // Main loadWeatherData function
-    async function loadWeatherData() {
-        const projects = db.getProjects();
-        let lat, lon;
-        
-        const projectWithCoords = projects.find(p => p.latitude && p.longitude);
-        
-        if (projectWithCoords) {
-            lat = projectWithCoords.latitude;
-            lon = projectWithCoords.longitude;
-        } else {
-            lat = -41.0521;
-            lon = 145.9061;
-        }
-
-        const weatherDesc = document.getElementById('weather-description');
-        const lastUpdateEl = document.getElementById('lastUpdate');
-        
-        if (weatherDesc) weatherDesc.textContent = 'Loading weather data...';
-        if (lastUpdateEl) lastUpdateEl.textContent = 'Updating...';
-
-        try {
-            const weatherData = await getWeatherByCoords(lat, lon);
-            
-            updateWeatherDisplay(weatherData);
-            updateEnvironmentalAlerts(weatherData);
-            
-            const updateTime = new Date().toLocaleTimeString('en-AU');
-            localStorage.setItem('lastWeatherUpdate', new Date().toISOString());
-            localStorage.setItem('weatherData', JSON.stringify(weatherData));
-            if (lastUpdateEl) lastUpdateEl.textContent = `Last updated: ${updateTime}`;
-            
-            updateForecastChart(weatherData);
-            updateHistoricalWeatherChart();
-            
-        } catch (error) {
-            console.error('Failed to load weather data:', error);
-            if (lastUpdateEl) lastUpdateEl.textContent = 'Using example data';
-            showExampleWeatherData();
-            loadMockWeatherData();
-        }
+// FIXED loadWeatherData function
+async function loadWeatherData() {
+    console.log("loadWeatherData called - START");
+    
+    const projects = db.getProjects();
+    let lat, lon;
+    
+    // Try to get coordinates from a project
+    const projectWithCoords = projects.find(p => p.latitude && p.longitude);
+    
+    if (projectWithCoords) {
+        lat = projectWithCoords.latitude;
+        lon = projectWithCoords.longitude;
+        console.log("Using project coordinates:", lat, lon);
+    } else {
+        // Default to Burnie, Tasmania
+        lat = -41.0521;
+        lon = 145.9061;
+        console.log("Using default coordinates:", lat, lon);
     }
+
+    const weatherDesc = document.getElementById('weather-description');
+    const lastUpdateEl = document.getElementById('lastUpdate');
+    const currentTemp = document.getElementById('current-temp');
+    const humidityEl = document.getElementById('humidity');
+    const windSpeedEl = document.getElementById('wind-speed');
+    const pressureEl = document.getElementById('pressure');
+    
+    if (weatherDesc) weatherDesc.textContent = 'Loading weather data...';
+    if (lastUpdateEl) lastUpdateEl.textContent = 'Updating...';
+    if (currentTemp) currentTemp.textContent = '--°C';
+    if (humidityEl) humidityEl.textContent = '--%';
+    if (windSpeedEl) windSpeedEl.textContent = '-- km/h';
+    if (pressureEl) pressureEl.textContent = '-- hPa';
+
+    try {
+        // Check if we should use demo data
+        const useDemoData = localStorage.getItem('useDemoData') !== 'false';
+        const savedApiKey = localStorage.getItem('weatherApiKey');
+        const hasValidApiKey = savedApiKey && savedApiKey !== '' && savedApiKey !== 'YOUR_API_KEY_HERE';
+        
+        console.log("useDemoData:", useDemoData);
+        console.log("hasValidApiKey:", hasValidApiKey);
+        
+        let weatherData;
+        
+        if (!useDemoData && hasValidApiKey) {
+            // Try to fetch real data
+            console.log("Fetching real weather data with key");
+            const url = `https://api.weatherapi.com/v1/current.json?key=${savedApiKey}&q=${lat},${lon}&aqi=yes`;
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+            
+            weatherData = await response.json();
+            console.log("Real weather data received");
+            
+            // Also fetch forecast
+            const forecastUrl = `https://api.weatherapi.com/v1/forecast.json?key=${savedApiKey}&q=${lat},${lon}&days=7&aqi=no`;
+            const forecastResponse = await fetch(forecastUrl);
+            
+            if (forecastResponse.ok) {
+                const forecastData = await forecastResponse.json();
+                weatherData.forecast = forecastData.forecast;
+            }
+        } else {
+            // Use demo data
+            console.log("Using demo weather data");
+            weatherData = {
+                current: {
+                    temp_c: Math.round(15 + Math.random() * 15),
+                    condition: {
+                        text: ['Sunny', 'Partly Cloudy', 'Cloudy', 'Light Rain', 'Clear'][Math.floor(Math.random() * 5)],
+                        code: 1003
+                    },
+                    humidity: Math.round(40 + Math.random() * 40),
+                    wind_kph: Math.round(5 + Math.random() * 25),
+                    pressure_mb: 1000 + Math.round(Math.random() * 30),
+                    uv: Math.round(1 + Math.random() * 10),
+                    vis_km: Math.round(5 + Math.random() * 15)
+                },
+                location: {
+                    name: "Demo Location",
+                    region: "Demo Region",
+                    country: "Australia"
+                },
+                forecast: {
+                    forecastday: []
+                }
+            };
+            
+            // Generate forecast days
+            const today = new Date();
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                weatherData.forecast.forecastday.push({
+                    date: date.toISOString().split('T')[0],
+                    day: {
+                        maxtemp_c: Math.round(18 + Math.sin(i) * 3 + Math.random() * 2),
+                        mintemp_c: Math.round(10 + Math.cos(i) * 2 + Math.random() * 2),
+                        avgtemp_c: Math.round(14 + Math.sin(i) * 2),
+                        condition: { text: ['Sunny', 'Partly cloudy', 'Cloudy'][Math.floor(Math.random() * 3)] }
+                    }
+                });
+            }
+        }
+        
+        // Update the display
+        console.log("Calling updateWeatherDisplay with:", weatherData);
+        updateWeatherDisplay(weatherData);
+        updateEnvironmentalAlerts(weatherData);
+        updateForecastChart(weatherData);
+        updateHistoricalWeatherChart();
+        
+        const updateTime = new Date().toLocaleTimeString('en-AU');
+        if (lastUpdateEl) lastUpdateEl.textContent = `Last updated: ${updateTime}`;
+        
+        localStorage.setItem('lastWeatherUpdate', new Date().toISOString());
+        localStorage.setItem('weatherData', JSON.stringify(weatherData));
+        
+        console.log("Weather data loaded successfully");
+        showToast('Weather Updated', 'Weather data has been refreshed', 'success');
+        
+    } catch (error) {
+        console.error('Failed to load weather data:', error);
+        if (lastUpdateEl) lastUpdateEl.textContent = 'Using demo data (error)';
+        
+        // Force demo data on error with explicit values
+        const demoData = {
+            current: {
+                temp_c: 22,
+                condition: { text: "Partly Cloudy", code: 1003 },
+                humidity: 65,
+                wind_kph: 15,
+                pressure_mb: 1013,
+                uv: 5,
+                vis_km: 10
+            },
+            location: { name: "Demo (Error Fallback)", region: "Demo", country: "Australia" },
+            forecast: { forecastday: [] }
+        };
+        
+        updateWeatherDisplay(demoData);
+        updateEnvironmentalAlerts(demoData);
+        updateForecastChart(demoData);
+        updateHistoricalWeatherChart();
+    }
+}
 
     // Weather location management
     function setupWeatherLocationSelector() {
@@ -3787,9 +3980,11 @@ function updateForecastChart(weatherData) {
         }
     }
 
-    function showProjectInModal(project) {
-        const modalTitle = document.getElementById('projectMapModalTitle');
-        const modalMapContainer = document.getElementById('modalProjectMap');
+function showProjectInModal(project) {
+    if (!ensureBootstrapLoaded()) return;
+    
+    const modalTitle = document.getElementById('projectMapModalTitle');
+    const modalMapContainer = document.getElementById('modalProjectMap');
         const modalCoordinates = document.getElementById('modalCoordinates');
         
         if (modalTitle) modalTitle.textContent = `${project.name} Location`;
@@ -4263,9 +4458,13 @@ function updateForecastChart(weatherData) {
     }
 
     function loadCalendar() {
-        const calendarEl = document.getElementById('calendar');
-        if (!calendarEl) return;
-        
+    const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) {
+        console.warn("Calendar element not found");
+        return;
+    }
+    
+    try {
         if (calendar) {
             calendar.destroy();
         }
@@ -4326,13 +4525,11 @@ function updateForecastChart(weatherData) {
                     <p><strong>Description:</strong> ${event.extendedProps.description}</p>
                 `;
                 
-                // Update modal content
                 const modalTitle = document.getElementById('modalMaintenanceTitle');
                 const modalBody = document.getElementById('modalMaintenanceBody');
                 if (modalTitle) modalTitle.textContent = event.title;
                 if (modalBody) modalBody.innerHTML = modalContent;
                 
-                // Show/hide complete button
                 const completeButton = document.getElementById('modalCompleteButton');
                 if (completeButton) {
                     if (event.extendedProps.status === 'scheduled' && checkPermission('complete_maintenance')) {
@@ -4347,14 +4544,17 @@ function updateForecastChart(weatherData) {
                     }
                 }
                 
-                // Show modal
                 const modal = new bootstrap.Modal(document.getElementById('maintenanceModal'));
                 modal.show();
             }
         });
         
         calendar.render();
+    } catch (error) {
+        console.error("Calendar initialization failed:", error);
+        showToast("Calendar Error", "Could not load calendar view", "error");
     }
+}
 
     function loadCharts() {
         // Destroy existing charts if they exist
@@ -4936,18 +5136,14 @@ function updateForecastChart(weatherData) {
         return values[healthStatus] || 3;
     }
 
-    function showNoDataMessage(customMessage = null) {
-        const ctx = document.getElementById('healthTrendChart');
-        if (!ctx) return;
-        
-        if (healthTrendChart) healthTrendChart.destroy();
-        
-        // Display a message in the chart area
-        const canvas = ctx;
-        const parent = canvas.parentElement;
-        
-        // Clear and show message
-        healthTrendChart = new Chart(ctx, {
+function showNoDataMessage(customMessage = null) {
+    const ctx = document.getElementById('healthTrendChart');
+    if (!ctx) return;
+    
+    if (healthTrendChart) healthTrendChart.destroy();
+    
+    // Clear and show message
+    healthTrendChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: ['No Data'],
@@ -5570,15 +5766,23 @@ function updateForecastChart(weatherData) {
 
     // Document upload handler
     document.getElementById('documentUpload').addEventListener('change', function(e) {
-        const files = e.target.files;
-        if (!files.length) return;
-        
-        const projectId = document.getElementById('formBuilderProject').value;
-        if (!projectId) {
-            showToast('Error', 'Please select a project first', 'error');
-            this.value = '';
-            return;
+    const files = e.target.files;
+    if (!files.length) return;
+    
+    // Try to get project ID from multiple sources
+    let projectId = document.getElementById('formBuilderProject').value;
+    if (!projectId) {
+        const projectForm = document.getElementById('projectForm');
+        if (projectForm && projectForm.dataset.editId) {
+            projectId = projectForm.dataset.editId;
         }
+    }
+    
+    if (!projectId) {
+        showToast('Error', 'Please select a project first or open a project for editing', 'error');
+        this.value = '';
+        return;
+    }
         
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
@@ -5956,6 +6160,15 @@ document.querySelectorAll('.quick-action-btn').forEach(btn => {
         return 'maintenance-pending';
     }
 
+function ensureBootstrapLoaded() {
+    if (typeof bootstrap === 'undefined') {
+        console.warn("Bootstrap not loaded yet, retrying...");
+        setTimeout(ensureBootstrapLoaded, 100);
+        return false;
+    }
+    return true;
+}
+
     // View toggle functionality
     function setupViewToggle() {
         const viewButtons = document.querySelectorAll('.view-toggle button');
@@ -6264,16 +6477,19 @@ document.querySelectorAll('.quick-action-btn').forEach(btn => {
     };
 
     // Real-time score preview
-    function setupHealthScorePreview() {
-        const inputs = ['vegetationCover', 'nativeSpecies', 'weedCover', 'soilStability', 'speciesRichness'];
-        
-        inputs.forEach(inputId => {
-            const input = document.getElementById(inputId);
-            if (input) {
-                input.addEventListener('input', updateHealthScorePreview);
-            }
-        });
-    }
+function setupHealthScorePreview() {
+    const inputs = ['vegetationCover', 'nativeSpecies', 'weedCover', 'soilStability', 'speciesRichness'];
+    
+    inputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('input', updateHealthScorePreview);
+        }
+    });
+    
+    // Calculate initial preview after a short delay
+    setTimeout(updateHealthScorePreview, 100);
+}
 
     function updateHealthScorePreview() {
         const scoringData = {
@@ -6574,34 +6790,48 @@ function ensureProperLayout() {
     }, 50);
 }
 
-// API Key management
+// FIXED initApiKeyManagement
 function initApiKeyManagement() {
+    console.log("Initializing API key management");
+    
     const savedKey = localStorage.getItem('weatherApiKey');
-    const useDemo = localStorage.getItem('useDemoData') !== 'false';
+    // Default to demo mode if no preference is set
+    let useDemo = localStorage.getItem('useDemoData');
+    if (useDemo === null) {
+        useDemo = 'true';
+        localStorage.setItem('useDemoData', 'true');
+        console.log("Defaulting to demo mode");
+    }
     
     // Update the checkbox state
     const useDemoCheckbox = document.getElementById('useDemoData');
     if (useDemoCheckbox) {
-        useDemoCheckbox.checked = useDemo;
+        useDemoCheckbox.checked = useDemo === 'true';
+        console.log("Demo checkbox set to:", useDemoCheckbox.checked);
     }
     
-    if (savedKey && !useDemo) {
-        weatherConfig.apiKey = savedKey;
-        weatherConfig.useProxy = false;
-        const apiKeyInput = document.getElementById('apiKeyInput');
-        if (apiKeyInput) apiKeyInput.value = '••••••••••••••••';
-    } else {
-        weatherConfig.apiKey = '';  // Clear the key when using demo
-        weatherConfig.useProxy = true;
-        const apiKeyInput = document.getElementById('apiKeyInput');
-        if (apiKeyInput) apiKeyInput.value = '';
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    if (apiKeyInput) {
+        if (savedKey && useDemo !== 'true') {
+            apiKeyInput.value = '••••••••••••••••';
+            apiKeyInput.disabled = false;
+        } else {
+            apiKeyInput.value = '';
+            apiKeyInput.disabled = useDemo === 'true';
+        }
     }
     
     const saveBtn = document.getElementById('saveApiKeyBtn');
     if (saveBtn) {
-        saveBtn.addEventListener('click', function() {
+        // Remove any existing listeners to avoid duplicates
+        const newSaveBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+        
+        newSaveBtn.addEventListener('click', function() {
             const apiKey = document.getElementById('apiKeyInput').value;
             const useDemoData = document.getElementById('useDemoData').checked;
+            
+            console.log("Save clicked - useDemoData:", useDemoData, "apiKey length:", apiKey.length);
             
             if (!useDemoData && (!apiKey || apiKey === '••••••••••••••••')) {
                 showToast('API Key Required', 'Please enter a valid API key from weatherapi.com', 'warning');
@@ -6611,42 +6841,64 @@ function initApiKeyManagement() {
             if (!useDemoData) {
                 localStorage.setItem('weatherApiKey', apiKey);
                 localStorage.setItem('useDemoData', 'false');
-                weatherConfig.apiKey = apiKey;
-                weatherConfig.useProxy = false;
-                showToast('API Key Saved', 'Your API key has been saved. Refresh weather data to see live conditions.', 'success');
+                showToast('API Key Saved', 'Your API key has been saved. Click Refresh to see live conditions.', 'success');
             } else {
                 localStorage.setItem('weatherApiKey', '');
                 localStorage.setItem('useDemoData', 'true');
-                weatherConfig.apiKey = '';
-                weatherConfig.useProxy = true;
                 showToast('Demo Mode', 'Using demo weather data', 'info');
             }
             
+            // Reload weather data
             loadWeatherData();
         });
     }
     
     const useDemoCheckboxElem = document.getElementById('useDemoData');
     if (useDemoCheckboxElem) {
-        useDemoCheckboxElem.addEventListener('change', function() {
-            const apiKeyInput = document.getElementById('apiKeyInput');
-            if (apiKeyInput) {
-                apiKeyInput.disabled = this.checked;
+        // Remove any existing listeners
+        const newCheckbox = useDemoCheckboxElem.cloneNode(true);
+        useDemoCheckboxElem.parentNode.replaceChild(newCheckbox, useDemoCheckboxElem);
+        
+        newCheckbox.addEventListener('change', function() {
+            const apiKeyInputElem = document.getElementById('apiKeyInput');
+            if (apiKeyInputElem) {
+                apiKeyInputElem.disabled = this.checked;
                 if (this.checked) {
-                    apiKeyInput.value = '';
-                } else if (apiKeyInput.value === '') {
-                    apiKeyInput.placeholder = 'Enter your API key';
+                    apiKeyInputElem.value = '';
+                } else if (apiKeyInputElem.value === '') {
+                    apiKeyInputElem.placeholder = 'Enter your API key from weatherapi.com';
                 }
             }
         });
         
         // Initial state
-        const apiKeyInput = document.getElementById('apiKeyInput');
-        if (apiKeyInput) {
-            apiKeyInput.disabled = useDemoCheckboxElem.checked;
+        const apiKeyInputElem = document.getElementById('apiKeyInput');
+        if (apiKeyInputElem) {
+            apiKeyInputElem.disabled = newCheckbox.checked;
         }
     }
 }
+
+// Make sure loadWeatherData is called on weather section show
+// Add this to your navigation handler for the weather section
+function showWeatherSection() {
+    console.log("Showing weather section");
+    setTimeout(function() {
+        loadWeatherData();
+    }, 100);
+}
+
+// Also add a manual refresh button handler
+document.addEventListener('DOMContentLoaded', function() {
+    const refreshBtn = document.getElementById('refreshWeather');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            console.log("Manual refresh clicked");
+            loadWeatherData();
+        });
+    }
+});
+
     // ==================== INITIALIZATION ====================
 
     // Initialize the application
