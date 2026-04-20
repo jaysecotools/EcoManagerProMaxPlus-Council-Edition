@@ -1,4 +1,4 @@
-<!-- ECOSYSTEM HEALTH OVERVIEW CAN NOW SHOW INDIVIDUAL OR AGGREGATED DATA AND VISUAL IMPROVEMENTS. PAGE HEADINDS ALSO VISUALLY IMPROVED -->
+<!-- ABILITY TO INPUT AND SAVE WEATHER API KEY ADDED - FALLBACK TO DEMO WEATHER DATA INCLUDED -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -2133,6 +2133,39 @@ body {
                         </div>
                     </div>
                     
+<!-- Add after the weather location selector card -->
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="card-title mb-0">Weather API Settings</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <label class="form-label">WeatherAPI.com API Key:</label>
+                <div class="input-group">
+                    <input type="password" class="form-control" id="apiKeyInput" 
+                           placeholder="Enter your API key from weatherapi.com">
+                    <button class="btn btn-outline-secondary" type="button" id="saveApiKeyBtn">
+                        <i class="bi bi-save"></i> Save
+                    </button>
+                </div>
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i> 
+                    Get a free API key at <a href="https://www.weatherapi.com/" target="_blank">WeatherAPI.com</a>
+                </small>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check mt-4">
+                    <input class="form-check-input" type="checkbox" id="useDemoData" checked>
+                    <label class="form-check-label" for="useDemoData">
+                        Use demo data (no API key required)
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
                     <div class="row">
                         <div class="col-md-8">
                             <div class="card mb-3">
@@ -2282,12 +2315,13 @@ body {
     let modalProjectMap = null;
     let modalProjectMarker = null;
 
-    // WeatherAPI.com configuration - FIXED: Moved API key handling to backend proxy pattern
-    const weatherConfig = {
-        useProxy: true, // Set to true to use backend proxy
-        proxyUrl: '/api/weather', // Your backend endpoint
-        fallbackToExample: true // Fall back to example data if API fails
-    };
+// WeatherAPI.com configuration - DIRECT API ACCESS
+const weatherConfig = {
+    apiKey: 'YOUR_API_KEY_HERE', // <-- PASTE YOUR API KEY HERE
+    baseUrl: 'https://api.weatherapi.com/v1',
+    useProxy: false, // Set to false for direct API access
+    fallbackToExample: true
+};
 
     // User authentication state
     let currentUser = {
@@ -2968,100 +3002,108 @@ body {
     // ==================== WEATHER API FUNCTIONS ====================
 
     // Enhanced weather functions with backend proxy pattern
-    async function getWeatherByCoords(lat, lon) {
-        if (weatherConfig.useProxy) {
-            try {
-                // For demo, simulate API call with example data
-                return simulateWeatherAPI(lat, lon);
-            } catch (error) {
-                console.error('Weather proxy error:', error);
-                if (weatherConfig.fallbackToExample) {
-                    return showExampleWeatherData();
-                }
-                return null;
+async function getWeatherByCoords(lat, lon) {
+    // Check if we should use demo data
+    const useDemoData = localStorage.getItem('useDemoData') !== 'false';
+    const hasValidApiKey = weatherConfig.apiKey && 
+                          weatherConfig.apiKey !== 'YOUR_API_KEY_HERE' && 
+                          weatherConfig.apiKey !== '';
+    
+    if (!useDemoData && hasValidApiKey) {
+        // Direct API call with your key
+        try {
+            const url = `${weatherConfig.baseUrl}/current.json?key=${weatherConfig.apiKey}&q=${lat},${lon}&aqi=yes`;
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
             }
-        } else {
-            console.warn('Direct API calls are disabled for security. Using example data.');
-            return showExampleWeatherData();
+            
+            const data = await response.json();
+            
+            // Also fetch forecast for historical data
+            const forecastUrl = `${weatherConfig.baseUrl}/forecast.json?key=${weatherConfig.apiKey}&q=${lat},${lon}&days=7&aqi=no`;
+            const forecastResponse = await fetch(forecastUrl);
+            
+            if (forecastResponse.ok) {
+                const forecastData = await forecastResponse.json();
+                data.forecast = forecastData.forecast;
+            }
+            
+            // Store in localStorage for offline access
+            localStorage.setItem('lastWeatherData', JSON.stringify(data));
+            localStorage.setItem('lastWeatherUpdate', new Date().toISOString());
+            
+            return data;
+        } catch (error) {
+            console.error('Weather API error:', error);
+            showToast('Weather API', 'API call failed. Using example data.', 'warning');
+            return getExampleWeatherData(lat, lon);
         }
+    } else {
+        // Use example/demo data
+        if (!useDemoData) {
+            showToast('Weather API', 'Please enter a valid API key in Weather API Settings to see live data.', 'info');
+        }
+        return getExampleWeatherData(lat, lon);
     }
+}
 
-    function simulateWeatherAPI(lat, lon) {
-        return {
-            current: {
-                temp_c: 18 + Math.sin(Date.now() / 1000000) * 5,
-                condition: {
-                    text: "Partly Cloudy",
-                    code: "1003"
-                },
-                humidity: 65 + Math.sin(Date.now() / 2000000) * 10,
-                wind_kph: 12 + Math.random() * 8,
-                pressure_mb: 1015 + Math.random() * 10,
-                uv: 6 + Math.random() * 4,
-                vis_km: 10 + Math.random() * 5,
-                air_quality: {
-                    'us-epa-index': 2
-                }
+function getExampleWeatherData(lat, lon) {
+    return {
+        current: {
+            temp_c: 18,
+            condition: {
+                text: "Partly Cloudy",
+                code: 1003
             },
-            location: {
-                name: "Burnie, Tasmania",
-                region: "Tasmania",
-                country: "Australia"
+            humidity: 65,
+            wind_kph: 12,
+            pressure_mb: 1015,
+            uv: 6,
+            vis_km: 10,
+            air_quality: {
+                'us-epa-index': 2
             }
-        };
-    }
+        },
+        location: {
+            name: getLocationNameFromCoords(lat, lon),
+            region: "Demo Region",
+            country: "Demo"
+        },
+        forecast: {
+            forecastday: generateDemoForecast()
+        }
+    };
+}
 
-    // Function to show example weather data
-    function showExampleWeatherData() {
-        const exampleData = {
-            current: {
-                temp_c: 18,
-                condition: {
-                    text: "Partly Cloudy",
-                    code: "1003"
-                },
-                humidity: 65,
-                wind_kph: 12,
-                pressure_mb: 1015,
-                uv: 6,
-                vis_km: 10,
-                air_quality: {
-                    'us-epa-index': 2
-                }
-            },
-            location: {
-                name: "Burnie, Tasmania",
-                region: "Tasmania",
-                country: "Australia"
+function getLocationNameFromCoords(lat, lon) {
+    // Simple location name mapping for demo
+    const locations = {
+        '-41.0521,145.9061': 'Burnie, Tasmania',
+        '-42.8821,147.3272': 'Hobart, Tasmania'
+    };
+    const key = `${lat},${lon}`;
+    return locations[key] || 'Selected Location';
+}
+
+function generateDemoForecast() {
+    const days = [];
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        days.push({
+            date: date.toISOString().split('T')[0],
+            day: {
+                maxtemp_c: 18 + Math.sin(i) * 3,
+                mintemp_c: 10 + Math.cos(i) * 2,
+                condition: { text: 'Partly cloudy' }
             }
-        };
-        
-        const currentTemp = document.getElementById('current-temp');
-        const weatherDesc = document.getElementById('weather-description');
-        const humidity = document.getElementById('humidity');
-        const windSpeed = document.getElementById('wind-speed');
-        const pressure = document.getElementById('pressure');
-        
-        if (currentTemp) currentTemp.textContent = `${exampleData.current.temp_c}°C`;
-        if (weatherDesc) weatherDesc.textContent = exampleData.current.condition.text;
-        if (humidity) humidity.textContent = `${exampleData.current.humidity}%`;
-        if (windSpeed) windSpeed.textContent = `${exampleData.current.wind_kph} km/h`;
-        if (pressure) pressure.textContent = `${exampleData.current.pressure_mb} hPa`;
-
-        const weatherIcon = document.querySelector('.weather-icon i');
-        if (weatherIcon) {
-            weatherIcon.className = `bi ${getWeatherIcon(exampleData.current.condition.code)}`;
-        }
-        
-        const lastUpdateEl = document.getElementById('lastUpdate');
-        if (lastUpdateEl) {
-            lastUpdateEl.textContent = 'Showing example data • Configure backend for live weather';
-            lastUpdateEl.style.fontStyle = 'italic';
-            lastUpdateEl.style.color = '#666';
-        }
-        
-        return exampleData;
+        });
     }
+    return { forecastday: days };
+}
 
     // Icon mapping for WeatherAPI.com
     function getWeatherIcon(conditionCode) {
@@ -3458,39 +3500,57 @@ body {
         }
     }
 
-    function updateForecastChart(weatherData) {
-        const labels = ['Now', '+3h', '+6h', '+9h', '+12h', '+15h', '+18h', '+21h'];
-        const temperatures = [18, 19, 20, 21, 19, 17, 16, 15];
-
-        const tempChartCanvas = document.getElementById('temperatureChart');
-        if (tempChartCanvas && temperatureChart) temperatureChart.destroy();
-
-        if (tempChartCanvas) {
-            temperatureChart = new Chart(tempChartCanvas, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Temperature (°C)',
-                        data: temperatures,
-                        borderColor: 'rgb(255, 99, 132)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: false
-                        }
+function updateForecastChart(weatherData) {
+    const tempChartCanvas = document.getElementById('temperatureChart');
+    if (!tempChartCanvas) return;
+    
+    if (temperatureChart) temperatureChart.destroy();
+    
+    // Try to use real forecast data
+    let labels = [];
+    let temperatures = [];
+    
+    if (weatherData && weatherData.forecast && weatherData.forecast.forecastday) {
+        // Use real forecast data
+        labels = weatherData.forecast.forecastday.map(day => {
+            const date = new Date(day.date);
+            return date.toLocaleDateString('en-AU', { weekday: 'short' });
+        });
+        temperatures = weatherData.forecast.forecastday.map(day => day.day.avgtemp_c || day.day.maxtemp_c);
+    } else {
+        // Fallback to demo data
+        labels = ['Today', '+1 day', '+2 days', '+3 days', '+4 days', '+5 days'];
+        temperatures = [18, 19, 20, 19, 17, 16];
+    }
+    
+    temperatureChart = new Chart(tempChartCanvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Temperature (°C)',
+                data: temperatures,
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: 'Temperature (°C)'
                     }
                 }
-            });
+            }
         }
-    }
+    });
+}
 
     function updateHistoricalWeatherChart() {
         const ctx = document.getElementById('historicalWeatherChart');
@@ -6514,39 +6574,118 @@ function ensureProperLayout() {
     }, 50);
 }
 
+// API Key management
+function initApiKeyManagement() {
+    const savedKey = localStorage.getItem('weatherApiKey');
+    const useDemo = localStorage.getItem('useDemoData') !== 'false';
+    
+    // Update the checkbox state
+    const useDemoCheckbox = document.getElementById('useDemoData');
+    if (useDemoCheckbox) {
+        useDemoCheckbox.checked = useDemo;
+    }
+    
+    if (savedKey && !useDemo) {
+        weatherConfig.apiKey = savedKey;
+        weatherConfig.useProxy = false;
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        if (apiKeyInput) apiKeyInput.value = '••••••••••••••••';
+    } else {
+        weatherConfig.apiKey = '';  // Clear the key when using demo
+        weatherConfig.useProxy = true;
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        if (apiKeyInput) apiKeyInput.value = '';
+    }
+    
+    const saveBtn = document.getElementById('saveApiKeyBtn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', function() {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            const useDemoData = document.getElementById('useDemoData').checked;
+            
+            if (!useDemoData && (!apiKey || apiKey === '••••••••••••••••')) {
+                showToast('API Key Required', 'Please enter a valid API key from weatherapi.com', 'warning');
+                return;
+            }
+            
+            if (!useDemoData) {
+                localStorage.setItem('weatherApiKey', apiKey);
+                localStorage.setItem('useDemoData', 'false');
+                weatherConfig.apiKey = apiKey;
+                weatherConfig.useProxy = false;
+                showToast('API Key Saved', 'Your API key has been saved. Refresh weather data to see live conditions.', 'success');
+            } else {
+                localStorage.setItem('weatherApiKey', '');
+                localStorage.setItem('useDemoData', 'true');
+                weatherConfig.apiKey = '';
+                weatherConfig.useProxy = true;
+                showToast('Demo Mode', 'Using demo weather data', 'info');
+            }
+            
+            loadWeatherData();
+        });
+    }
+    
+    const useDemoCheckboxElem = document.getElementById('useDemoData');
+    if (useDemoCheckboxElem) {
+        useDemoCheckboxElem.addEventListener('change', function() {
+            const apiKeyInput = document.getElementById('apiKeyInput');
+            if (apiKeyInput) {
+                apiKeyInput.disabled = this.checked;
+                if (this.checked) {
+                    apiKeyInput.value = '';
+                } else if (apiKeyInput.value === '') {
+                    apiKeyInput.placeholder = 'Enter your API key';
+                }
+            }
+        });
+        
+        // Initial state
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        if (apiKeyInput) {
+            apiKeyInput.disabled = useDemoCheckboxElem.checked;
+        }
+    }
+}
     // ==================== INITIALIZATION ====================
 
     // Initialize the application
-    function initApp() {
-        db.init();
-        auditLog.init();
-        loadDashboard();
-        loadProjectSelects();
-        setupViewToggle();
-        loadDataSummary();
-        
-        // Initialize features
-        formBuilder.init();
-        setupHealthScorePreview();
-        
-        // Add this line
-        setupHealthChartControls();
-        
-        // Weather initialization
-        setupWeatherLocationSelector();
-        
-        // User onboarding
-        userOnboarding.showTooltips();
-        
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
+function initApp() {
+    db.init();
+    auditLog.init();
+    loadDashboard();
+    loadProjectSelects();
+    initApiKeyManagement();
+    setupViewToggle();
+    loadDataSummary();
+    
+    // Initialize features
+    formBuilder.init();
+    setupHealthScorePreview();
+    
+    // Add this line
+    setupHealthChartControls();
+    
+    // Weather initialization
+    setupWeatherLocationSelector();
+    
+    // IMPORTANT: Load weather data on startup
+    setTimeout(() => {
+        loadWeatherData();
+    }, 500);
+    
+    // User onboarding
+    userOnboarding.showTooltips();
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 
-        // Fix table scrolling on initial load
-        setTimeout(fixTableScrolling, 100);
-    }
+    // Fix table scrolling on initial load
+    setTimeout(fixTableScrolling, 100);
+}
 
     // Force layout recalculation on window load
     window.addEventListener('load', function() {
