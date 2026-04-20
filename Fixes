@@ -14,11 +14,16 @@
             --info: #17a2b8;
         }
 
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f8f9fa;
             color: #2c3e50;
             line-height: 1.6;
+            overflow-x: hidden;
         }
 
         /* Sidebar Styles */
@@ -28,7 +33,9 @@
             background: linear-gradient(to bottom, var(--primary), var(--secondary));
             color: white;
             position: fixed;
-            z-index: 100;
+            top: 0;
+            left: 0;
+            z-index: 1000;
             transition: var(--transition);
             box-shadow: 3px 0 15px rgba(0, 0, 0, 0.1);
         }
@@ -70,11 +77,14 @@
             color: var(--accent-light);
         }
 
-        /* Main Content */
+        /* Main Content - FIXED */
         .main-content {
             margin-left: var(--sidebar-width);
             padding: 30px;
             transition: var(--transition);
+            min-height: 100vh;
+            width: calc(100% - var(--sidebar-width));
+            overflow-x: auto;
         }
 
         .section-header {
@@ -95,6 +105,7 @@
             border-radius: 12px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
             transition: var(--transition);
+            width: 100%;
         }
 
         .card:hover {
@@ -109,6 +120,10 @@
             font-weight: 600;
             color: var(--primary);
             border-radius: 12px 12px 0 0 !important;
+        }
+
+        .card-body {
+            overflow-x: auto;
         }
 
         .stat-card {
@@ -135,16 +150,39 @@
         .progress-bar.bg-danger { background-color: var(--danger) !important; }
         .progress-bar.bg-dark { background-color: var(--dark) !important; }
 
-        /* Table Styles */
+        /* Table Styles - FIXED for horizontal scroll */
+        .table-responsive {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+        }
+
+        .table {
+            min-width: 800px;
+            width: 100%;
+            margin-bottom: 0;
+        }
+
         .table th {
             font-weight: 600;
             color: var(--primary);
             border-top: none;
+            white-space: nowrap;
+        }
+
+        .table td {
+            white-space: nowrap;
         }
 
         .table-hover tbody tr:hover {
             background-color: rgba(58, 138, 95, 0.05);
         }
+
+        /* Specific table minimum widths */
+        #projects-table { min-width: 1000px; }
+        #maintenance-table { min-width: 900px; }
+        #species-table { min-width: 700px; }
+        #assessments-table { min-width: 600px; }
 
         /* Form Styles */
         .form-control, .form-select {
@@ -189,6 +227,7 @@
             position: relative;
             height: 300px;
             margin-bottom: 20px;
+            width: 100%;
         }
 
         /* Maintenance Items */
@@ -240,6 +279,7 @@
         .content-section {
             display: none;
             animation: fadeIn 0.5s ease;
+            width: 100%;
         }
 
         .content-section.active {
@@ -279,9 +319,7 @@
             overflow: hidden;
             margin-bottom: 15px;
             width: 100%;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
+            max-width: 100%;
         }
 
         .location-coordinates {
@@ -478,6 +516,23 @@
             color: var(--primary);
         }
 
+        /* Forms */
+        form {
+            width: 100%;
+        }
+
+        /* Row fixes */
+        .row {
+            margin-left: 0;
+            margin-right: 0;
+            width: 100%;
+        }
+
+        [class*="col-"] {
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+
         /* Mobile Responsiveness */
         @media (max-width: 992px) {
             .sidebar {
@@ -500,6 +555,7 @@
             
             .main-content {
                 margin-left: 70px;
+                width: calc(100% - 70px);
             }
             
             .sidebar:hover {
@@ -563,6 +619,7 @@
                 margin-left: 0;
                 margin-bottom: 70px;
                 padding: 15px;
+                width: 100%;
             }
             
             .stat-card h3 {
@@ -602,202 +659,6 @@
                 animation: none !important;
             }
         }
-
-/* Fix for main content being covered by sidebar */
-        /* Main Content */
-        .main-content {
-            margin-left: var(--sidebar-width);
-            padding: 30px;
-            transition: var(--transition);
-            min-height: 100vh;
-            width: calc(100% - var(--sidebar-width));
-            max-width: calc(100% - var(--sidebar-width));
-            overflow-x: auto;
-        }
-
-        /* CRITICAL FIX - Ensure all content sections have proper width and overflow */
-        .content-section {
-            display: none;
-            animation: fadeIn 0.5s ease;
-            width: 100%;
-            max-width: 100%;
-            overflow-x: visible;
-        }
-
-        .content-section.active {
-            display: block;
-            width: 100%;
-        }
-
-        /* Fix for all cards to allow horizontal scrolling when needed */
-        .card {
-            margin-bottom: 25px;
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            transition: var(--transition);
-            width: 100%;
-            overflow-x: visible;
-        }
-
-        /* CRITICAL - Make all tables horizontally scrollable */
-        .table-responsive {
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch;
-            width: 100%;
-            display: block;
-        }
-
-        /* Ensure tables don't overflow their containers */
-        .table {
-            width: 100%;
-            min-width: 800px; /* Ensures table has minimum width for all columns */
-            margin-bottom: 0;
-        }
-
-        /* Fix for project table - has many columns */
-        #projects-table {
-            min-width: 1000px;
-        }
-
-        /* Fix for maintenance table */
-        #maintenance-table {
-            min-width: 900px;
-        }
-
-        /* Fix for species table */
-        #species-table {
-            min-width: 700px;
-        }
-
-        /* Fix for assessments table */
-        #assessments-table {
-            min-width: 600px;
-        }
-
-        /* Ensure card bodies can scroll if needed */
-        .card-body {
-            overflow-x: auto;
-            width: 100%;
-        }
-
-        /* Fix for the project list card specifically */
-        .card:has(#projects-table) .card-body,
-        .card:has(#maintenance-table) .card-body,
-        .card:has(#species-table) .card-body,
-        .card:has(#assessments-table) .card-body {
-            overflow-x: auto;
-            padding: 1rem;
-        }
-
-        /* Fix for forms to prevent overflow */
-        form {
-            width: 100%;
-            overflow-x: visible;
-        }
-
-        /* Ensure rows don't cause overflow */
-        .row {
-            margin-left: 0;
-            margin-right: 0;
-            width: 100%;
-        }
-
-        /* Fix for col containers */
-        [class*="col-"] {
-            padding-left: 15px;
-            padding-right: 15px;
-        }
-
-        /* Fix for the dashboard charts */
-        .chart-container {
-            position: relative;
-            height: 300px;
-            margin-bottom: 20px;
-            width: 100%;
-            overflow-x: visible;
-        }
-
-        /* Ensure the main container doesn't restrict width */
-        .container-fluid {
-            overflow-x: visible;
-        }
-
-        .row.g-0 {
-            overflow-x: visible;
-        }
-
-/* Ensure content sections don't get cut off */
-.content-section {
-    display: none;
-    animation: fadeIn 0.5s ease;
-    width: 100%;
-    overflow-x: auto;
-}
-
-/* Make tables responsive */
-.table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-/* Fix for card containers */
-.card {
-    margin-bottom: 25px;
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-    transition: var(--transition);
-    width: 100%;
-    overflow-x: auto;
-}
-
-/* Fix for map containers */
-.map-container {
-    height: 300px;
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 15px;
-    width: 100%;
-    max-width: 100%;
-}
-
-/* Fix for forms */
-form {
-    width: 100%;
-    overflow-x: auto;
-}
-
-/* Fix for row containers */
-.row {
-    margin-left: 0;
-    margin-right: 0;
-    width: 100%;
-}
-
-/* Fix for col containers */
-[class*="col-"] {
-    padding-left: 15px;
-    padding-right: 15px;
-}
-
-/* Mobile responsive fix */
-@media (max-width: 992px) {
-    .main-content {
-        width: calc(100% - 70px);
-        max-width: calc(100% - 70px);
-    }
-}
-
-@media (max-width: 768px) {
-    .main-content {
-        margin-left: 0;
-        margin-bottom: 70px;
-        padding: 15px;
-        width: 100%;
-        max-width: 100%;
-    }
-}
 
         /* Dark Mode Support */
         @media (prefers-color-scheme: dark) {
