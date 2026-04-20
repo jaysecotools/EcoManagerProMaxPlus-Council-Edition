@@ -362,3 +362,245 @@ LOW Add ensureBootstrapLoaded function ~3150
 LOW Add weather loading spinner CSS End of style section
 
 These fixes will eliminate console warnings and improve the robustness of your application without breaking any existing functionality.
+
+
+
+
+
+
+
+
+Excellent observation! This is critical information that changes the diagnosis entirely.
+
+The Real Root Cause
+
+The problem is mobile-specific and relates to how your CSS handles .content-section.active on different viewports. On desktop, the sections are hidden correctly (except on the User Guide page, which is a clue). On mobile, they appear everywhere.
+
+Looking at your mobile CSS (around lines 350-450), I found the issue:
+
+Your mobile CSS is overriding the hiding mechanism!
+
+Specifically, this section of your mobile CSS:
+
+```css
+@media (max-width: 768px) {
+    /* Fix all rows to be full width */
+    .main-content .row {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* All columns take full width */
+    .main-content .row [class*="col-"],
+    .main-content [class*="col-"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+        /* ... */
+    }
+}
+```
+
+These selectors are too broad and are forcing ALL .row elements to display, regardless of their parent section's active state. The CSS specificity battle is being lost on mobile.
+
+Why the User Guide page shows them on desktop
+
+The User Guide section is dynamically created by JavaScript and doesn't have the same structure. When you navigate to it, the CSS selector .content-section:not(#dashboard) .row.mt-4 doesn't apply because the User Guide section doesn't have that exact structure, but the mobile CSS forces all rows to display anyway.
+
+The Fix (Mobile-Specific)
+
+Add this CSS after your existing mobile media query:
+
+```css
+/* CRITICAL MOBILE FIX - Hide dashboard-only sections */
+@media (max-width: 768px) {
+    /* Force hide the Recent Activities and Upcoming Maintenance sections on non-dashboard pages */
+    .content-section:not(#dashboard) .row.mt-4 {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        position: absolute !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    
+    /* Specifically target the parent columns */
+    .content-section:not(#dashboard) .col-md-6:has(.card-header h5) {
+        display: none !important;
+    }
+    
+    /* Even more specific - target by card title text */
+    .content-section:not(#dashboard) .card-header h5:contains("Recent Activities"),
+    .content-section:not(#dashboard) .card-header h5:contains("Upcoming Maintenance") {
+        display: none !important;
+    }
+    
+    /* Hide the parent card of these sections */
+    .content-section:not(#dashboard) .card:has(.card-title:contains("Recent Activities")),
+    .content-section:not(#dashboard) .card:has(.card-title:contains("Upcoming Maintenance")) {
+        display: none !important;
+    }
+}
+```
+
+However, :contains() is not widely supported. Here's a more compatible solution:
+
+```css
+/* CRITICAL MOBILE FIX - More compatible */
+@media (max-width: 768px) {
+    /* Hide the entire row that contains these sections */
+    .content-section:not(#dashboard) > .row.mt-4,
+    .content-section:not(#dashboard) .dashboard-only-row {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Also hide by data attribute if you add one */
+    .content-section:not(#dashboard) [data-dashboard-only="true"] {
+        display: none !important;
+    }
+}
+```
+
+The Best Solution - Add a Data Attribute
+
+Modify your HTML to add a data-dashboard-only attribute:
+
+```html
+<div class="row mt-4" data-dashboard-only="true">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Recent Activities</h5>
+            </div>
+            <!-- ... -->
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Upcoming Maintenance</h5>
+            </div>
+            <!-- ... -->
+        </div>
+    </div>
+</div>
+```
+
+Then add this CSS:
+
+```css
+/* Hide dashboard-only elements on all non-dashboard pages */
+.content-section:not(#dashboard) [data-dashboard-only="true"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Ensure they show on dashboard */
+#dashboard [data-dashboard-only="true"] {
+    display: flex !important;
+    visibility: visible !important;
+    height: auto !important;
+    overflow: visible !important;
+}
+
+/* Mobile-specific override */
+@media (max-width: 768px) {
+    .content-section:not(#dashboard) [data-dashboard-only="true"] {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        position: absolute !important;
+        opacity: 0 !important;
+    }
+    
+    #dashboard [data-dashboard-only="true"] {
+        display: flex !important;
+        flex-direction: column !important;
+        visibility: visible !important;
+        height: auto !important;
+        position: relative !important;
+        opacity: 1 !important;
+    }
+    
+    /* Fix the columns inside on mobile when visible */
+    #dashboard [data-dashboard-only="true"] .col-md-6 {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+        margin-bottom: 15px !important;
+    }
+}
+```
+
+Also Add This JavaScript to Handle Dynamic Navigation
+
+```javascript
+// Add this function to ensure hiding on mobile after navigation
+function enforceMobileDashboardHide() {
+    if (window.innerWidth <= 768) {
+        const activeSection = document.querySelector('.content-section.active');
+        const dashboardOnlyElements = document.querySelectorAll('[data-dashboard-only="true"]');
+        
+        if (activeSection && activeSection.id !== 'dashboard') {
+            dashboardOnlyElements.forEach(el => {
+                el.style.display = 'none';
+                el.style.visibility = 'hidden';
+                el.style.height = '0';
+                el.style.overflow = 'hidden';
+                el.style.margin = '0';
+                el.style.padding = '0';
+            });
+        } else if (activeSection && activeSection.id === 'dashboard') {
+            dashboardOnlyElements.forEach(el => {
+                el.style.display = 'flex';
+                el.style.visibility = 'visible';
+                el.style.height = 'auto';
+                el.style.overflow = 'visible';
+                el.style.margin = '';
+                el.style.padding = '';
+            });
+        }
+    }
+}
+
+// Call this in your existing navigation handler
+function updateNavigation(target) {
+    // ... your existing navigation code ...
+    
+    // Add this line
+    enforceMobileDashboardHide();
+}
+
+// Also call on window resize
+window.addEventListener('resize', function() {
+    setTimeout(enforceMobileDashboardHide, 100);
+});
+
+// Call on initial load
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(enforceMobileDashboardHide, 200);
+});
+```
+
+Summary
+
+The problem is your mobile CSS is too aggressive and overrides the hiding mechanism. By adding a specific data-dashboard-only attribute and targeting it with high-specificity CSS that works on mobile, you'll solve the issue without breaking your responsive layout.
