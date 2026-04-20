@@ -1,8 +1,609 @@
-Ah, I see the issue now. The problem is that your tables have too many columns and are overflowing outside the viewport. The sidebar is fixed at 280px, but the tables need horizontal scrolling. Let me give you a more comprehensive fix.
+<style>
+        :root {
+            --primary: #2c5530;
+            --secondary: #4a7c59;
+            --accent: #3a8a5f;
+            --accent-light: #4da675;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --light: #f8f9fa;
+            --dark: #1e2b1e;
+            --sidebar-width: 280px;
+            --transition: all 0.3s ease;
+            --info: #17a2b8;
+        }
 
-Add these CSS rules right after your existing .main-content styles (around line 80-90), before the /* Dark Mode Support */ section:
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #2c3e50;
+            line-height: 1.6;
+        }
 
-```css
+        /* Sidebar Styles */
+        .sidebar {
+            min-height: 100vh;
+            width: var(--sidebar-width);
+            background: linear-gradient(to bottom, var(--primary), var(--secondary));
+            color: white;
+            position: fixed;
+            z-index: 100;
+            transition: var(--transition);
+            box-shadow: 3px 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 5px;
+            border-radius: 8px;
+            padding: 12px 15px;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .sidebar .nav-link i {
+            margin-right: 12px;
+            font-size: 1.2rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        .logo {
+            font-weight: 700;
+            padding: 20px 25px;
+            font-size: 1.4rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .logo i {
+            margin-right: 10px;
+            color: var(--accent-light);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 30px;
+            transition: var(--transition);
+        }
+
+        .section-header {
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .section-header h2 {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Card Styles */
+        .card {
+            margin-bottom: 25px;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 15px 20px;
+            font-weight: 600;
+            color: var(--primary);
+            border-radius: 12px 12px 0 0 !important;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .stat-card h3 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+
+        .stat-card .card-title {
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        /* Progress bar colors for health scores */
+        .progress-bar.bg-success { background-color: var(--success) !important; }
+        .progress-bar.bg-info { background-color: var(--info) !important; }
+        .progress-bar.bg-warning { background-color: var(--warning) !important; }
+        .progress-bar.bg-danger { background-color: var(--danger) !important; }
+        .progress-bar.bg-dark { background-color: var(--dark) !important; }
+
+        /* Table Styles */
+        .table th {
+            font-weight: 600;
+            color: var(--primary);
+            border-top: none;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(58, 138, 95, 0.05);
+        }
+
+        /* Form Styles */
+        .form-control, .form-select {
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            transition: var(--transition);
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 0.25rem rgba(58, 138, 95, 0.25);
+        }
+
+        .btn {
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-light);
+            border-color: var(--accent-light);
+            transform: translateY(-2px);
+        }
+
+        /* Badge Styles */
+        .badge {
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        /* Chart Containers */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+
+        /* Maintenance Items */
+        .maintenance-item {
+            border-left: 4px solid #6c757d;
+            padding-left: 15px;
+            margin-bottom: 15px;
+            transition: var(--transition);
+        }
+
+        .maintenance-item:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+        .maintenance-pending {
+            border-left-color: var(--warning);
+        }
+
+        .maintenance-completed {
+            border-left-color: var(--success);
+        }
+
+        .maintenance-overdue {
+            border-left-color: var(--danger);
+        }
+
+        .list-view, .calendar-view {
+            display: none;
+        }
+
+        .list-view.active, .calendar-view.active {
+            display: block;
+        }
+
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1100;
+        }
+
+        /* View Toggle */
+        .view-toggle {
+            margin-bottom: 20px;
+        }
+
+        /* Content Sections */
+        .content-section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Risk Indicators */
+        .risk-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .risk-low {
+            background-color: var(--success);
+        }
+
+        .risk-medium {
+            background-color: var(--warning);
+        }
+
+        .risk-high {
+            background-color: var(--danger);
+        }
+
+        /* Map Styles */
+        .map-container {
+            height: 300px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .location-coordinates {
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .map-preview {
+            height: 150px;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        /* For the modal map */
+        #projectMapModal .modal-dialog {
+            max-width: 900px;
+        }
+
+        #projectMapModal .map-container {
+            height: 500px;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        /* Ensure the map takes full container */
+        #modalProjectMap {
+            height: 100%;
+            width: 100%;
+            min-height: 500px;
+        }
+
+        /* New Features */
+        .progress-container {
+            margin: 20px 0;
+        }
+
+        .progress {
+            height: 10px;
+            border-radius: 5px;
+        }
+
+        .project-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .project-card:hover {
+            transform: scale(1.02);
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .quick-action-btn {
+            flex: 1;
+            min-width: 150px;
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            background: white;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .quick-action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .quick-action-btn i {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+
+        .weather-widget {
+            background: linear-gradient(135deg, #67b26f, #4ca2cd);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .weather-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .ecosystem-health-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .health-meter {
+            width: 100px;
+            height: 100px;
+            position: relative;
+        }
+
+        .health-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* Login Screen */
+        #login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s ease;
+        }
+
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-role-badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            margin-left: 8px;
+        }
+
+        /* Risk Matrix */
+        .risk-matrix {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2px;
+            margin: 15px 0;
+        }
+
+        .risk-cell {
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .risk-low { background-color: #d4edda; }
+        .risk-medium { background-color: #fff3cd; }
+        .risk-high { background-color: #f8d7da; }
+
+        /* Document List */
+        .document-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+
+        .document-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .document-icon {
+            font-size: 1.5rem;
+            margin-right: 15px;
+            color: var(--primary);
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 992px) {
+            .sidebar {
+                width: 70px;
+                overflow: hidden;
+            }
+            
+            .sidebar .logo span {
+                display: none;
+            }
+            
+            .sidebar .nav-link span {
+                display: none;
+            }
+            
+            .sidebar .nav-link i {
+                margin-right: 0;
+                font-size: 1.4rem;
+            }
+            
+            .main-content {
+                margin-left: 70px;
+            }
+            
+            .sidebar:hover {
+                width: var(--sidebar-width);
+            }
+            
+            .sidebar:hover .logo span {
+                display: inline;
+            }
+            
+            .sidebar:hover .nav-link span {
+                display: inline;
+            }
+            
+            .sidebar:hover .nav-link i {
+                margin-right: 12px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: 70px;
+                min-height: 70px;
+                bottom: 0;
+                top: auto;
+                padding: 0;
+            }
+            
+            .sidebar .logo {
+                display: none;
+            }
+            
+            .sidebar .nav {
+                flex-direction: row;
+                overflow-x: auto;
+                padding: 0.5rem;
+            }
+            
+            .sidebar .nav-item {
+                flex-shrink: 0;
+            }
+            
+            .sidebar .nav-link {
+                padding: 0.5rem;
+                margin-bottom: 0;
+                margin-right: 5px;
+                border-radius: 5px;
+                text-align: center;
+                font-size: 0.8rem;
+            }
+            
+            .sidebar .nav-link i {
+                margin-right: 0;
+                display: block;
+                margin-bottom: 0.25rem;
+                font-size: 1.2rem;
+            }
+            
+            .main-content {
+                margin-left: 0;
+                margin-bottom: 70px;
+                padding: 15px;
+            }
+            
+            .stat-card h3 {
+                font-size: 1.8rem;
+            }
+            
+            .quick-actions {
+                flex-direction: column;
+            }
+        }
+
+        /* Accessibility Improvements */
+        .btn:focus, .form-control:focus, .form-select:focus {
+            box-shadow: 0 0 0 3px rgba(58, 138, 95, 0.5);
+        }
+        
+        .nav-link:focus {
+            outline: 2px solid var(--accent-light);
+            outline-offset: -2px;
+        }
+        
+        /* High contrast support */
+        @media (prefers-contrast: high) {
+            .sidebar {
+                background: var(--primary);
+            }
+            
+            .card {
+                border: 1px solid #ddd;
+            }
+        }
+        
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+                animation: none !important;
+            }
+        }
+
+/* Fix for main content being covered by sidebar */
         /* Main Content */
         .main-content {
             margin-left: var(--sidebar-width);
@@ -125,112 +726,104 @@ Add these CSS rules right after your existing .main-content styles (around line 
         .row.g-0 {
             overflow-x: visible;
         }
-```
 
-Also, add this JavaScript function to ensure proper scrolling on page load:
+/* Ensure content sections don't get cut off */
+.content-section {
+    display: none;
+    animation: fadeIn 0.5s ease;
+    width: 100%;
+    overflow-x: auto;
+}
 
-Add this function near the end of your script, before initApp():
+/* Make tables responsive */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
 
-```javascript
-    // Fix for table horizontal scrolling - ensure tables are scrollable
-    function fixTableScrolling() {
-        // Make sure all table-responsive divs have proper styling
-        document.querySelectorAll('.table-responsive').forEach(container => {
-            container.style.overflowX = 'auto';
-            container.style.width = '100%';
-            container.style.display = 'block';
-        });
-        
-        // Set minimum widths on tables to ensure horizontal scroll appears
-        const projectsTable = document.getElementById('projects-table');
-        if (projectsTable && projectsTable.closest('.table-responsive')) {
-            projectsTable.style.minWidth = '1000px';
-        }
-        
-        const maintenanceTable = document.getElementById('maintenance-table');
-        if (maintenanceTable && maintenanceTable.closest('.table-responsive')) {
-            maintenanceTable.style.minWidth = '900px';
-        }
-        
-        const speciesTable = document.getElementById('species-table');
-        if (speciesTable && speciesTable.closest('.table-responsive')) {
-            speciesTable.style.minWidth = '700px';
-        }
-        
-        const assessmentsTable = document.getElementById('assessments-table');
-        if (assessmentsTable && assessmentsTable.closest('.table-responsive')) {
-            assessmentsTable.style.minWidth = '600px';
-        }
+/* Fix for card containers */
+.card {
+    margin-bottom: 25px;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    transition: var(--transition);
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Fix for map containers */
+.map-container {
+    height: 300px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 15px;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Fix for forms */
+form {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Fix for row containers */
+.row {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+}
+
+/* Fix for col containers */
+[class*="col-"] {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* Mobile responsive fix */
+@media (max-width: 992px) {
+    .main-content {
+        width: calc(100% - 70px);
+        max-width: calc(100% - 70px);
     }
-```
+}
 
-Then call this function in your ensureProperLayout() function and in initApp():
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 0;
+        margin-bottom: 70px;
+        padding: 15px;
+        width: 100%;
+        max-width: 100%;
+    }
+}
 
-```javascript
-    function ensureProperLayout() {
-        // Force a reflow to fix any layout issues
-        setTimeout(function() {
-            const mainContent = document.querySelector('.main-content');
-            if (mainContent) {
-                mainContent.style.opacity = '0.99';
-                setTimeout(function() {
-                    mainContent.style.opacity = '1';
-                }, 10);
+        /* Dark Mode Support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #121212;
+                color: #e0e0e0;
             }
             
-            // Trigger window resize event to force any responsive adjustments
-            window.dispatchEvent(new Event('resize'));
+            .card {
+                background-color: #1e1e1e;
+                color: #e0e0e0;
+            }
             
-            // Scroll to top of page when changing sections
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            .card-header {
+                background-color: #252525;
+                color: #e0e0e0;
+            }
             
-            // ADD THIS LINE - Fix table scrolling
-            fixTableScrolling();
-        }, 50);
-    }
-```
-
-And add to initApp():
-
-```javascript
-    // Initialize the application
-    function initApp() {
-        db.init();
-        auditLog.init();
-        loadDashboard();
-        loadProjectSelects();
-        setupViewToggle();
-        loadDataSummary();
-        
-        // Initialize features
-        formBuilder.init();
-        setupHealthScorePreview();
-        
-        // Add this line
-        setupHealthChartControls();
-        
-        // Weather initialization
-        setupWeatherLocationSelector();
-        
-        // User onboarding
-        userOnboarding.showTooltips();
-        
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-        
-        // ADD THIS LINE - Fix table scrolling on initial load
-        setTimeout(fixTableScrolling, 100);
-    }
-```
-
-The key issues being fixed:
-
-1. Tables need minimum widths to trigger horizontal scrolling - the projects table has 10 columns which is too many to fit
-2. The .table-responsive div needs proper overflow settings
-3. Card bodies need to allow overflow scrolling
-4. The main content area needs to allow horizontal scrolling when content is wider than the viewport
-
-After making these changes, users will be able to scroll horizontally to see all columns in the tables. The sidebar will no longer cover the content because the main content area will scroll horizontally when needed.
+            .table {
+                color: #e0e0e0;
+            }
+            
+            .form-control, .form-select {
+                background-color: #2d2d2d;
+                border-color: #444;
+                color: #e0e0e0;
+            }
+        }
+    </style>
