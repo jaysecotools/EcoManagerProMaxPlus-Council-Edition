@@ -976,3 +976,179 @@ Step What to do
 7 Add enforceMobileDashboardHide() call in ensureProperLayout()
 
 After making these changes, save and test on mobile. The Recent Activities and Upcoming Maintenance sections should only appear on the Dashboard page, not on any other pages.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Good catch! You likely have duplicate navigation code. Let me give you clear instructions to find and fix both.
+
+Step 4 (Revised): Find and Update BOTH Navigation Handlers
+
+Search for the first navigation handler
+
+Search for: document.querySelectorAll('.sidebar .nav-link')
+
+You'll find something like this (around line 2900-2950):
+
+```javascript
+// Navigation - UPDATED with layout fix
+document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Update active state
+        document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Show the corresponding section
+        const target = this.getAttribute('data-target');
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
+        });
+        
+        setTimeout(() => {
+            const targetSection = document.getElementById(target);
+            if (targetSection) targetSection.classList.add('active');
+            
+            // Load data for the section
+            if (target === 'dashboard') loadDashboard();
+            if (target === 'projects') {
+                loadProjects();
+                setTimeout(() => {
+                    initProjectMap();
+                }, 100);
+            }
+            if (target === 'assessments') loadAssessments();
+            if (target === 'species') loadSpecies();
+            if (target === 'maintenance') {
+                loadMaintenance();
+                const listViewBtn = document.querySelector('[data-view="list-view"]');
+                if (listViewBtn) listViewBtn.click();
+            }
+            if (target === 'charts') loadCharts();
+            if (target === 'data') {
+                loadDataSummary();
+                loadProjectSelects();
+            }
+            if (target === 'weather') loadWeatherData();
+            
+            // ADD THIS LINE RIGHT HERE
+            enforceMobileDashboardHide();
+            
+        }, 50);
+        
+        // Update page title
+        const spanText = this.querySelector('span');
+        if (spanText) {
+            document.title = `${spanText.textContent} | EcoManager Pro`;
+        }
+    });
+});
+```
+
+Add the line enforceMobileDashboardHide(); where shown above.
+
+---
+
+Search for the second navigation handler
+
+Search for: // Quick action handlers or document.querySelectorAll('.quick-action-btn')
+
+You'll find something like this (around line 2850-2900):
+
+```javascript
+// Quick action handlers - ADD ensureProperLayout()
+document.querySelectorAll('.quick-action-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const target = this.dataset.target;
+        document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+        const targetLink = document.querySelector(`[data-target="${target}"]`);
+        if (targetLink) targetLink.classList.add('active');
+        
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
+        });
+        
+        setTimeout(() => {
+            const targetSection = document.getElementById(target);
+            if (targetSection) targetSection.classList.add('active');
+            
+            // Load data for the section
+            if (target === 'dashboard') loadDashboard();
+            if (target === 'projects') {
+                loadProjects();
+                setTimeout(() => {
+                    initProjectMap();
+                }, 100);
+            }
+            if (target === 'assessments') loadAssessments();
+            if (target === 'species') loadSpecies();
+            if (target === 'maintenance') {
+                loadMaintenance();
+                const listViewBtn = document.querySelector('[data-view="list-view"]');
+                if (listViewBtn) listViewBtn.click();
+            }
+            if (target === 'charts') loadCharts();
+            if (target === 'data') {
+                loadDataSummary();
+                loadProjectSelects();
+            }
+            if (target === 'weather') loadWeatherData();
+            
+            // ADD THIS LINE RIGHT HERE
+            enforceMobileDashboardHide();
+            
+        }, 50);
+    });
+});
+```
+
+Add the line enforceMobileDashboardHide(); where shown above.
+
+---
+
+If You Have a THIRD Navigation Handler
+
+Search for: function updateNavigation or function showSection
+
+If you find another function that handles navigation, add enforceMobileDashboardHide(); inside it after the section becomes active.
+
+---
+
+Quick Verification
+
+After adding the line to both handlers, your code should have enforceMobileDashboardHide(); called in two places (the sidebar nav handler AND the quick actions handler).
+
+This ensures that regardless of how the user navigates (clicking sidebar OR clicking quick action buttons), the mobile hide function runs.
+
+---
+
+Complete Checklist
+
+Step Status
+Step 1: Add data-dashboard-only="true" to HTML ⬜
+Step 2: Add CSS rules ⬜
+Step 3: Add enforceMobileDashboardHide() function ⬜
+Step 4a: Add call in FIRST navigation handler (sidebar) ⬜
+Step 4b: Add call in SECOND navigation handler (quick actions) ⬜
+Step 5: Add resize event listener ⬜
+Step 6: Add call in ensureProperLayout() ⬜
+
+Once you've done all of these, test on mobile and the sections should only appear on the Dashboard page!
