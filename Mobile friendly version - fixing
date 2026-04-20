@@ -1,4 +1,5 @@
-<!-- MAKING MOBILE FRIENDLY -->
+<!-- CURRENT ISSUE - SHOWS RECENT ACTIVITIES AND UPCOMING MAINTENANCE ON ALL PAGES EXCEPT DASHBOARD -->
+<!-- ADJUSTED DISPLAY FOR VERTICAL PHONE AND SMALL SCREENS -->
 <!-- DUPLICATE FUNCTIONS REMOVED AND MINOR ERRORS FIXED -->
 <!-- ABILITY TO INPUT AND SAVE WEATHER API KEY ADDED - FALLBACK TO DEMO WEATHER DATA INCLUDED - DEMO WEATHER ISSUE NOW FIXED -->
 
@@ -807,160 +808,284 @@ body {
             }
         }
 
-       @media (max-width: 768px) {
-    /* Change flex direction to column on mobile */
+/* REPLACE the existing mobile styles (around line 350-450) with this: */
+
+@media (max-width: 768px) {
+    /* Override any problematic flex settings */
     .container-fluid > .d-flex {
-        flex-direction: column;
+        flex-direction: column !important;
+        display: flex !important;
+        width: 100% !important;
+        min-height: 100vh !important;
+        position: relative !important;
     }
     
-    /* Make sidebar a bottom navigation bar */
+    /* Sidebar becomes bottom navigation bar */
     .sidebar {
-        width: 100%;
-        height: auto;
-        min-height: auto;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        top: auto;
-        z-index: 1000;
-        padding: 0 !important;
-        margin: 0 !important;
-        background: linear-gradient(to right, var(--primary), var(--secondary));
-        border-radius: 12px 12px 0 0;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-    }
-    
-    /* Hide the logo on mobile to save space */
-    .sidebar .logo {
-        display: none;
-    }
-    
-    /* Horizontal navigation */
-    .sidebar .nav {
-        flex-direction: row !important;
-        justify-content: space-around;
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: auto !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        z-index: 1000 !important;
+        background: linear-gradient(to right, var(--primary), var(--secondary)) !important;
+        border-radius: 16px 16px 0 0 !important;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.15) !important;
         padding: 8px 4px !important;
         margin: 0 !important;
-        overflow-x: auto;
+    }
+    
+    /* Hide logo on mobile */
+    .sidebar .logo {
+        display: none !important;
+    }
+    
+    /* Horizontal navigation - properly spaced */
+    .sidebar .nav {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-around !important;
+        align-items: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
+        gap: 4px !important;
     }
     
     .sidebar .nav-item {
-        flex: 1;
-        text-align: center;
-        min-width: 60px;
+        flex: 1 !important;
+        min-width: auto !important;
+        text-align: center !important;
     }
     
     .sidebar .nav-link {
         display: flex !important;
-        flex-direction: column;
-        align-items: center;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
         padding: 8px 4px !important;
-        margin: 0 2px !important;
-        font-size: 0.7rem;
-        white-space: nowrap;
+        margin: 0 !important;
+        font-size: 0.7rem !important;
+        border-radius: 12px !important;
+        white-space: nowrap !important;
     }
     
     .sidebar .nav-link i {
+        font-size: 1.3rem !important;
         margin: 0 0 4px 0 !important;
-        font-size: 1.2rem;
         display: block !important;
     }
     
     .sidebar .nav-link span {
-        display: inline !important;
-        font-size: 0.65rem;
+        display: block !important;
+        font-size: 0.6rem !important;
     }
     
-    /* Main content - CRITICAL FIX */
+    /* CRITICAL - Main content takes full width, no left squeeze */
     .main-content {
-        margin: 0 !important;
-        padding: 12px !important;
-        padding-bottom: 75px !important; /* Space for fixed bottom nav */
+        position: relative !important;
         width: 100% !important;
-        min-height: calc(100vh - 60px);
-        overflow-x: hidden;
+        max-width: 100% !important;
+        min-width: 100% !important;
+        margin: 0 !important;
+        padding: 15px !important;
+        padding-bottom: 85px !important; /* Space for bottom nav */
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+        left: 0 !important;
+        right: 0 !important;
     }
     
-    /* Remove any hover effects that might cause issues */
-    .sidebar:hover {
-        width: 100%;
+    /* Fix all rows to be full width */
+    .main-content .row {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     
-    /* Make cards stack properly */
-    .row {
-        flex-direction: column;
+    /* All columns take full width */
+    .main-content .row [class*="col-"],
+    .main-content [class*="col-"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
     }
     
-    .row [class*="col-"] {
-        width: 100%;
-        margin-bottom: 15px;
+    /* Fix cards to be full width */
+    .main-content .card {
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        overflow-x: hidden !important;
     }
     
-    /* Better stat cards on mobile */
-    .stat-card h3 {
-        font-size: 1.5rem;
+    .main-content .card-body {
+        overflow-x: auto !important;
+        padding: 15px !important;
     }
     
-    /* Quick actions become vertical */
+    /* Fix stat cards row */
+    #dashboard .row:first-of-type {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+    
+    #dashboard .row:first-of-type [class*="col-"] {
+        width: 100% !important;
+        padding: 0 !important;
+    }
+    
+    /* Quick actions - vertical stack */
     .quick-actions {
-        flex-direction: column;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+        margin-bottom: 20px !important;
     }
     
     .quick-action-btn {
-        width: 100%;
+        flex: 1 !important;
+        min-width: calc(25% - 10px) !important;
+        padding: 12px 8px !important;
+        text-align: center !important;
     }
     
-    /* Improve table responsiveness */
-    .table-responsive {
-        margin: 0 -12px;
-        padding: 0 12px;
-        width: calc(100% + 24px);
+    .quick-action-btn h6 {
+        font-size: 0.7rem !important;
+        margin-top: 5px !important;
     }
     
-    /* Better spacing for forms */
-    .card-body {
-        padding: 15px;
-    }
-    
-    /* Make charts readable */
+    /* Chart containers - proper sizing */
     .chart-container {
-        height: 250px;
+        height: 250px !important;
+        width: 100% !important;
     }
     
-    /* Adjust section headers */
-    .section-header h2 {
-        font-size: 1.3rem;
+    /* Tables - horizontal scroll */
+    .table-responsive {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
     
-    .section-header p {
-        padding-left: 0;
+    .table {
+        min-width: 600px !important;
+        width: auto !important;
     }
     
-    /* Better modal on mobile */
-    .modal-dialog {
-        margin: 10px;
+    /* Form elements full width */
+    .form-control, .form-select, .input-group {
+        width: 100% !important;
     }
     
-    /* Weather widget improvements */
-    .weather-widget {
-        margin-bottom: 15px;
+    /* Filter bar on dashboard - column layout */
+    #dashboard .card.bg-light .d-flex {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
     }
     
-    /* Fix filter controls on dashboard */
-    .main-content .d-flex.gap-3 {
-        flex-wrap: wrap;
-    }
-    
-    .main-content .vr {
-        display: none;
+    #dashboard .vr {
+        display: none !important;
     }
     
     #dashboardHealthFilter {
         width: 100% !important;
-        margin-top: 8px;
     }
+    
+    .btn-group {
+        width: 100% !important;
+    }
+    
+    .btn-group .btn {
+        flex: 1 !important;
+    }
+    
+    /* Weather widget */
+    .weather-widget {
+        margin-bottom: 15px !important;
+    }
+    
+    /* Modals on mobile */
+    .modal-dialog {
+        margin: 10px !important;
+        max-width: calc(100% - 20px) !important;
+    }
+    
+    /* Fix any white space issues */
+    body {
+        overflow-x: hidden !important;
+        background-color: #f8f9fa;
+    }
+    
+    .container-fluid {
+        padding: 0 !important;
+        overflow-x: hidden !important;
+    }
+    
+    /* Remove any transforms that might cause issues */
+    .sidebar:hover {
+        width: 100% !important;
+        transform: none !important;
+    }
+}
+
+/* Extra small phones */
+@media (max-width: 480px) {
+    .quick-action-btn {
+        min-width: calc(50% - 10px) !important;
+    }
+    
+    .sidebar .nav-link span {
+        font-size: 0.55rem !important;
+    }
+    
+    .sidebar .nav-link i {
+        font-size: 1.1rem !important;
+    }
+    
+    .stat-card h3 {
+        font-size: 1.5rem !important;
+    }
+    
+    .section-header h2 {
+        font-size: 1.2rem !important;
+    }
+}
+
+/* Ensure no element covers the main content */
+.sidebar,
+.main-content,
+.container-fluid {
+    overflow-x: hidden;
+}
+
+/* Fix any potential overlay issues */
+.sidebar + .main-content {
+    position: relative;
+}
+
+/* Ensure proper stacking context */
+.main-content {
+    position: relative;
+    z-index: 1;
+}
+
+.sidebar {
+    z-index: 1000;
 }
 
         /* Accessibility Improvements */
@@ -7000,7 +7125,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Add this function to ensure proper layout on mobile
 function ensureProperLayout() {
     setTimeout(function() {
         const mainContent = document.querySelector('.main-content');
@@ -7009,33 +7133,54 @@ function ensureProperLayout() {
         if (window.innerWidth <= 768) {
             // Mobile layout fixes
             if (mainContent) {
-                mainContent.style.paddingBottom = '75px';
+                mainContent.style.position = 'relative';
+                mainContent.style.zIndex = '1';
+                mainContent.style.paddingBottom = '80px';
                 mainContent.style.marginBottom = '0';
                 mainContent.style.width = '100%';
+                mainContent.style.left = '0';
+                mainContent.style.right = '0';
             }
             if (sidebar) {
                 sidebar.style.position = 'fixed';
                 sidebar.style.bottom = '0';
                 sidebar.style.top = 'auto';
+                sidebar.style.left = '0';
+                sidebar.style.right = '0';
+                sidebar.style.width = '100%';
             }
+            
+            // Force all columns to full width
+            document.querySelectorAll('.row [class*="col-"]').forEach(col => {
+                col.style.width = '100%';
+                col.style.maxWidth = '100%';
+                col.style.flex = '0 0 100%';
+            });
         } else {
             // Desktop layout fixes
             if (mainContent) {
                 mainContent.style.paddingBottom = '';
+                mainContent.style.position = '';
             }
             if (sidebar) {
                 sidebar.style.position = 'relative';
+                sidebar.style.width = 'var(--sidebar-width)';
             }
         }
         
-        // Force resize event to refresh any layout calculations
+        // Force resize event
         window.dispatchEvent(new Event('resize'));
         
-        // Scroll to top when changing sections
+        // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
         
-        // Fix any table scrolling issues
+        // Fix table scrolling
         fixTableScrolling();
+        
+        // Force a repaint
+        document.body.style.display = 'none';
+        document.body.offsetHeight;
+        document.body.style.display = '';
     }, 50);
 }
 
@@ -7046,6 +7191,58 @@ function fixTableScrolling() {
         container.style.webkitOverflowScrolling = 'touch';
     });
 }
+
+// Add this to ensure proper mobile layout after navigation
+function ensureMobileLayout() {
+    if (window.innerWidth <= 768) {
+        // Force recalculation
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.style.width = '100%';
+            mainContent.style.maxWidth = '100%';
+            mainContent.style.left = '0';
+            mainContent.style.right = '0';
+        }
+        
+        // Fix any absolute positioned elements
+        document.querySelectorAll('.content-section.active .row').forEach(row => {
+            row.style.display = 'flex';
+            row.style.flexDirection = 'column';
+        });
+        
+        // Ensure all columns are full width
+        document.querySelectorAll('.main-content [class*="col-"]').forEach(col => {
+            col.style.width = '100%';
+            col.style.maxWidth = '100%';
+            col.style.flex = '0 0 100%';
+            col.style.paddingLeft = '0';
+            col.style.paddingRight = '0';
+        });
+    }
+}
+
+// Call this in your navigation code
+function ensureProperLayout() {
+    setTimeout(function() {
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.style.opacity = '0.99';
+            setTimeout(function() {
+                mainContent.style.opacity = '1';
+            }, 10);
+        }
+        
+        window.dispatchEvent(new Event('resize'));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        fixTableScrolling();
+        ensureMobileLayout(); // Add this line
+    }, 50);
+}
+
+// Also call on window resize
+window.addEventListener('resize', function() {
+    setTimeout(ensureMobileLayout, 50);
+});
 
     // ==================== INITIALIZATION ====================
 
