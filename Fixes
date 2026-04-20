@@ -1,84 +1,897 @@
-Looking at your code, the health chart filter card/section can be improved by adding proper spacing and better visual hierarchy. Here's the specific section that needs updating (around line 430-450):
+<style>
+        :root {
+            --primary: #2c5530;
+            --secondary: #4a7c59;
+            --accent: #3a8a5f;
+            --accent-light: #4da675;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --light: #f8f9fa;
+            --dark: #1e2b1e;
+            --sidebar-width: 280px;
+            --transition: all 0.3s ease;
+            --info: #17a2b8;
+        }
 
-```html
-<!-- Replace this entire filter card section -->
-<div class="row mb-3">
-    <div class="col-md-6">
-        <div class="card bg-light">
-            <div class="card-body py-2">
-                <div class="d-flex align-items-center gap-3">
-                    <label class="form-label mb-0 fw-bold">Health Chart Filter:</label>
-                    <select class="form-select form-select-sm w-auto" id="dashboardHealthFilter">
-                        <option value="all">📊 All Projects (Aggregated)</option>
-                        <!-- Projects will be loaded dynamically -->
-                    </select>
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-secondary active" id="viewAggregatedBtn">
-                            <i class="bi bi-bar-chart"></i> Aggregated
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" id="viewComparisonBtn">
-                            <i class="bi bi-graph-up"></i> Compare
-                        </button>
-                    </div>
-                    <small class="text-muted" id="chartModeIndicator">Showing all projects combined</small>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-```
+        * {
+            box-sizing: border-box;
+        }
 
-Replace with this improved version:
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #2c3e50;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
 
-```html
-<!-- Improved Health Chart Filter Card -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-3">
-                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="filter-label">
-                            <i class="bi bi-funnel-fill text-primary me-1"></i>
-                            <span class="fw-semibold">Health Chart Filter:</span>
-                        </div>
-                        
-                        <div class="project-select-wrapper" style="min-width: 220px;">
-                            <select class="form-select form-select-sm border-primary-subtle" id="dashboardHealthFilter">
-                                <option value="all">📊 All Projects (Aggregated)</option>
-                                <!-- Projects will be loaded dynamically -->
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="view-mode-buttons">
-                            <div class="btn-group btn-group-sm shadow-sm" role="group">
-                                <button type="button" class="btn btn-outline-primary active" id="viewAggregatedBtn">
-                                    <i class="bi bi-bar-chart-steps"></i> Aggregated
-                                </button>
-                                <button type="button" class="btn btn-outline-primary" id="viewComparisonBtn">
-                                    <i class="bi bi-diagram-3"></i> Compare
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="mode-indicator">
-                            <span class="badge bg-primary-subtle text-primary px-3 py-2" id="chartModeIndicator">
-                                <i class="bi bi-bar-chart me-1"></i> Showing all projects combined
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-```
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 5px;
+            border-radius: 8px;
+            padding: 12px 15px;
+            transition: var(--transition);
+            font-weight: 500;
+        }
 
-For even better visual separation, add this CSS to your styles section:
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
 
-```css
+        .sidebar .nav-link i {
+            margin-right: 12px;
+            font-size: 1.2rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        .logo {
+            font-weight: 700;
+            padding: 20px 25px;
+            font-size: 1.4rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .logo i {
+            margin-right: 10px;
+            color: var(--accent-light);
+        }
+
+/* Main Content - CRITICAL FIX */
+.main-content {
+    flex: 1;
+    padding: 0 !important; /* Force remove all padding */
+    margin: 0 !important; /* Force remove all margins */
+    transition: var(--transition);
+    min-height: 100vh;
+    min-width: 0;
+    overflow-x: auto;
+    position: relative;
+    z-index: 1;
+}
+
+/* Remove gap between sidebar and content */
+.d-flex {
+    display: flex !important;
+    align-items: flex-start;
+    width: 100%;
+    gap: 0 !important; /* Force remove any gap */
+}
+
+/* Ensure no margin or padding creates space */
+.sidebar {
+    margin-right: 0;
+    padding-right: 0;
+}
+
+.main-content {
+    margin-left: 0;
+    padding-left: 0;
+}
+
+/* But keep internal card spacing */
+.main-content .card:first-child {
+    margin-top: 0;
+}
+
+/* Adjust column padding inside main-content */
+.main-content [class*="col-"] {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* First column in a row shouldn't have left padding */
+.main-content .row [class*="col-"]:first-child {
+    padding-left: 15px; /* Keep this for visual balance inside content */
+}
+
+/* Remove any default body margin that might affect layout */
+body {
+    margin: 0;
+    padding: 0;
+}
+
+/* Ensure container-fluid doesn't cause overflow */
+.container-fluid {
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Fix for flex layout */
+.d-flex {
+    display: flex !important;
+    align-items: flex-start;
+    width: 100%;
+}
+
+/* Sidebar fix for flex layout */
+.sidebar {
+    flex-shrink: 0;
+    width: var(--sidebar-width);
+    position: relative;
+    min-height: 100vh;
+    left: 0;
+    background: linear-gradient(to bottom, var(--primary), var(--secondary));
+    color: white;
+    box-shadow: 3px 0 15px rgba(0, 0, 0, 0.1);
+    margin: 0 !important; /* Remove any margin */
+    padding: 0 !important; /* Remove any padding */
+}
+
+/* Ensure container-fluid has no padding */
+.container-fluid {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Remove any margin/padding from the main container */
+.container-fluid > .d-flex {
+    margin: 0;
+    padding: 0;
+}
+
+/* Fix for row within main-content - ENSURE NO MARGINS */
+.main-content .row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100%;
+}
+
+/* Ensure all cards and content stay within bounds */
+.main-content .card,
+.main-content .col-md-*,
+.main-content .col-* {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Fix for the specific chart container that might be causing issues */
+.main-content .col-md-8,
+.main-content .col-md-4 {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* Mobile responsiveness fix */
+@media (max-width: 992px) {
+    .sidebar {
+        width: 70px;
+        overflow: hidden;
+    }
+    
+    .sidebar .logo span {
+        display: none;
+    }
+    
+    .sidebar .nav-link span {
+        display: none;
+    }
+    
+    .sidebar .nav-link i {
+        margin-right: 0;
+        font-size: 1.4rem;
+    }
+    
+    .sidebar:hover {
+        width: var(--sidebar-width);
+    }
+    
+    .sidebar:hover .logo span {
+        display: inline;
+    }
+    
+    .sidebar:hover .nav-link span {
+        display: inline;
+    }
+    
+    .sidebar:hover .nav-link i {
+        margin-right: 12px;
+    }
+    
+    .main-content {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .container-fluid > .d-flex {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: 70px;
+        min-height: 70px;
+        bottom: 0;
+        top: auto;
+        position: fixed;
+        z-index: 1000;
+    }
+    
+    .sidebar .logo {
+        display: none;
+    }
+    
+    .sidebar .nav {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0.5rem;
+    }
+    
+    .sidebar .nav-item {
+        flex-shrink: 0;
+    }
+    
+    .sidebar .nav-link {
+        padding: 0.5rem;
+        margin-bottom: 0;
+        margin-right: 5px;
+        border-radius: 5px;
+        text-align: center;
+        font-size: 0.8rem;
+    }
+    
+    .sidebar .nav-link i {
+        margin-right: 0;
+        display: block;
+        margin-bottom: 0.25rem;
+        font-size: 1.2rem;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        margin-bottom: 70px;
+        padding: 15px;
+        width: 100%;
+    }
+}
+
+/* Better table handling */
+.table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    margin-bottom: 0;
+    position: relative;
+}
+
+.table {
+    min-width: 800px;
+    width: 100%;
+    margin-bottom: 0;
+}
+
+/* Ensure no background creates visible gap */
+.container-fluid {
+    background-color: #f8f9fa; /* Match your body background */
+}
+
+.sidebar {
+    background: linear-gradient(to bottom, var(--primary), var(--secondary));
+}
+
+/* Specific table minimum widths */
+#projects-table { min-width: 1000px; }
+#maintenance-table { min-width: 900px; }
+#species-table { min-width: 700px; }
+#assessments-table { min-width: 600px; }
+
+        /* Card Styles */
+        .card {
+            margin-bottom: 25px;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: var(--transition);
+            width: 100%;
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 15px 20px;
+            font-weight: 600;
+            color: var(--primary);
+            border-radius: 12px 12px 0 0 !important;
+        }
+
+        .card-body {
+            overflow-x: auto;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .stat-card h3 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+
+        .stat-card .card-title {
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        /* Progress bar colors for health scores */
+        .progress-bar.bg-success { background-color: var(--success) !important; }
+        .progress-bar.bg-info { background-color: var(--info) !important; }
+        .progress-bar.bg-warning { background-color: var(--warning) !important; }
+        .progress-bar.bg-danger { background-color: var(--danger) !important; }
+        .progress-bar.bg-dark { background-color: var(--dark) !important; }
+
+        /* Table Styles - FIXED for horizontal scroll */
+        .table-responsive {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+        }
+
+        .table {
+            min-width: 800px;
+            width: 100%;
+            margin-bottom: 0;
+        }
+
+        .table th {
+            font-weight: 600;
+            color: var(--primary);
+            border-top: none;
+            white-space: nowrap;
+        }
+
+        .table td {
+            white-space: nowrap;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(58, 138, 95, 0.05);
+        }
+
+        /* Specific table minimum widths */
+        #projects-table { min-width: 1000px; }
+        #maintenance-table { min-width: 900px; }
+        #species-table { min-width: 700px; }
+        #assessments-table { min-width: 600px; }
+
+        /* Form Styles */
+        .form-control, .form-select {
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            transition: var(--transition);
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 0.25rem rgba(58, 138, 95, 0.25);
+        }
+
+        .btn {
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-light);
+            border-color: var(--accent-light);
+            transform: translateY(-2px);
+        }
+
+        /* Badge Styles */
+        .badge {
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        /* Chart Containers */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        /* Maintenance Items */
+        .maintenance-item {
+            border-left: 4px solid #6c757d;
+            padding-left: 15px;
+            margin-bottom: 15px;
+            transition: var(--transition);
+        }
+
+        .maintenance-item:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+        .maintenance-pending {
+            border-left-color: var(--warning);
+        }
+
+        .maintenance-completed {
+            border-left-color: var(--success);
+        }
+
+        .maintenance-overdue {
+            border-left-color: var(--danger);
+        }
+
+        .list-view, .calendar-view {
+            display: none;
+        }
+
+        .list-view.active, .calendar-view.active {
+            display: block;
+        }
+
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1100;
+        }
+
+        /* View Toggle */
+        .view-toggle {
+            margin-bottom: 20px;
+        }
+
+        /* Content Sections */
+        .content-section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+            width: 100%;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Risk Indicators */
+        .risk-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .risk-low {
+            background-color: var(--success);
+        }
+
+        .risk-medium {
+            background-color: var(--warning);
+        }
+
+        .risk-high {
+            background-color: var(--danger);
+        }
+
+        /* Map Styles */
+        .map-container {
+            height: 300px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        .location-coordinates {
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .map-preview {
+            height: 150px;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        /* For the modal map */
+        #projectMapModal .modal-dialog {
+            max-width: 900px;
+        }
+
+        #projectMapModal .map-container {
+            height: 500px;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        /* Ensure the map takes full container */
+        #modalProjectMap {
+            height: 100%;
+            width: 100%;
+            min-height: 500px;
+        }
+
+        /* New Features */
+        .progress-container {
+            margin: 20px 0;
+        }
+
+        .progress {
+            height: 10px;
+            border-radius: 5px;
+        }
+
+        .project-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .project-card:hover {
+            transform: scale(1.02);
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .quick-action-btn {
+            flex: 1;
+            min-width: 150px;
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            background: white;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .quick-action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .quick-action-btn i {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+
+        .weather-widget {
+            background: linear-gradient(135deg, #67b26f, #4ca2cd);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .weather-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .ecosystem-health-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .health-meter {
+            width: 100px;
+            height: 100px;
+            position: relative;
+        }
+
+        .health-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* Login Screen */
+        #login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s ease;
+        }
+
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-role-badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            margin-left: 8px;
+        }
+
+        /* Risk Matrix */
+        .risk-matrix {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2px;
+            margin: 15px 0;
+        }
+
+        .risk-cell {
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .risk-low { background-color: #d4edda; }
+        .risk-medium { background-color: #fff3cd; }
+        .risk-high { background-color: #f8d7da; }
+
+        /* Document List */
+        .document-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+
+        .document-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .document-icon {
+            font-size: 1.5rem;
+            margin-right: 15px;
+            color: var(--primary);
+        }
+
+        /* Forms */
+        form {
+            width: 100%;
+        }
+
+        /* Row fixes */
+        .row {
+            margin-left: 0;
+            margin-right: 0;
+            width: 100%;
+        }
+
+        [class*="col-"] {
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 992px) {
+            .sidebar {
+                width: 70px;
+                overflow: hidden;
+            }
+            
+            .sidebar .logo span {
+                display: none;
+            }
+            
+            .sidebar .nav-link span {
+                display: none;
+            }
+            
+            .sidebar .nav-link i {
+                margin-right: 0;
+                font-size: 1.4rem;
+            }
+            
+            .main-content {
+                margin-left: 70px;
+                width: calc(100% - 70px);
+            }
+            
+            .sidebar:hover {
+                width: var(--sidebar-width);
+            }
+            
+            .sidebar:hover .logo span {
+                display: inline;
+            }
+            
+            .sidebar:hover .nav-link span {
+                display: inline;
+            }
+            
+            .sidebar:hover .nav-link i {
+                margin-right: 12px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: 70px;
+                min-height: 70px;
+                bottom: 0;
+                top: auto;
+                padding: 0;
+            }
+            
+            .sidebar .logo {
+                display: none;
+            }
+            
+            .sidebar .nav {
+                flex-direction: row;
+                overflow-x: auto;
+                padding: 0.5rem;
+            }
+            
+            .sidebar .nav-item {
+                flex-shrink: 0;
+            }
+            
+            .sidebar .nav-link {
+                padding: 0.5rem;
+                margin-bottom: 0;
+                margin-right: 5px;
+                border-radius: 5px;
+                text-align: center;
+                font-size: 0.8rem;
+            }
+            
+            .sidebar .nav-link i {
+                margin-right: 0;
+                display: block;
+                margin-bottom: 0.25rem;
+                font-size: 1.2rem;
+            }
+            
+            .main-content {
+                margin-left: 0;
+                margin-bottom: 70px;
+                padding: 15px;
+                width: 100%;
+            }
+            
+            .stat-card h3 {
+                font-size: 1.8rem;
+            }
+            
+            .quick-actions {
+                flex-direction: column;
+            }
+        }
+
+        /* Accessibility Improvements */
+        .btn:focus, .form-control:focus, .form-select:focus {
+            box-shadow: 0 0 0 3px rgba(58, 138, 95, 0.5);
+        }
+        
+        .nav-link:focus {
+            outline: 2px solid var(--accent-light);
+            outline-offset: -2px;
+        }
+        
+        /* High contrast support */
+        @media (prefers-contrast: high) {
+            .sidebar {
+                background: var(--primary);
+            }
+            
+            .card {
+                border: 1px solid #ddd;
+            }
+        }
+        
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+                animation: none !important;
+            }
+        }
+
+        /* Dark Mode Support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #121212;
+                color: #e0e0e0;
+            }
+            
+            .card {
+                background-color: #1e1e1e;
+                color: #e0e0e0;
+            }
+            
+            .card-header {
+                background-color: #252525;
+                color: #e0e0e0;
+            }
+            
+            .table {
+                color: #e0e0e0;
+            }
+            
+            .form-control, .form-select {
+                background-color: #2d2d2d;
+                border-color: #444;
+                color: #e0e0e0;
+            }
+        }
+
 /* Improved filter card styling */
 .filter-label {
     background: #f8f9fa;
@@ -150,17 +963,4 @@ For even better visual separation, add this CSS to your styles section:
         flex: 1;
     }
 }
-```
-
-The key improvements made:
-
-1. Proper spacing - Added gap-3 and proper margins between elements
-2. Better visual hierarchy - Separated the filter into logical groups with backgrounds and borders
-3. Rounded corners - Made all elements have consistent pill/rounded styling
-4. Visual feedback - Added hover effects and better active states
-5. Responsive design - Elements stack properly on mobile
-6. Improved icons - Better icons for each control
-7. Card styling - Cleaner card with shadow for depth
-8. Status indicator - Made the mode indicator a proper badge with better styling
-
-The "showing all projects combined" text is now properly separated from the toggle buttons with spacing and has its own styled badge container.
+    </style>
