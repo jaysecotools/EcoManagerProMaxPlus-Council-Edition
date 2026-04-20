@@ -1,78 +1,116 @@
-You're absolutely right - the CSS is there but you're not seeing any difference because you also need to update the HTML structure of the filter card itself.
+Ah, I see! If you've already updated both the HTML and CSS and still don't see a difference, there might be a few issues. Let me help you debug:
 
-The CSS classes like .filter-label, .project-select-wrapper, .view-mode-buttons, and .mode-indicator are all new, but your HTML still has the old structure with different classes.
+Possible Issues:
 
-You need to replace the old filter card HTML (around line 430-450) with the new HTML structure I provided earlier.
+1. CSS Specificity - Your existing CSS might be overriding the new styles
 
-Here's what you need to do:
+The old card had bg-light class which might still be applying. Try making your CSS more specific or adding !important temporarily to test:
 
-1. Find this section in your HTML (it's in the Dashboard section, right after the quick-actions div):
+```css
+/* Make these more specific by adding the card class */
+.card .filter-label {
+    background: #f8f9fa;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+}
 
-```html
-<!-- Add this right after the quick-actions div and before the row with stat cards -->
-<div class="row mb-3">
-    <div class="col-md-6">
-        <div class="card bg-light">
-            <div class="card-body py-2">
-                <div class="d-flex align-items-center gap-3">
-                    <label class="form-label mb-0 fw-bold">Health Chart Filter:</label>
-                    <select class="form-select form-select-sm w-auto" id="dashboardHealthFilter">
-                        <option value="all">📊 All Projects (Aggregated)</option>
-                        <!-- Projects will be loaded dynamically -->
-                    </select>
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-secondary active" id="viewAggregatedBtn">
-                            <i class="bi bi-bar-chart"></i> Aggregated
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" id="viewComparisonBtn">
-                            <i class="bi bi-graph-up"></i> Compare
-                        </button>
-                    </div>
-                    <small class="text-muted" id="chartModeIndicator">Showing all projects combined</small>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+/* Or test with !important */
+.mode-indicator .badge {
+    border-radius: 20px !important;
+    font-weight: 500 !important;
+    font-size: 0.8rem !important;
+    background-color: #e8f5e9 !important;
+    color: #2e7d32 !important;
+}
 ```
 
-1. Replace it with this:
+2. Bootstrap Classes Conflict - Bootstrap might be overriding
+
+Your new HTML uses border-primary-subtle and bg-primary-subtle which are Bootstrap 5.3 classes, but they might not have proper styling. Try replacing them:
 
 ```html
-<!-- Improved Health Chart Filter Card -->
+<!-- Replace this -->
+<select class="form-select form-select-sm border-primary-subtle" id="dashboardHealthFilter">
+
+<!-- With this -->
+<select class="form-select form-select-sm" id="dashboardHealthFilter" style="border-color: var(--accent);">
+```
+
+And:
+
+```html
+<!-- Replace this -->
+<span class="badge bg-primary-subtle text-primary px-3 py-2" id="chartModeIndicator">
+
+<!-- With this -->
+<span class="badge px-3 py-2" id="chartModeIndicator" style="background-color: #e8f5e9; color: #2e7d32;">
+```
+
+3. Check if CSS is actually loading
+
+Open your browser's Developer Tools (F12), go to the "Elements" tab, and inspect the filter card elements. Check if:
+
+· The new CSS classes are showing up in the "Styles" panel
+· Any styles are crossed out (overridden)
+· The elements have the correct class names applied
+
+4. Quick Test - Add a border to see if CSS works
+
+Add this to your CSS temporarily to verify it's loading:
+
+```css
+/* Test CSS - should add a red border around the filter card */
+.filter-label {
+    border: 2px solid red !important;
+}
+```
+
+If you see a red border, the CSS is loading but the styling isn't what you expected. If you don't see a red border, the CSS isn't being applied at all.
+
+5. Browser Cache - Clear your cache
+
+Hard refresh the page:
+
+· Windows/Linux: Ctrl + Shift + R or Ctrl + F5
+· Mac: Cmd + Shift + R
+
+6. Complete working solution - Simplified version that definitely works
+
+If nothing else works, try this simplified HTML that doesn't rely on complex Bootstrap classes:
+
+```html
+<!-- Simplified working version -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card border-0 shadow-sm">
+        <div class="card" style="border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
             <div class="card-body p-3">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="filter-label">
-                            <i class="bi bi-funnel-fill text-primary me-1"></i>
-                            <span class="fw-semibold">Health Chart Filter:</span>
+                        <div style="background: #f8f9fa; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem;">
+                            <i class="bi bi-funnel-fill" style="color: var(--accent);"></i>
+                            <span class="fw-semibold ms-1">Filter:</span>
                         </div>
                         
-                        <div class="project-select-wrapper" style="min-width: 220px;">
-                            <select class="form-select form-select-sm border-primary-subtle" id="dashboardHealthFilter">
+                        <div>
+                            <select class="form-select form-select-sm" id="dashboardHealthFilter" style="border-radius: 20px; min-width: 200px;">
                                 <option value="all">📊 All Projects (Aggregated)</option>
-                                <!-- Projects will be loaded dynamically -->
                             </select>
                         </div>
                     </div>
                     
                     <div class="d-flex align-items-center gap-3">
-                        <div class="view-mode-buttons">
-                            <div class="btn-group btn-group-sm shadow-sm" role="group">
-                                <button type="button" class="btn btn-outline-primary active" id="viewAggregatedBtn">
-                                    <i class="bi bi-bar-chart-steps"></i> Aggregated
-                                </button>
-                                <button type="button" class="btn btn-outline-primary" id="viewComparisonBtn">
-                                    <i class="bi bi-diagram-3"></i> Compare
-                                </button>
-                            </div>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-primary active" id="viewAggregatedBtn" style="border-radius: 20px 0 0 20px;">
+                                <i class="bi bi-bar-chart-steps"></i> Aggregated
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="viewComparisonBtn" style="border-radius: 0 20px 20px 0;">
+                                <i class="bi bi-diagram-3"></i> Compare
+                            </button>
                         </div>
                         
-                        <div class="mode-indicator">
-                            <span class="badge bg-primary-subtle text-primary px-3 py-2" id="chartModeIndicator">
+                        <div>
+                            <span class="badge" id="chartModeIndicator" style="background-color: #e8f5e9; color: #2e7d32; padding: 8px 16px; border-radius: 20px;">
                                 <i class="bi bi-bar-chart me-1"></i> Showing all projects combined
                             </span>
                         </div>
@@ -84,10 +122,4 @@ Here's what you need to do:
 </div>
 ```
 
-Summary:
-
-· CSS alone won't change anything because the HTML doesn't use those new CSS classes
-· You need to replace the HTML structure to use the new classes like .filter-label, .project-select-wrapper, etc.
-· The CSS provides the styling, but the HTML provides the structure that uses those styles
-
-Once you replace the HTML, you'll see the improved layout with proper spacing and visual hierarchy!
+Can you try the simplified version above and let me know if you see a difference? This version uses inline styles instead of CSS classes, so we can rule out CSS loading issues.
