@@ -1,29 +1,117 @@
-Looking at your health chart filter section, I can see the issue - there's no gap between the buttons and the information text. Here's how to improve the layout:
+You're right! The issue is that the CSS is forcing no gaps at a higher level. Let me provide the CSS fixes you need:
 
-Improved HTML for the filter section:
+Add this CSS to your <style> section (around line 260, before the closing </style> tag):
 
-Replace this section in your code (around line 778-790):
+```css
+/* Fix for health chart filter gaps */
+.main-content .d-flex.gap-3 {
+    gap: 1rem !important;
+}
+
+.main-content .vr {
+    display: inline-block;
+    align-self: stretch;
+    width: 1px;
+    min-height: 1em;
+    background-color: currentColor;
+    opacity: 0.25;
+    margin: 0 0.25rem;
+}
+
+/* Ensure proper spacing between filter elements */
+#dashboardHealthFilter,
+.btn-group,
+#chartModeIndicator {
+    margin: 0;
+}
+
+.main-content .flex-wrap .btn-group {
+    margin: 0 0.25rem;
+}
+
+/* Add spacing specifically for the info badge */
+#chartModeIndicator .badge {
+    margin-left: 0.5rem;
+    padding: 0.5rem 1rem;
+}
+
+/* Alternative: Add margin to the info container */
+.main-content .flex-grow-1 {
+    margin-left: 0.5rem;
+}
+
+/* Ensure the info text has proper spacing */
+#chartModeIndicator {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .main-content .d-flex.gap-3 {
+        gap: 0.75rem !important;
+    }
+    
+    #chartModeIndicator {
+        white-space: normal;
+    }
+}
+```
+
+If that doesn't work, add this more specific override at the end of your CSS:
+
+```css
+/* Force gaps in health chart filter section - HIGHEST PRIORITY */
+.card.bg-light .d-flex.gap-3 {
+    gap: 1.5rem !important;
+}
+
+.card.bg-light .d-flex.gap-3 > * {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+/* Specific spacing between elements */
+.card.bg-light #dashboardHealthFilter {
+    margin-right: 0.5rem !important;
+}
+
+.card.bg-light .btn-group {
+    margin-left: 0.5rem !important;
+    margin-right: 0.5rem !important;
+}
+
+.card.bg-light .vr {
+    margin-left: 0.5rem !important;
+    margin-right: 0.5rem !important;
+}
+
+.card.bg-light .flex-grow-1 {
+    margin-left: 0.5rem !important;
+}
+```
+
+Alternative solution - modify the HTML slightly:
+
+If the CSS overrides still don't work, try this HTML modification with explicit margins:
 
 ```html
-<!-- Add this right after the quick-actions div and before the row with stat cards -->
 <div class="row mb-3">
     <div class="col-md-12">
         <div class="card bg-light border-0 shadow-sm">
             <div class="card-body py-3">
-                <div class="d-flex flex-wrap align-items-center gap-3">
-                    <div class="d-flex align-items-center">
+                <div class="d-flex flex-wrap align-items-center">
+                    <div class="d-flex align-items-center me-3">
                         <i class="bi bi-funnel-fill text-primary me-2"></i>
-                        <label class="form-label fw-semibold mb-0 me-2">Health Chart Filter:</label>
+                        <label class="form-label fw-semibold mb-0">Health Chart Filter:</label>
                     </div>
                     
-                    <select class="form-select form-select-sm w-auto" id="dashboardHealthFilter" style="min-width: 200px;">
+                    <select class="form-select form-select-sm w-auto me-3" id="dashboardHealthFilter" style="min-width: 200px;">
                         <option value="all">📊 All Projects (Aggregated)</option>
-                        <!-- Projects will be loaded dynamically -->
                     </select>
                     
-                    <div class="vr"></div>
-                    
-                    <div class="btn-group btn-group-sm" role="group">
+                    <div class="btn-group btn-group-sm me-3" role="group">
                         <button type="button" class="btn btn-outline-secondary active" id="viewAggregatedBtn">
                             <i class="bi bi-bar-chart"></i> Aggregated
                         </button>
@@ -31,50 +119,12 @@ Replace this section in your code (around line 778-790):
                             <i class="bi bi-graph-up"></i> Compare
                         </button>
                     </div>
-                    
-                    <div class="vr"></div>
                     
                     <div class="flex-grow-1">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-info-circle-fill text-info me-2"></i>
-                            <small class="text-muted" id="chartModeIndicator">
-                                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
-                                    <i class="bi bi-bar-chart me-1"></i> Showing all projects combined
-                                </span>
-                            </small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-```
-
-Alternative simpler version (if you prefer less visual elements):
-
-```html
-<!-- Simpler version with proper spacing -->
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="card bg-light">
-            <div class="card-body py-2">
-                <div class="d-flex flex-wrap align-items-center gap-3">
-                    <div class="fw-semibold">Health Chart Filter:</div>
-                    <select class="form-select form-select-sm w-auto" id="dashboardHealthFilter">
-                        <option value="all">📊 All Projects (Aggregated)</option>
-                    </select>
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-secondary active" id="viewAggregatedBtn">
-                            <i class="bi bi-bar-chart"></i> Aggregated
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" id="viewComparisonBtn">
-                            <i class="bi bi-graph-up"></i> Compare
-                        </button>
-                    </div>
-                    <div class="ms-auto">
                         <small class="text-muted" id="chartModeIndicator">
-                            <i class="bi bi-info-circle"></i> Showing all projects combined
+                            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
+                                <i class="bi bi-bar-chart me-1"></i> Showing all projects combined
+                            </span>
                         </small>
                     </div>
                 </div>
@@ -84,13 +134,6 @@ Alternative simpler version (if you prefer less visual elements):
 </div>
 ```
 
-Key improvements made:
+Notice I added me-3 (margin-right) classes to each element. This is the most reliable approach since it doesn't rely on CSS overrides that might be blocked by your existing layout CSS.
 
-1. Added proper spacing - Using gap-3 class creates consistent spacing between all elements
-2. Visual separators - Added vertical rules (<div class="vr"></div>) to visually separate different control groups
-3. Better visual hierarchy - The info text now has its own container with proper padding
-4. Responsive wrapping - Using flex-wrap ensures elements stack nicely on mobile
-5. Improved styling - The info text now appears in a badge/pill for better visibility
-6. Clear visual grouping - Each control group is visually distinct
-
-The main issue was that the info text was directly adjacent to the buttons without any margin/padding. Adding the gap-3 class and proper container structure creates the necessary breathing room between elements.
+The me-3 class applies margin-right: 1rem which will create the visible gaps you're looking for between the dropdown, buttons, and info text.
