@@ -1,58 +1,225 @@
-I can see the issue. The problem is with the Bootstrap grid structure. You have a row with g-0 (no gutters) that contains the sidebar and main content, but the main content has its own margin-left and width that conflicts with Bootstrap's column system.
+Absolutely! Here are the exact sections to replace:
 
-Here's the fix - replace your existing CSS and add a critical fix to the HTML structure:
+Step 1: Replace the CSS for .main-content and add new styles
 
-Fix 1: Update your CSS (replace the main-content section)
-
-Replace your .main-content CSS with:
+Find this section in your CSS (around line 80-100 in the style tag):
 
 ```css
-/* Main Content - CRITICAL FIX */
+/* Main Content - FIXED */
 .main-content {
     margin-left: var(--sidebar-width);
     padding: 30px;
     transition: var(--transition);
     min-height: 100vh;
-    width: auto; /* Changed from calc(100% - var(--sidebar-width)) */
-    flex: 1;
-    overflow-x: hidden;
+    width: calc(100% - var(--sidebar-width));
+    overflow-x: hidden; /* Changed from auto to hidden */
     position: relative;
     z-index: 1;
 }
 
-/* Fix for the container-fluid and row structure */
+/* Ensure container-fluid doesn't cause overflow */
 .container-fluid {
     padding: 0;
     overflow-x: hidden;
 }
 
-/* Ensure the row with sidebar and main content works properly */
-.container-fluid > .row {
-    display: flex;
-    flex-wrap: nowrap;
-    margin: 0;
+/* Fix for row within main-content */
+.main-content .row {
+    margin-left: 0;
+    margin-right: 0;
     width: 100%;
 }
 
-/* Sidebar needs to stay as is */
-.sidebar {
-    flex-shrink: 0;
-    width: var(--sidebar-width);
-    position: relative; /* Changed from fixed */
-    min-height: 100vh;
+/* Ensure all cards and content stay within bounds */
+.main-content .card,
+.main-content .col-md-*,
+.main-content .col-* {
+    width: 100%;
+    max-width: 100%;
 }
 
-/* Main content should take remaining space */
-.main-content {
-    flex: 1;
-    min-width: 0; /* Important for flex children */
-    overflow-x: auto;
+/* Fix for the specific chart container that might be causing issues */
+.main-content .col-md-8,
+.main-content .col-md-4 {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* Mobile responsiveness fix */
+@media (max-width: 992px) {
+    .main-content {
+        margin-left: 70px;
+        width: calc(100% - 70px);
+        padding: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 0;
+        margin-bottom: 70px;
+        width: 100%;
+        padding: 15px;
+    }
 }
 ```
 
-Fix 2: Update the HTML structure
+Replace it with this:
 
-Change the container-fluid div structure. Find this in your HTML:
+```css
+/* Main Content - CRITICAL FIX */
+.main-content {
+    flex: 1;
+    padding: 30px;
+    transition: var(--transition);
+    min-height: 100vh;
+    min-width: 0;
+    overflow-x: auto;
+    position: relative;
+    z-index: 1;
+}
+
+/* Ensure container-fluid doesn't cause overflow */
+.container-fluid {
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Fix for flex layout */
+.d-flex {
+    display: flex !important;
+    align-items: flex-start;
+    width: 100%;
+}
+
+/* Sidebar fix for flex layout */
+.sidebar {
+    flex-shrink: 0;
+    width: var(--sidebar-width);
+    position: relative;
+    min-height: 100vh;
+}
+
+/* Fix for row within main-content */
+.main-content .row {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+}
+
+/* Ensure all cards and content stay within bounds */
+.main-content .card,
+.main-content .col-md-*,
+.main-content .col-* {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Fix for the specific chart container that might be causing issues */
+.main-content .col-md-8,
+.main-content .col-md-4 {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* Mobile responsiveness fix */
+@media (max-width: 992px) {
+    .sidebar {
+        width: 70px;
+        overflow: hidden;
+    }
+    
+    .sidebar .logo span {
+        display: none;
+    }
+    
+    .sidebar .nav-link span {
+        display: none;
+    }
+    
+    .sidebar .nav-link i {
+        margin-right: 0;
+        font-size: 1.4rem;
+    }
+    
+    .sidebar:hover {
+        width: var(--sidebar-width);
+    }
+    
+    .sidebar:hover .logo span {
+        display: inline;
+    }
+    
+    .sidebar:hover .nav-link span {
+        display: inline;
+    }
+    
+    .sidebar:hover .nav-link i {
+        margin-right: 12px;
+    }
+    
+    .main-content {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .container-fluid > .d-flex {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: 70px;
+        min-height: 70px;
+        bottom: 0;
+        top: auto;
+        position: fixed;
+        z-index: 1000;
+    }
+    
+    .sidebar .logo {
+        display: none;
+    }
+    
+    .sidebar .nav {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0.5rem;
+    }
+    
+    .sidebar .nav-item {
+        flex-shrink: 0;
+    }
+    
+    .sidebar .nav-link {
+        padding: 0.5rem;
+        margin-bottom: 0;
+        margin-right: 5px;
+        border-radius: 5px;
+        text-align: center;
+        font-size: 0.8rem;
+    }
+    
+    .sidebar .nav-link i {
+        margin-right: 0;
+        display: block;
+        margin-bottom: 0.25rem;
+        font-size: 1.2rem;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        margin-bottom: 70px;
+        padding: 15px;
+        width: 100%;
+    }
+}
+```
+
+Step 2: Replace the HTML structure
+
+Find this exact HTML (around line 550-570):
 
 ```html
 <div class="container-fluid p-0">
@@ -61,75 +228,67 @@ Change the container-fluid div structure. Find this in your HTML:
         <div class="sidebar">
 ```
 
-And replace the entire container-fluid section with:
+Replace it with this:
 
 ```html
 <div class="container-fluid p-0">
-    <div class="d-flex"> <!-- Changed from row g-0 to d-flex -->
+    <div class="d-flex">
         <!-- Sidebar -->
         <div class="sidebar">
-            <div class="logo">
-                <i class="bi bi-tree-fill"></i>
-                <span>EcoManager Pro</span>
-            </div>
-            <div class="p-3">
-                <ul class="nav flex-column">
-                    <!-- ... sidebar content remains the same ... -->
-                </ul>
-            </div>
-        </div>
+```
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- ... all your content sections remain exactly the same ... -->
+Step 3: Find and close the d-flex div properly
+
+Find this line (near the end of the main content, around line 1850-1870):
+
+```html
+            </div>
         </div>
     </div>
 </div>
 ```
 
-Fix 3: Add this CSS to ensure proper flex behavior
+Replace it with this:
 
-Add this to your CSS:
-
-```css
-/* Critical flex fix */
-body {
-    overflow-x: hidden;
-}
-
-.d-flex {
-    display: flex !important;
-    align-items: flex-start;
-    width: 100%;
-}
-
-/* Ensure sidebar doesn't break on mobile */
-@media (max-width: 768px) {
-    .container-fluid > .d-flex {
-        flex-direction: column;
-    }
-    
-    .sidebar {
-        width: 100%;
-        position: relative;
-        min-height: auto;
-    }
-    
-    .main-content {
-        margin-left: 0 !important;
-        width: 100% !important;
-    }
-}
+```html
+            </div>
+        </div>
+    </div>
+</div>
 ```
 
-Why this works:
+(Note: The closing tags are the same, just make sure you have the correct structure)
 
-The issue was that you were mixing Bootstrap's grid system (row and col classes) with custom CSS positioning. The sidebar was using position: fixed which takes it out of the document flow, while the main content was trying to calculate its width based on CSS variables.
+Step 4: Add this JavaScript fix at the very end of your script
 
-The fix:
+Find this line near the end of your JavaScript (around line 4570):
 
-1. Changes the sidebar from position: fixed to position: relative (but keeps it visually in place using flexbox)
-2. Uses flexbox instead of Bootstrap's grid for the main layout
-3. Lets the main content naturally take the remaining space with flex: 1
+```javascript
+    // Start the app when the DOM is loaded
+    document.addEventListener('DOMContentLoaded', initApp);
+```
 
-This approach is more reliable and won't have the overlap issues you were experiencing.
+Add this code right BEFORE that line:
+
+```javascript
+    // Force layout recalculation on window load
+    window.addEventListener('load', function() {
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.style.opacity = '0.99';
+            setTimeout(function() {
+                mainContent.style.opacity = '1';
+            }, 10);
+        }
+        window.dispatchEvent(new Event('resize'));
+    });
+```
+
+Summary of changes:
+
+1. CSS: Changed the .main-content from using margin-left and width calculations to using flex: 1 for automatic width
+2. CSS: Changed .sidebar from position: fixed to position: relative in desktop view
+3. HTML: Changed the outer wrapper from row g-0 to d-flex for proper flexbox layout
+4. Added: New mobile responsive fixes for the flex layout
+
+These changes will make the sidebar and main content work as a proper flexbox layout, eliminating the overlap issue. The main content will now correctly sit next to the sidebar without being covered.
