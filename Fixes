@@ -1,134 +1,133 @@
-Ah, now I understand! The red border test shows the CSS is working, but you want to improve the entire cluster (the label, dropdown, toggle buttons, and status indicator) - not just one element.
+Looking at your code, I can see the issue with demo weather data not loading. The problem is in the weatherConfig object at the top of your script. You have:
 
-Looking at your code, the issue is that the new HTML structure I gave you has different class names than what's actually in your page. The red border appeared on .filter-label, but that element might not exist in your actual HTML.
+```javascript
+const weatherConfig = {
+    apiKey: 'YOUR_API_KEY_HERE', // <-- PASTE YOUR API KEY HERE
+    baseUrl: 'https://api.weatherapi.com/v1',
+    useProxy: false,
+    fallbackToExample: true
+};
+```
 
-Let me see what your actual HTML looks like. Can you copy and paste the exact filter card HTML from your current page? It should be around line 430-450 in the Dashboard section.
+But the API key is still set to the placeholder 'YOUR_API_KEY_HERE'. Additionally, your weather functions are checking weatherConfig.apiKey and comparing it to 'YOUR_API_KEY_HERE', which will fail.
 
-Based on your original code, your current HTML likely still has the old structure with classes like bg-light, d-flex align-items-center gap-3, etc.
+Here's the fix - update the getWeatherByCoords function to properly check for demo mode:
 
-Here's a fix that will work with your EXISTING HTML structure - just add these CSS rules to style what you already have:
-
-```css
-/* Improve the existing filter card styling - add this to your CSS */
-
-/* Style the entire filter card better */
-.card.bg-light {
-    background: white !important;
-    border: 1px solid #e0e0e0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-/* Improve the label */
-.card.bg-light .form-label.fw-bold {
-    background: #f0f7f0;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    color: var(--primary);
-}
-
-/* Improve the dropdown */
-.card.bg-light .form-select {
-    border-radius: 20px;
-    border-color: var(--accent);
-    background-color: #fff;
-    min-width: 200px;
-}
-
-.card.bg-light .form-select:hover {
-    border-color: var(--accent);
-    box-shadow: 0 2px 6px rgba(58, 138, 95, 0.15);
-}
-
-/* Improve the toggle buttons */
-.card.bg-light .btn-group .btn {
-    padding: 6px 18px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-
-.card.bg-light .btn-group .btn-outline-secondary {
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
-.card.bg-light .btn-group .btn-outline-secondary.active {
-    background-color: var(--accent);
-    border-color: var(--accent);
-    color: white;
-}
-
-.card.bg-light .btn-group .btn-outline-secondary:hover:not(.active) {
-    background-color: rgba(58, 138, 95, 0.1);
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
-/* Style the rounded corners for the button group */
-.card.bg-light .btn-group .btn:first-child {
-    border-radius: 20px 0 0 20px;
-}
-
-.card.bg-light .btn-group .btn:last-child {
-    border-radius: 0 20px 20px 0;
-}
-
-/* Improve the status indicator text */
-#chartModeIndicator {
-    background: #e8f5e9;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    color: #2e7d32;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-#chartModeIndicator i {
-    margin-right: 6px;
-}
-
-/* Better spacing for the entire filter section */
-.card.bg-light .card-body.py-2 {
-    padding: 12px 20px !important;
-}
-
-/* Make the whole filter row responsive */
-@media (max-width: 768px) {
-    .card.bg-light .d-flex.align-items-center {
-        flex-direction: column;
-        align-items: stretch !important;
-        gap: 12px !important;
-    }
+```javascript
+async function getWeatherByCoords(lat, lon) {
+    // Check if we should use demo data
+    const useDemoData = localStorage.getItem('useDemoData') !== 'false';
+    const savedApiKey = localStorage.getItem('weatherApiKey');
+    const hasValidApiKey = savedApiKey && savedApiKey !== '' && savedApiKey !== 'YOUR_API_KEY_HERE';
     
-    .card.bg-light .form-select {
-        width: 100% !important;
-    }
-    
-    .btn-group {
-        width: 100%;
-    }
-    
-    .btn-group .btn {
-        flex: 1;
-    }
-    
-    #chartModeIndicator {
-        text-align: center;
-        white-space: normal;
+    if (!useDemoData && hasValidApiKey) {
+        try {
+            // Use the saved API key from localStorage
+            const url = `https://api.weatherapi.com/v1/current.json?key=${savedApiKey}&q=${lat},${lon}&aqi=yes`;
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Also fetch forecast
+            const forecastUrl = `https://api.weatherapi.com/v1/forecast.json?key=${savedApiKey}&q=${lat},${lon}&days=7&aqi=no`;
+            const forecastResponse = await fetch(forecastUrl);
+            
+            if (forecastResponse.ok) {
+                const forecastData = await forecastResponse.json();
+                data.forecast = forecastData.forecast;
+            }
+            
+            localStorage.setItem('lastWeatherData', JSON.stringify(data));
+            localStorage.setItem('lastWeatherUpdate', new Date().toISOString());
+            
+            return data;
+        } catch (error) {
+            console.error('Weather API error:', error);
+            showToast('Weather API', 'API call failed. Using demo data.', 'warning');
+            return getDemoWeatherData(lat, lon);
+        }
+    } else {
+        // Use demo data
+        if (!useDemoData && !hasValidApiKey) {
+            showToast('Weather API', 'Please enter a valid API key in Weather API Settings to see live data.', 'info');
+        }
+        return getDemoWeatherData(lat, lon);
     }
 }
 ```
 
-This CSS targets your existing HTML structure (with .card.bg-light, .form-label.fw-bold, .btn-group, etc.) so you don't need to change your HTML at all.
+Also, update the initApiKeyManagement function to ensure demo mode is properly enabled by default:
 
-The improvements include:
+```javascript
+function initApiKeyManagement() {
+    const savedKey = localStorage.getItem('weatherApiKey');
+    // Default to demo mode if no preference is set
+    let useDemo = localStorage.getItem('useDemoData');
+    if (useDemo === null) {
+        useDemo = 'true';
+        localStorage.setItem('useDemoData', 'true');
+    }
+    
+    // Update the checkbox state
+    const useDemoCheckbox = document.getElementById('useDemoData');
+    if (useDemoCheckbox) {
+        useDemoCheckbox.checked = useDemo === 'true';
+    }
+    
+    if (savedKey && useDemo !== 'true') {
+        weatherConfig.apiKey = savedKey;
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        if (apiKeyInput) apiKeyInput.value = '••••••••••••••••';
+    } else {
+        weatherConfig.apiKey = '';
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        if (apiKeyInput) apiKeyInput.value = '';
+    }
+    
+    // ... rest of the function remains the same
+}
+```
 
-· Better visual hierarchy with background colors
-· Rounded corners on all elements
-· Proper spacing between elements
-· Hover effects on dropdown and buttons
-· Responsive design for mobile
-· The status indicator now has a nice pill background
+And rename getExampleWeatherData to getDemoWeatherData for clarity:
 
-Try adding just this CSS (without changing your HTML) and see if that gives you the improved look you want!
+```javascript
+function getDemoWeatherData(lat, lon) {
+    return {
+        current: {
+            temp_c: 18,
+            condition: {
+                text: "Partly Cloudy",
+                code: 1003
+            },
+            humidity: 65,
+            wind_kph: 12,
+            pressure_mb: 1015,
+            uv: 6,
+            vis_km: 10,
+            air_quality: {
+                'us-epa-index': 2
+            }
+        },
+        location: {
+            name: getLocationNameFromCoords(lat, lon),
+            region: "Demo Region",
+            country: "Demo"
+        },
+        forecast: {
+            forecastday: generateDemoForecast()
+        }
+    };
+}
+```
+
+Summary of changes needed:
+
+1. The "Use demo data" checkbox should be checked by default
+2. The getWeatherByCoords function needs to properly check localStorage for the API key and demo mode setting
+3. Don't rely on the hardcoded weatherConfig.apiKey value - use the saved key from localStorage
+
+The issue is that the demo mode checkbox is checked, but the weather functions aren't properly recognizing that and are still trying to use an invalid API key. The fix above ensures demo data loads correctly when the checkbox is checked.
