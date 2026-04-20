@@ -1,0 +1,380 @@
+{
+  "projects": [
+    {
+      "id": "proj_001",
+      "name": "Burnie Coastal Dune Restoration",
+      "code": "BCD-2024",
+      "status": "active",
+      "progress": 75,
+      "startDate": "2024-09-15",
+      "endDate": "2026-12-20",
+      "description": "Restoration of coastal dune systems affected by storm surges and invasive marram grass. Includes native dune replanting and public access management.",
+      "latitude": -41.0521,
+      "longitude": 145.9061,
+      "budget": 220000,
+      "fte": 2.2,
+      "fundingSource": "state",
+      "approvalStatus": "approved",
+      "riskAssessment": "Moderate. Erosion risk from winter storms; community engagement required.",
+      "documents": [
+        {
+          "id": "doc_101",
+          "fileName": "Burnie_Coastal_Plan.pdf",
+          "size": 2450000,
+          "type": "application/pdf",
+          "uploadedAt": "2024-08-10T10:00:00Z"
+        }
+      ],
+      "updates": [
+        {
+          "date": "2026-03-20",
+          "message": "Completed planting of 5,000 native Spinifex seedlings."
+        }
+      ]
+    },
+    {
+      "id": "proj_002",
+      "name": "Tasmanian Wetlands Conservation",
+      "code": "TWC-2025",
+      "status": "planning",
+      "progress": 15,
+      "startDate": "2025-11-01",
+      "endDate": "2027-06-30",
+      "description": "Preservation of high-conservation-value wetlands, including hydrological restoration and threatened flora protection.",
+      "latitude": -42.8821,
+      "longitude": 147.3272,
+      "budget": 450000,
+      "fte": 3.0,
+      "fundingSource": "federal",
+      "approvalStatus": "pending_review",
+      "riskAssessment": "Low. Delays expected in securing landowner agreements.",
+      "documents": [],
+      "updates": []
+    },
+    {
+      "id": "proj_003",
+      "name": "City of Burnie Urban Greening",
+      "code": "BUG-2026",
+      "status": "active",
+      "progress": 45,
+      "startDate": "2026-01-20",
+      "endDate": "2027-12-15",
+      "description": "Increasing urban canopy cover through street tree planting, pocket parks, and community stewardship.",
+      "latitude": -41.0628,
+      "longitude": 145.8899,
+      "budget": 185000,
+      "fte": 1.5,
+      "fundingSource": "council",
+      "approvalStatus": "approved",
+      "riskAssessment": "Medium. Challenges with maintenance in high-traffic areas.",
+      "documents": [
+        {
+          "id": "doc_202",
+          "fileName": "Species_Selection_List.pdf",
+          "size": 980000,
+          "type": "application/pdf",
+          "uploadedAt": "2025-12-05T14:30:00Z"
+        }
+      ],
+      "updates": [
+        {
+          "date": "2026-04-15",
+          "message": "Community planting day planted 300 trees along Wilson Street."
+        }
+      ]
+    },
+    {
+      "id": "proj_004",
+      "name": "Emu River Riparian Recovery",
+      "code": "ERR-2024",
+      "status": "completed",
+      "progress": 100,
+      "startDate": "2024-03-10",
+      "endDate": "2025-11-05",
+      "description": "Fencing and revegetation along 3.5km of the Emu River to improve water quality and habitat connectivity.",
+      "latitude": -41.0745,
+      "longitude": 145.8482,
+      "budget": 120000,
+      "fte": 1.0,
+      "fundingSource": "state",
+      "approvalStatus": "approved",
+      "riskAssessment": "Low. Project completed successfully on schedule.",
+      "documents": [
+        {
+          "id": "doc_303",
+          "fileName": "Emu_River_Final_Report.pdf",
+          "size": 3120000,
+          "type": "application/pdf",
+          "uploadedAt": "2025-11-20T09:15:00Z"
+        }
+      ],
+      "updates": [
+        {
+          "date": "2025-11-05",
+          "message": "Final weed control completed; post-planting survival rate >85%."
+        }
+      ]
+    },
+    {
+      "id": "proj_005",
+      "name": "Central Highlands Fire Recovery",
+      "code": "CHFR-2025",
+      "status": "on-hold",
+      "progress": 30,
+      "startDate": "2025-05-15",
+      "endDate": "2027-01-31",
+      "description": "Post-fire restoration of alpine woodlands, including erosion control and threatened species monitoring.",
+      "latitude": -42.0583,
+      "longitude": 146.5471,
+      "budget": 610000,
+      "fte": 2.8,
+      "fundingSource": "federal",
+      "approvalStatus": "approved",
+      "riskAssessment": "High. Weather-dependent operations and difficult terrain.",
+      "documents": [],
+      "updates": [
+        {
+          "date": "2026-02-28",
+          "message": "Project paused due to unseasonal heavy rainfall. Resuming in spring."
+        }
+      ]
+    }
+  ],
+  "assessments": [
+    {
+      "id": "assess_001",
+      "date": "2026-02-18",
+      "assessor": "Emma Thompson",
+      "health": "good",
+      "projectId": "proj_001",
+      "description": "Dune vegetation showing strong recovery. Native cover increased to 65%.",
+      "scoringData": {
+        "vegetationCover": 68,
+        "nativeSpecies": 72,
+        "weedCover": 12,
+        "soilStability": 4,
+        "speciesRichness": 14
+      },
+      "healthScore": {
+        "total": 74,
+        "rating": "good"
+      }
+    },
+    {
+      "id": "assess_002",
+      "date": "2026-01-10",
+      "assessor": "James Chen",
+      "health": "fair",
+      "projectId": "proj_001",
+      "description": "Weed regrowth noted in southern section after winter storms.",
+      "scoringData": {
+        "vegetationCover": 55,
+        "nativeSpecies": 58,
+        "weedCover": 22,
+        "soilStability": 3,
+        "speciesRichness": 11
+      },
+      "healthScore": {
+        "total": 62,
+        "rating": "fair"
+      }
+    },
+    {
+      "id": "assess_003",
+      "date": "2026-04-01",
+      "assessor": "Emma Thompson",
+      "health": "excellent",
+      "projectId": "proj_003",
+      "description": "New tree plantings thriving; community engagement very high.",
+      "scoringData": {
+        "vegetationCover": 85,
+        "nativeSpecies": 88,
+        "weedCover": 5,
+        "soilStability": 5,
+        "speciesRichness": 18
+      },
+      "healthScore": {
+        "total": 88,
+        "rating": "excellent"
+      }
+    },
+    {
+      "id": "assess_004",
+      "date": "2025-10-22",
+      "assessor": "Michael Brown",
+      "health": "poor",
+      "projectId": "proj_005",
+      "description": "Erosion evident on steep slopes; low regrowth of key species.",
+      "scoringData": {
+        "vegetationCover": 28,
+        "nativeSpecies": 25,
+        "weedCover": 45,
+        "soilStability": 2,
+        "speciesRichness": 6
+      },
+      "healthScore": {
+        "total": 36,
+        "rating": "poor"
+      }
+    },
+    {
+      "id": "assess_005",
+      "date": "2025-08-12",
+      "assessor": "Sarah Lee",
+      "health": "good",
+      "projectId": "proj_004",
+      "description": "Riparian zone well established; native fish species returning.",
+      "scoringData": {
+        "vegetationCover": 78,
+        "nativeSpecies": 82,
+        "weedCover": 8,
+        "soilStability": 4,
+        "speciesRichness": 16
+      },
+      "healthScore": {
+        "total": 81,
+        "rating": "excellent"
+      }
+    },
+    {
+      "id": "assess_006",
+      "date": "2026-03-25",
+      "assessor": "David Wilson",
+      "health": "degraded",
+      "projectId": "proj_002",
+      "description": "Baseline assessment: High water levels but significant weed presence.",
+      "scoringData": {
+        "vegetationCover": 18,
+        "nativeSpecies": 22,
+        "weedCover": 55,
+        "soilStability": 2,
+        "speciesRichness": 4
+      },
+      "healthScore": {
+        "total": 29,
+        "rating": "degraded"
+      }
+    },
+    {
+      "id": "assess_007",
+      "date": "2025-12-05",
+      "assessor": "Emma Thompson",
+      "health": "good",
+      "projectId": "proj_003",
+      "description": "Street trees showing good establishment; minor vandalism reported.",
+      "scoringData": {
+        "vegetationCover": 72,
+        "nativeSpecies": 75,
+        "weedCover": 10,
+        "soilStability": 4,
+        "speciesRichness": 13
+      },
+      "healthScore": {
+        "total": 76,
+        "rating": "good"
+      }
+    }
+  ],
+  "species": [
+    {
+      "id": "sp_001",
+      "name": "Coastal Wattle",
+      "scientificName": "Acacia longifolia subsp. sophorae",
+      "type": "plant",
+      "status": "native",
+      "projectId": "proj_001",
+      "description": "Key dune stabilizer; high abundance in restored areas."
+    },
+    {
+      "id": "sp_002",
+      "name": "Marram Grass",
+      "scientificName": "Ammophila arenaria",
+      "type": "plant",
+      "status": "weed",
+      "projectId": "proj_001",
+      "description": "Invasive grass targeted for removal in dune restoration."
+    },
+    {
+      "id": "sp_003",
+      "name": "Growling Grass Frog",
+      "scientificName": "Litoria raniformis",
+      "type": "animal",
+      "status": "native",
+      "projectId": "proj_002",
+      "description": "Threatened species; wetland health indicator."
+    },
+    {
+      "id": "sp_004",
+      "name": "Tasmanian Blue Gum",
+      "scientificName": "Eucalyptus globulus",
+      "type": "plant",
+      "status": "native",
+      "projectId": "proj_003",
+      "description": "Priority species for urban canopy program."
+    },
+    {
+      "id": "sp_005",
+      "name": "Swift Parrot",
+      "scientificName": "Lathamus discolor",
+      "type": "bird",
+      "status": "native",
+      "projectId": "proj_005",
+      "description": "Critically endangered; post-fire habitat assessment required."
+    }
+  ],
+  "maintenance": [
+    {
+      "id": "maint_001",
+      "activity": "Marram Grass Spraying",
+      "type": "weed-control",
+      "date": "2026-04-25",
+      "priority": "high",
+      "status": "scheduled",
+      "projectId": "proj_001",
+      "description": "Spot-spraying of regrowth in southern dune zone."
+    },
+    {
+      "id": "maint_002",
+      "activity": "Fence Line Inspection",
+      "type": "monitoring",
+      "date": "2026-05-10",
+      "priority": "medium",
+      "status": "scheduled",
+      "projectId": "proj_002",
+      "description": "Check exclusion fencing around sensitive wetland areas."
+    },
+    {
+      "id": "maint_003",
+      "activity": "Young Tree Watering",
+      "type": "revegetation",
+      "date": "2026-04-22",
+      "priority": "high",
+      "status": "scheduled",
+      "projectId": "proj_003",
+      "description": "Deep watering of recently planted street trees."
+    },
+    {
+      "id": "maint_004",
+      "activity": "Post-planting Audit",
+      "type": "survey",
+      "date": "2025-10-15",
+      "priority": "medium",
+      "status": "completed",
+      "projectId": "proj_004",
+      "description": "Final survival audit completed successfully."
+    },
+    {
+      "id": "maint_005",
+      "activity": "Erosion Control Installation",
+      "type": "erosion-control",
+      "date": "2026-03-18",
+      "priority": "high",
+      "status": "overdue",
+      "projectId": "proj_005",
+      "description": "Install coir logs and sediment fencing on burn scar."
+    }
+  ],
+  "exportedAt": "2026-04-20T09:30:00Z",
+  "exportedBy": "System",
+  "app": "EcoManager Pro"
+}
