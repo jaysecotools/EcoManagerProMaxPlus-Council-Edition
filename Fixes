@@ -1,28 +1,56 @@
-I need help refactoring and cleaning up my EcoManager Pro web application code. The current code has significant issues:
+// ==================== REPLACE YOUR ENTIRE initApp FUNCTION WITH THIS ====================
+function initApp() {
+    // Make functions globally available FIRST (critical for local files)
+    window.navigateTo = navigateTo;
+    window.deleteProject = deleteProject;
+    window.deleteAssessment = deleteAssessment;
+    window.deleteSpecies = deleteSpecies;
+    window.deleteMaintenance = deleteMaintenance;
+    window.completeMaintenance = completeMaintenance;
+    window.showProjectInModal = showProjectInModal;
+    window.userOnboarding = userOnboarding;
+    window.formBuilder = formBuilder;
+    window.login = login;
+    window.logout = logout;
+    
+    // Initialize data and UI
+    db.init();
+    setupFormHandlers();
+    setupViewToggle();
+    loadDashboard();
+    loadProjects();
+    loadAssessments();
+    loadSpecies();
+    loadMaintenance();
+    loadDataSummary();
+    initApiKeyManagement();
+    
+    // FIXED: Use event delegation instead of direct binding
+    // This works for local files because the parent element exists
+    document.querySelector('.sidebar').addEventListener('click', function(e) {
+        const link = e.target.closest('.nav-link[data-target]');
+        if (link) {
+            e.preventDefault();
+            navigateTo(link.getAttribute('data-target'));
+        }
+    });
+    
+    document.querySelector('.main-content').addEventListener('click', function(e) {
+        const quickBtn = e.target.closest('.quick-action-btn');
+        if (quickBtn) {
+            navigateTo(quickBtn.getAttribute('data-target'));
+        }
+    });
+    
+    window.addEventListener('resize', fixMobileLayout);
+    fixMobileLayout();
+    AOS.init({ duration: 800, once: true });
+}
 
-**Problems I've identified:**
-1. Multiple duplicate functions (e.g., ensureProperLayout appears 3+ times, fixLayout appears twice, fixTableScrolling appears multiple times)
-2. Duplicate navigation handlers (sidebar navigation AND quick action handlers with similar but not identical code)
-3. Redundant CSS rules that conflict with each other
-4. Inconsistent function definitions scattered throughout the file
-5. Mobile layout issues caused by conflicting CSS selectors
-
-**What I need:**
-Please provide a clean, refactored version of my code that:
-
-1. **Removes all duplicate functions** - each function should be defined once
-2. **Consolidates navigation logic** into a single, clean function that handles both sidebar clicks and quick action buttons
-3. **Cleans up CSS** - remove conflicting/duplicate rules, organize logically (base styles → desktop → tablet → mobile)
-4. **Organizes JavaScript** into logical sections with clear comments:
-   - App initialization
-   - Data layer (db functions)
-   - UI rendering functions
-   - Event handlers
-   - Utility functions
-   - Weather functions
-   - Map functions
-5. **Fixes the mobile layout issue** where Recent Activities and Upcoming Maintenance appear on all pages (they should only show on Dashboard)
-
-**I will provide my complete HTML/CSS/JS file in the next message.**
-
-Please analyze the code and provide a clean, working refactored version with all duplicates removed and the mobile layout issue fixed.
+// ==================== REPLACE YOUR EXISTING DOM CONTENT LOADED WITH THIS ====================
+// This ensures the app starts correctly for both web servers and local files
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp(); // DOM already ready
+}
