@@ -352,6 +352,28 @@
     </style>
 </head>
 <body>
+<script>
+    // Fix for local file protocol
+    if (window.location.protocol === 'file:') {
+        document.addEventListener('DOMContentLoaded', function() {
+            // Re-attach sidebar click handlers with delegation
+            document.querySelector('.sidebar')?.addEventListener('click', function(e) {
+                const link = e.target.closest('.nav-link[data-target]');
+                if (link && link.getAttribute('data-target')) {
+                    e.preventDefault();
+                    const target = link.getAttribute('data-target');
+                    if (window.navigateTo) window.navigateTo(target);
+                }
+            });
+            
+            // Ensure Bootstrap JS is loaded
+            if (typeof bootstrap === 'undefined') {
+                console.warn('Bootstrap not loaded - check CDN connection');
+            }
+        });
+    }
+</script>
+
     <div id="login-screen">
         <div class="login-container">
             <div class="text-center mb-4">
