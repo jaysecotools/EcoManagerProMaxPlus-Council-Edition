@@ -1,28 +1,182 @@
-This is a great question. After a thorough review of your code, I found the root cause and a few other related issues.
+Here's exactly what you need to replace:
 
-The main reason the buttons stop working after login is that your event listeners are trying to attach to DOM elements before those elements exist in the page.
+Find and Replace These Three Functions
 
-The Main Problem: Event Listener Attachment Timing
+1. Replace the existing setupFormHandlers function
 
-Your initApp() function runs when the page loads (DOMContentLoaded). Inside initApp(), you call setupFormHandlers(), which contains lines like this:
+Find this code (starts around line 1250-1300 in your file):
 
 ```javascript
-document.getElementById('projectForm')?.addEventListener('submit', function(e) { ... });
+function setupFormHandlers() {
+    document.getElementById('projectForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const project = {
+            id: document.getElementById('editProjectId').value || undefined,
+            name: document.getElementById('projectName').value,
+            code: document.getElementById('projectCode').value,
+            startDate: document.getElementById('projectStartDate').value,
+            status: document.getElementById('projectStatus').value,
+            progress: parseInt(document.getElementById('projectProgress').value) || 0,
+            description: document.getElementById('projectDescription').value,
+            latitude: document.getElementById('projectLatitude').value ? parseFloat(document.getElementById('projectLatitude').value) : null,
+            longitude: document.getElementById('projectLongitude').value ? parseFloat(document.getElementById('projectLongitude').value) : null,
+            budget: document.getElementById('projectBudget').value ? parseInt(document.getElementById('projectBudget').value) : null,
+            fte: document.getElementById('projectFTE').value ? parseFloat(document.getElementById('projectFTE').value) : null,
+            fundingSource: document.getElementById('fundingSource').value,
+            riskAssessment: document.getElementById('riskAssessment').value,
+            riskLevel: document.getElementById('riskLevel').value,
+            approvalStatus: document.getElementById('approvalStatus').value,
+            approvalComments: document.getElementById('approvalComments').value
+        };
+        if (!validateProjectData(project)) return;
+        db.saveProject(project);
+        this.reset();
+        document.getElementById('editProjectId').value = '';
+        document.getElementById('projectProgress').value = 0;
+        document.getElementById('progressValue').textContent = '0%';
+        clearProjectMarker();
+        loadProjects();
+        showToast('Success', project.id ? 'Project updated' : 'Project created', 'success');
+    });
+    
+    document.getElementById('assessmentForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const scoringData = {
+            vegetationCover: parseInt(document.getElementById('vegetationCover').value) || 0,
+            nativeSpecies: parseInt(document.getElementById('nativeSpecies').value) || 0,
+            weedCover: parseInt(document.getElementById('weedCover').value) || 0,
+            soilStability: parseInt(document.getElementById('soilStability').value) || 3,
+            speciesRichness: parseInt(document.getElementById('speciesRichness').value) || 0
+        };
+        const healthScore = ecosystemScoring.calculateHealthScore(scoringData);
+        const assessment = {
+            date: document.getElementById('assessmentDate').value,
+            assessor: document.getElementById('assessor').value,
+            health: healthScore.rating,
+            projectId: document.getElementById('assessmentProject').value,
+            description: document.getElementById('assessmentDescription').value,
+            scoringData: scoringData,
+            healthScore: healthScore
+        };
+        if (!assessment.projectId) { showToast('Error', 'Select a project', 'error'); return; }
+        db.saveAssessment(assessment);
+        this.reset();
+        document.getElementById('vegetationCover').value = 0;
+        document.getElementById('nativeSpecies').value = 0;
+        document.getElementById('weedCover').value = 0;
+        document.getElementById('speciesRichness').value = 0;
+        loadAssessments();
+        loadDashboard();
+        showToast('Assessment Saved', `Health Score: ${healthScore.total}/100 (${healthScore.rating})`, 'success');
+    });
+    
+    document.getElementById('speciesForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        db.saveSpecies({
+            name: document.getElementById('speciesName').value,
+            scientificName: document.getElementById('scientificName').value,
+            type: document.getElementById('speciesType').value,
+            status: document.getElementById('speciesStatus').value,
+            projectId: document.getElementById('speciesProject').value,
+            description: document.getElementById('speciesDescription').value
+        });
+        this.reset();
+        loadSpecies();
+        showToast('Success', 'Species added', 'success');
+    });
+    
+    document.getElementById('maintenanceForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        db.saveMaintenance({
+            activity: document.getElementById('maintenanceActivity').value,
+            type: document.getElementById('maintenanceType').value,
+            date: document.getElementById('maintenanceDate').value,
+            priority: document.getElementById('maintenancePriority').value,
+            projectId: document.getElementById('maintenanceProject').value,
+            description: document.getElementById('maintenanceDescription').value
+        });
+        this.reset();
+        loadMaintenance();
+        loadDashboard();
+        if (calendar) calendar.refetchEvents();
+        showToast('Success', 'Maintenance scheduled', 'success');
+    });
+    
+    document.getElementById('projectProgress')?.addEventListener('input', function() { document.getElementById('progressValue').textContent = `${this.value}%`; });
+    document.getElementById('projectSearch')?.addEventListener('input', function() { loadProjects(); });
+    document.getElementById('assessmentProjectFilter')?.addEventListener('change', loadAssessments);
+    document.getElementById('speciesProjectFilter')?.addEventListener('change', loadSpecies);
+    document.getElementById('maintenanceProjectFilter')?.addEventListener('change', loadMaintenance);
+    document.getElementById('exportButton')?.addEventListener('click', exportData);
+    document.getElementById('importButton')?.addEventListener('click', importData);
+    document.getElementById('useCurrentLocation')?.addEventListener('click', useCurrentLocation);
+    document.getElementById('clearLocation')?.addEventListener('click', clearProjectMarker);
+    document.getElementById('importGPXBtn')?.addEventListener('click', importGPXKML);
+    document.getElementById('refreshWeather')?.addEventListener('click', loadWeatherData);
+    document.getElementById('useBrowserLocation')?.addEventListener('click', useBrowserLocation);
+    document.getElementById('useSelectedLocation')?.addEventListener('click', function() {
+        const select = document.getElementById('weatherLocationSelect');
+        const selectedOption = select.options[select.selectedIndex];
+        if (selectedOption.value !== 'all' && selectedOption.dataset.lat) {
+            currentWeatherLat = parseFloat(selectedOption.dataset.lat);
+            currentWeatherLon = parseFloat(selectedOption.dataset.lon);
+            currentLocationName = selectedOption.text.split('(')[0].trim();
+            document.getElementById('locationNameDisplay').innerHTML = `<i class="bi bi-folder"></i> Using: ${currentLocationName}`;
+            loadWeatherData();
+            showToast('Location Updated', `Weather for ${currentLocationName}`, 'success');
+        } else if (selectedOption.value === 'default') {
+            currentWeatherLat = -41.0521;
+            currentWeatherLon = 145.9061;
+            currentLocationName = 'Burnie, TAS';
+            loadWeatherData();
+        } else {
+            showToast('No Coordinates', 'Selected project has no location data', 'warning');
+        }
+    });
+    
+    document.getElementById('documentUpload')?.addEventListener('change', function(e) {
+        const projectId = document.getElementById('editProjectId').value;
+        if (!projectId) { showToast('Error', 'Save project first before uploading documents', 'error'); return; }
+        Array.from(e.target.files).forEach(file => db.saveDocument({ projectId: projectId, fileName: file.name, size: file.size, uploadedAt: new Date().toISOString() }));
+        loadDocumentsForProject(projectId);
+        showToast('Success', `${e.target.files.length} document(s) uploaded`, 'success');
+        this.value = '';
+    });
+    
+    // Weather API settings
+    document.getElementById('saveApiKeyBtn')?.addEventListener('click', function() {
+        const key = document.getElementById('apiKeyInput').value;
+        const useDemo = document.getElementById('useDemoData').checked;
+        if (!useDemo && (!key || key === '••••••••••••••••')) { showToast('API Key Required', 'Enter a valid API key', 'warning'); return; }
+        localStorage.setItem('weatherApiKey', key);
+        localStorage.setItem('useDemoData', useDemo);
+        showToast('Settings Saved', useDemo ? 'Using demo data' : 'API key saved', 'success');
+        loadWeatherData();
+    });
+    document.getElementById('useDemoData')?.addEventListener('change', function() { document.getElementById('apiKeyInput').disabled = this.checked; if (this.checked) document.getElementById('apiKeyInput').value = ''; });
+    
+    // Health score preview
+    ['vegetationCover', 'nativeSpecies', 'weedCover', 'soilStability', 'speciesRichness'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', updateHealthScorePreview);
+    });
+    setTimeout(updateHealthScorePreview, 100);
+    
+    // Form builder
+    document.getElementById('formBuilderProject')?.addEventListener('change', function() { formBuilder.show(this.value); });
+    
+    // Chart range buttons
+    document.querySelectorAll('[data-range]').forEach(btn => btn.addEventListener('click', function(e) { e.preventDefault(); currentTimeRange = parseInt(this.dataset.range); loadHealthChart(); }));
+    
+    // Dashboard filter view buttons
+    const viewAggregatedBtn = document.getElementById('viewAggregatedBtn');
+    const viewComparisonBtn = document.getElementById('viewComparisonBtn');
+    if (viewAggregatedBtn) {
+        viewAggregatedBtn.addEventListener('click', function() { loadHealthChart(); });
+    }
+}
 ```
 
-However, the <form id="projectForm"> is inside a content-section (<div id="projects">) that is hidden initially using CSS (display: none). When the DOM is first built, these hidden elements are not available for JavaScript to attach event listeners to.
-
-Therefore, after you log in and the section becomes visible, the form is there, but the submit event listener was never attached to it, so clicking the "Save Project" button does nothing.
-
-Solution: Deferred Event Listener Attachment
-
-The best solution is to attach event listeners only when a section is first navigated to. This is a more robust approach than trying to attach them all at once.
-
-Here is the corrected setupFormHandlers function and the modifications to the navigateTo function to make this work. Replace the existing setupFormHandlers and navigateTo functions with these updated versions.
-
-1. Replace setupFormHandlers function:
-
-This function now only sets up listeners for elements that are always visible (like the project search and filter dropdowns) and defines the logic for the form handlers, but doesn't attach them yet.
+Replace it with this:
 
 ```javascript
 function setupFormHandlers() {
@@ -39,16 +193,42 @@ function setupFormHandlers() {
     document.getElementById('importGPXBtn')?.addEventListener('click', importGPXKML);
     document.getElementById('refreshWeather')?.addEventListener('click', loadWeatherData);
     document.getElementById('useBrowserLocation')?.addEventListener('click', useBrowserLocation);
-    document.getElementById('useSelectedLocation')?.addEventListener('click', function() { /* ... keep existing logic ... */ });
-    document.getElementById('saveApiKeyBtn')?.addEventListener('click', function() { /* ... keep existing logic ... */ });
-    document.getElementById('useDemoData')?.addEventListener('change', function() { /* ... keep existing logic ... */ });
-    document.querySelectorAll('[data-range]').forEach(btn => btn.addEventListener('click', function(e) { e.preventDefault(); currentTimeRange = parseInt(this.dataset.range); loadHealthChart(); }));
+    document.getElementById('useSelectedLocation')?.addEventListener('click', function() {
+        const select = document.getElementById('weatherLocationSelect');
+        const selectedOption = select.options[select.selectedIndex];
+        if (selectedOption.value !== 'all' && selectedOption.dataset.lat) {
+            currentWeatherLat = parseFloat(selectedOption.dataset.lat);
+            currentWeatherLon = parseFloat(selectedOption.dataset.lon);
+            currentLocationName = selectedOption.text.split('(')[0].trim();
+            document.getElementById('locationNameDisplay').innerHTML = `<i class="bi bi-folder"></i> Using: ${currentLocationName}`;
+            loadWeatherData();
+            showToast('Location Updated', `Weather for ${currentLocationName}`, 'success');
+        } else if (selectedOption.value === 'default') {
+            currentWeatherLat = -41.0521;
+            currentWeatherLon = 145.9061;
+            currentLocationName = 'Burnie, TAS';
+            loadWeatherData();
+        } else {
+            showToast('No Coordinates', 'Selected project has no location data', 'warning');
+        }
+    });
+    
+    document.getElementById('saveApiKeyBtn')?.addEventListener('click', function() {
+        const key = document.getElementById('apiKeyInput').value;
+        const useDemo = document.getElementById('useDemoData').checked;
+        if (!useDemo && (!key || key === '••••••••••••••••')) { showToast('API Key Required', 'Enter a valid API key', 'warning'); return; }
+        localStorage.setItem('weatherApiKey', key);
+        localStorage.setItem('useDemoData', useDemo);
+        showToast('Settings Saved', useDemo ? 'Using demo data' : 'API key saved', 'success');
+        loadWeatherData();
+    });
+    document.getElementById('useDemoData')?.addEventListener('change', function() { document.getElementById('apiKeyInput').disabled = this.checked; if (this.checked) document.getElementById('apiKeyInput').value = ''; });
     
     // Health score preview listeners (elements are inside #assessments)
     ['vegetationCover', 'nativeSpecies', 'weedCover', 'soilStability', 'speciesRichness'].forEach(id => {
         const element = document.getElementById(id);
         if (element) {
-            element.removeEventListener('input', updateHealthScorePreview); // Prevent duplicates
+            element.removeEventListener('input', updateHealthScorePreview);
             element.addEventListener('input', updateHealthScorePreview);
         }
     });
@@ -62,6 +242,9 @@ function setupFormHandlers() {
         docUpload.removeEventListener('change', docUploadChangeHandler);
         docUpload.addEventListener('change', docUploadChangeHandler);
     }
+    
+    // Chart range buttons
+    document.querySelectorAll('[data-range]').forEach(btn => btn.addEventListener('click', function(e) { e.preventDefault(); currentTimeRange = parseInt(this.dataset.range); loadHealthChart(); }));
 }
 
 // Separate handler for document upload to avoid redefining it
@@ -75,9 +258,9 @@ function docUploadChangeHandler(e) {
 }
 ```
 
-2. Create a new function attachSectionFormHandlers:
+2. Add the new attachSectionFormHandlers function
 
-This function will be called whenever the "Projects" or "Assessments" sections are loaded. It attaches the specific form handlers for those sections.
+Add this code right after the setupFormHandlers function (paste it after the closing } of setupFormHandlers):
 
 ```javascript
 function attachSectionFormHandlers(sectionId) {
@@ -87,7 +270,6 @@ function attachSectionFormHandlers(sectionId) {
         if (projectForm && !projectForm.hasAttribute('data-listener-attached')) {
             projectForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                // --- Your existing project submission logic here ---
                 const project = {
                     id: document.getElementById('editProjectId').value || undefined,
                     name: document.getElementById('projectName').value,
@@ -126,7 +308,6 @@ function attachSectionFormHandlers(sectionId) {
         if (assessmentForm && !assessmentForm.hasAttribute('data-listener-attached')) {
             assessmentForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                // --- Your existing assessment submission logic here ---
                 const scoringData = {
                     vegetationCover: parseInt(document.getElementById('vegetationCover').value) || 0,
                     nativeSpecies: parseInt(document.getElementById('nativeSpecies').value) || 0,
@@ -166,7 +347,6 @@ function attachSectionFormHandlers(sectionId) {
         if (speciesForm && !speciesForm.hasAttribute('data-listener-attached')) {
             speciesForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                // --- Your existing species submission logic here ---
                 db.saveSpecies({
                     name: document.getElementById('speciesName').value,
                     scientificName: document.getElementById('scientificName').value,
@@ -189,7 +369,6 @@ function attachSectionFormHandlers(sectionId) {
         if (maintenanceForm && !maintenanceForm.hasAttribute('data-listener-attached')) {
             maintenanceForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                // --- Your existing maintenance submission logic here ---
                 db.saveMaintenance({
                     activity: document.getElementById('maintenanceActivity').value,
                     type: document.getElementById('maintenanceType').value,
@@ -210,9 +389,36 @@ function attachSectionFormHandlers(sectionId) {
 }
 ```
 
-3. Replace navigateTo function:
+3. Replace the navigateTo function
 
-Modify this function to call attachSectionFormHandlers for the relevant sections.
+Find this function (look for function navigateTo(sectionId) {):
+
+```javascript
+function navigateTo(sectionId) {
+    document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+    const targetLink = document.querySelector(`[data-target="${sectionId}"]`);
+    if (targetLink) targetLink.classList.add('active');
+    document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) targetSection.classList.add('active');
+    
+    const loaders = {
+        dashboard: loadDashboard,
+        projects: () => { loadProjects(); setTimeout(initProjectMap, 100); },
+        assessments: loadAssessments,
+        species: loadSpecies,
+        maintenance: () => { loadMaintenance(); if (document.querySelector('[data-view="calendar-view"]')?.classList.contains('active')) setTimeout(loadCalendar, 100); },
+        charts: loadAnalyticsCharts,
+        data: loadDataSummary,
+        weather: loadWeatherData,
+        userguide: () => {}
+    };
+    if (loaders[sectionId]) loaders[sectionId]();
+    fixMobileLayout();
+}
+```
+
+Replace it with this:
 
 ```javascript
 function navigateTo(sectionId) {
@@ -244,24 +450,24 @@ function navigateTo(sectionId) {
 }
 ```
 
-Additional Minor Issues Found and Fixed
+4. Add the missing showApprovalDetails function
 
-1. Global Function References: Your HTML uses onclick="window.login()" and onclick="window.logout()". The window.login and window.logout functions are defined correctly. However, for consistency, ensure window.navigateTo, window.editProject, etc., are also properly exposed. You have this at the bottom of your script, which is correct.
-2. showApprovalDetails Function: This function is called from onclick="showApprovalDetails(...)" inside your loadProjects function. You need to define showApprovalDetails as a global function.
-3. updateHealthScorePreview Dependencies: The updateHealthScorePreview function relies on ecosystemScoring. Ensure ecosystemScoring is defined before updateHealthScorePreview. Your current order is correct.
+Add this code anywhere (I suggest near the other global functions at the bottom of the script):
 
-How to Test the Fix
+```javascript
+window.showApprovalDetails = function(projectId) {
+    const project = db.getProjects().find(p => p.id === projectId);
+    if (project) {
+        showToast('Approval Details', `Status: ${project.approvalStatus || 'pending'}<br>Comments: ${project.approvalComments || 'None'}`, 'info');
+    }
+};
+```
 
-1. Replace the three functions in your code (setupFormHandlers, attachSectionFormHandlers, and navigateTo) with the corrected versions provided above.
-2. Add the showApprovalDetails function if it's missing from your script. Add this anywhere before the closing </script> tag:
-   ```javascript
-   window.showApprovalDetails = function(projectId) {
-       const project = db.getProjects().find(p => p.id === projectId);
-       if (project) {
-           showToast('Approval Details', `Status: ${project.approvalStatus || 'pending'}<br>Comments: ${project.approvalComments || 'None'}`, 'info');
-       }
-   };
-   ```
-3. Reload the page. Log in as any user. You should now be able to navigate to the "Projects" section and successfully save a new project. The "Save Project" button will now work.
+Summary of Changes:
 
-This approach ensures that event listeners are attached only when the user actually needs to interact with a specific form, making the application more reliable and performant.
+1. Replaced setupFormHandlers - Now only sets up listeners for elements that exist at page load
+2. Added attachSectionFormHandlers - New function that attaches form listeners when you navigate to a section
+3. Modified navigateTo - Now calls attachSectionFormHandlers when you go to projects, assessments, species, or maintenance
+4. Added showApprovalDetails - Missing function that was being called but didn't exist
+
+After making these changes, save your file and refresh the page. The buttons should now work properly when you log in and navigate to different sections!
