@@ -1,68 +1,1910 @@
-This is a common issue that happens when opening HTML files locally due to browser security restrictions (CORS and file protocol limitations). The good news is it will work perfectly when deployed to Netlify or any web server.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>EcoManager Pro | Complete Ecosystem Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js@4.3.0/minified/introjs.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/intro.js@4.3.0/minified/intro.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c5530;
+            --secondary: #4a7c59;
+            --accent: #3a8a5f;
+            --accent-light: #4da675;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --light: #f8f9fa;
+            --dark: #1e2b1e;
+            --sidebar-width: 280px;
+            --transition: all 0.3s ease;
+            --info: #17a2b8;
+        }
 
-The Problem
+        * { box-sizing: border-box; }
 
-When you open the file directly (file:///C:/...), browsers block some JavaScript features like localStorage access across different file contexts, and certain event handlers may behave differently. The sidebar tabs rely on JavaScript to switch between sections, which works fine over HTTP/HTTPS but can be inconsistent locally.
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #2c3e50;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
 
-Quick Fix for Local Testing
+        .sidebar {
+            flex-shrink: 0;
+            width: var(--sidebar-width);
+            position: relative;
+            min-height: 100vh;
+            background: linear-gradient(to bottom, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 3px 0 15px rgba(0, 0, 0, 0.1);
+            transition: var(--transition);
+        }
 
-Add this script right after your opening <body> tag to ensure local file compatibility:
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 5px;
+            border-radius: 8px;
+            padding: 12px 15px;
+            transition: var(--transition);
+            font-weight: 500;
+            cursor: pointer;
+        }
 
-```html
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .sidebar .nav-link i {
+            margin-right: 12px;
+            font-size: 1.2rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        .logo {
+            font-weight: 700;
+            padding: 20px 25px;
+            font-size: 1.4rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+        }
+
+        .logo i { margin-right: 10px; color: var(--accent-light); }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            transition: var(--transition);
+            min-height: 100vh;
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        .d-flex { display: flex !important; align-items: flex-start; width: 100%; gap: 0 !important; }
+
+        .card {
+            margin-bottom: 25px;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: var(--transition);
+        }
+
+        .card:hover { box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12); transform: translateY(-5px); }
+
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 15px 20px;
+            font-weight: 600;
+            color: var(--primary);
+            border-radius: 12px 12px 0 0 !important;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            border-left: 4px solid var(--accent);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-card h3 { font-size: 2.2rem; font-weight: 700; margin: 10px 0; }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+        }
+
+        .table { min-width: 800px; width: 100%; margin-bottom: 0; }
+        .table th { font-weight: 600; color: var(--primary); white-space: nowrap; }
+        .table td { white-space: nowrap; }
+
+        .content-section { display: none; animation: fadeIn 0.5s ease; width: 100%; }
+        .content-section.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .quick-action-btn {
+            flex: 1;
+            min-width: 150px;
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            background: white;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .quick-action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .quick-action-btn i { font-size: 1.5rem; margin-bottom: 10px; color: var(--accent); }
+
+        .weather-widget {
+            background: linear-gradient(135deg, #67b26f, #4ca2cd);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .map-container { height: 300px; border-radius: 8px; overflow: hidden; margin-bottom: 15px; width: 100%; }
+        .chart-container { position: relative; height: 300px; margin-bottom: 20px; width: 100%; }
+
+        #login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s ease;
+        }
+
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 1100; }
+        .toast-header.bg-danger { background-color: #dc3545 !important; }
+        .toast-header.bg-warning { background-color: #ffc107 !important; }
+        .toast-header.bg-info { background-color: #17a2b8 !important; }
+
+        .maintenance-item {
+            border-left: 4px solid #6c757d;
+            padding-left: 15px;
+            margin-bottom: 15px;
+            transition: var(--transition);
+        }
+
+        .maintenance-item:hover { background-color: rgba(0, 0, 0, 0.02); }
+        .maintenance-pending { border-left-color: var(--warning); }
+        .maintenance-completed { border-left-color: var(--success); }
+        .maintenance-overdue { border-left-color: var(--danger); }
+
+        .list-view, .calendar-view { display: none; }
+        .list-view.active, .calendar-view.active { display: block; }
+
+        .section-header {
+            background: linear-gradient(135deg, rgba(44, 85, 48, 0.03), rgba(74, 124, 89, 0.05));
+            padding: 1.25rem 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 1.75rem;
+            border: 1px solid rgba(44, 85, 48, 0.1);
+        }
+
+        .section-header h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 0.35rem;
+        }
+
+        .form-control, .form-select {
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            transition: var(--transition);
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 0.25rem rgba(58, 138, 95, 0.25);
+        }
+
+        .btn {
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .btn-primary { background-color: var(--accent); border-color: var(--accent); }
+        .btn-primary:hover { background-color: var(--accent-light); border-color: var(--accent-light); transform: translateY(-2px); }
+
+        .badge { padding: 8px 12px; border-radius: 20px; font-weight: 500; }
+
+        .risk-matrix {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2px;
+            margin: 15px 0;
+        }
+
+        .risk-cell {
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .risk-low { background-color: #d4edda; color: #155724; }
+        .risk-medium { background-color: #fff3cd; color: #856404; }
+        .risk-high { background-color: #f8d7da; color: #721c24; }
+
+        .progress { height: 10px; border-radius: 5px; }
+        .map-preview { height: 150px; border-radius: 6px; overflow: hidden; cursor: pointer; background-color: #f8f9fa; display: flex; align-items: center; justify-content: center; }
+        .document-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        .document-icon { font-size: 1.5rem; margin-right: 15px; color: var(--primary); }
+        .empty-state { text-align: center; padding: 40px; color: #6c757d; }
+        .empty-state i { font-size: 3rem; margin-bottom: 15px; opacity: 0.5; }
+        .legend-item { display: inline-flex; align-items: center; margin-right: 15px; }
+        .legend-color { width: 20px; height: 20px; border-radius: 4px; margin-right: 5px; }
+        .approval-badge { cursor: pointer; }
+        
+        @media (max-width: 992px) {
+            .sidebar { width: 70px; overflow-x: hidden; }
+            .sidebar .logo span, .sidebar .nav-link span { display: none; }
+            .sidebar .nav-link i { margin-right: 0; font-size: 1.4rem; }
+            .sidebar:hover { width: var(--sidebar-width); position: absolute; z-index: 1001; }
+            .sidebar:hover .logo span, .sidebar:hover .nav-link span { display: inline; }
+            .sidebar:hover .nav-link i { margin-right: 12px; }
+        }
+
+        @media (max-width: 768px) {
+            .container-fluid > .d-flex { flex-direction: column !important; }
+            .sidebar {
+                position: fixed !important;
+                bottom: 0 !important;
+                top: auto !important;
+                width: 100% !important;
+                height: auto !important;
+                min-height: auto !important;
+                z-index: 1000 !important;
+                border-radius: 16px 16px 0 0 !important;
+                padding: 8px 4px !important;
+                left: 0 !important;
+                right: 0 !important;
+            }
+            .sidebar .logo { display: none !important; }
+            .sidebar .nav {
+                display: flex !important;
+                flex-direction: row !important;
+                justify-content: space-around !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                gap: 4px !important;
+                overflow-x: auto;
+            }
+            .sidebar .nav-item { flex: 1; text-align: center; }
+            .sidebar .nav-link {
+                flex-direction: column !important;
+                padding: 8px 4px !important;
+                font-size: 0.7rem !important;
+                transform: none !important;
+            }
+            .sidebar .nav-link i { font-size: 1.3rem !important; margin: 0 0 4px 0 !important; display: block !important; }
+            .sidebar .nav-link span { display: block !important; font-size: 0.6rem !important; }
+            .main-content { width: 100% !important; margin: 0 !important; padding: 15px !important; padding-bottom: 85px !important; overflow-x: hidden; }
+        }
+    </style>
+</head>
+<body>
+<div id="login-screen">
+    <div class="login-container">
+        <div class="text-center mb-4">
+            <i class="bi bi-tree-fill" style="font-size: 3rem; color: var(--primary);"></i>
+            <h2 class="mt-3">EcoManager Pro</h2>
+            <p class="text-muted">Council Ecosystem Management System</p>
+        </div>
+        <div class="mb-4">
+            <label class="form-label">Select User Role:</label>
+            <select class="form-select" id="userRole">
+                <option value="viewer">Viewer (Read Only)</option>
+                <option value="staff">Field Staff</option>
+                <option value="manager">Project Manager</option>
+                <option value="admin">System Administrator</option>
+            </select>
+        </div>
+        <div class="mb-4">
+            <label class="form-label">Password (demo):</label>
+            <input type="password" class="form-control" id="demoPassword" value="council123">
+        </div>
+        <button class="btn btn-primary w-100 mb-3" onclick="window.login()"><i class="bi bi-box-arrow-in-right"></i> Enter System</button>
+        <div class="text-center"><small class="text-muted">Version 2.0 • Complete Edition</small></div>
+    </div>
+</div>
+
+<div class="toast-container">
+    <div id="liveToast" class="toast" role="alert">
+        <div class="toast-header">
+            <i class="bi bi-check-circle-fill text-success me-2"></i>
+            <strong class="me-auto" id="toast-title">Notification</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toast-message"></div>
+    </div>
+</div>
+
+<div class="container-fluid p-0">
+    <div class="d-flex">
+        <div class="sidebar">
+            <div class="logo"><i class="bi bi-tree-fill"></i><span>EcoManager Pro</span></div>
+            <div class="p-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item"><a class="nav-link active" data-target="dashboard"><i class="bi bi-speedometer2"></i> <span>Dashboard</span></a></li>
+                    <li class="nav-item"><a class="nav-link" data-target="projects"><i class="bi bi-folder"></i> <span>Projects</span></a></li>
+                    <li class="nav-item"><a class="nav-link" data-target="assessments"><i class="bi bi-clipboard-check"></i> <span>Assessments</span></a></li>
+                    <li class="nav-item"><a class="nav-link" data-target="species"><i class="bi bi-tree"></i> <span>Species</span></a></li>
+                    <li class="nav-item"><a class="nav-link" data-target="maintenance"><i class="bi bi-tools"></i> <span>Maintenance</span></a></li>
+                    <li class="nav-item"><a class="nav-link" data-target="charts"><i class="bi bi-bar-chart"></i> <span>Analytics</span></a></li>
+                    <li class="nav-item"><a class="nav-link" data-target="data"><i class="bi bi-database"></i> <span>Data</span></a></li>
+                    <li class="nav-item"><a class="nav-link" data-target="weather"><i class="bi bi-cloud-sun"></i> <span>Weather</span></a></li>
+                    <li class="nav-item"><a class="nav-link" data-target="userguide"><i class="bi bi-question-circle"></i> <span>User Guide</span></a></li>
+                    <li class="nav-item mt-4"><div class="nav-link text-center"><small class="text-white-50">Logged in as:</small><div id="currentUserRole" class="badge bg-light text-dark mt-1">Viewer</div></div></li>
+                    <li class="nav-item"><a class="nav-link text-danger" onclick="window.logout()"><i class="bi bi-box-arrow-right"></i> <span>Logout</span></a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- DASHBOARD SECTION -->
+            <div id="dashboard" class="content-section active">
+                <div class="section-header">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <div><h2><i class="bi bi-speedometer2"></i> Dashboard</h2><p class="text-muted">Overview of your ecosystem management activities</p></div>
+                        <button class="btn btn-outline-primary btn-sm" onclick="window.userOnboarding.showTour()"><i class="bi bi-info-circle"></i> Take Tour</button>
+                    </div>
+                </div>
+                <div class="quick-actions">
+                    <div class="quick-action-btn" data-target="projects"><i class="bi bi-plus-circle"></i><h6>New Project</h6></div>
+                    <div class="quick-action-btn" data-target="assessments"><i class="bi bi-clipboard-plus"></i><h6>New Assessment</h6></div>
+                    <div class="quick-action-btn" data-target="species"><i class="bi bi-plus-square"></i><h6>Add Species</h6></div>
+                    <div class="quick-action-btn" data-target="maintenance"><i class="bi bi-tools"></i><h6>Schedule Maintenance</h6></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3 col-sm-6"><div class="card stat-card" onclick="window.navigateTo('projects')"><div class="card-body"><h5 class="card-title">Projects</h5><h3 id="projects-count" class="text-primary">0</h3><p class="text-muted mb-0">Active initiatives</p></div></div></div>
+                    <div class="col-md-3 col-sm-6"><div class="card stat-card" onclick="window.navigateTo('assessments')"><div class="card-body"><h5 class="card-title">Assessments</h5><h3 id="assessments-count" class="text-info">0</h3><p class="text-muted mb-0">Surveys completed</p></div></div></div>
+                    <div class="col-md-3 col-sm-6"><div class="card stat-card" onclick="window.navigateTo('species')"><div class="card-body"><h5 class="card-title">Species</h5><h3 id="species-count" class="text-success">0</h3><p class="text-muted mb-0">Tracked species</p></div></div></div>
+                    <div class="col-md-3 col-sm-6"><div class="card stat-card" onclick="window.navigateTo('maintenance')"><div class="card-body"><h5 class="card-title">Maintenance</h5><h3 id="maintenance-count" class="text-warning">0</h3><p class="text-muted mb-0">Scheduled tasks</p></div></div></div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                                <h5 class="card-title mb-0">Ecosystem Health Overview</h5>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">Last 6 Months</button>
+                                    <ul class="dropdown-menu"><li><a class="dropdown-item" data-range="3">Last 3 Months</a></li><li><a class="dropdown-item" data-range="6">Last 6 Months</a></li><li><a class="dropdown-item" data-range="12">Last Year</a></li></ul>
+                                </div>
+                            </div>
+                            <div class="card-body"><div class="chart-container"><canvas id="healthTrendChart"></canvas></div><div id="chartLegend" class="mt-2 text-center"></div></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card"><div class="card-header"><h5 class="card-title mb-0">Project Status</h5></div><div class="card-body"><div class="chart-container"><canvas id="projectStatusChart"></canvas></div></div></div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-6"><div class="card"><div class="card-header"><h5 class="card-title mb-0">Recent Activities</h5></div><div class="card-body"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Project</th><th>Status</th></tr></thead><tbody id="recent-activities"></tbody></table></div></div></div></div>
+                    <div class="col-md-6"><div class="card"><div class="card-header"><h5 class="card-title mb-0">Upcoming Maintenance</h5></div><div class="card-body"><div id="upcoming-maintenance"></div></div></div></div>
+                </div>
+            </div>
+
+            <!-- PROJECTS SECTION -->
+            <div id="projects" class="content-section">
+                <div class="section-header"><h2><i class="bi bi-folder"></i> Projects</h2><p class="text-muted">Manage your ecosystem restoration projects</p></div>
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center flex-wrap"><h5 class="card-title mb-0">Project List</h5><div class="mt-2 mt-md-0"><input type="text" class="form-control form-control-sm" id="projectSearch" placeholder="Search projects..." style="width: 200px;"></div></div>
+                    <div class="card-body"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Name</th><th>Code</th><th>Status</th><th>Progress</th><th>Start Date</th><th>Budget</th><th>Approval</th><th>Actions</th></thead><tbody id="projects-table"></tbody></table></div></div>
+                </div>
+                <div class="card mt-4">
+                    <div class="card-header"><h5 class="card-title mb-0">Add/Edit Project</h5></div>
+                    <div class="card-body">
+                        <form id="projectForm">
+                            <input type="hidden" id="editProjectId">
+                            <div class="row">
+                                <div class="col-md-6"><div class="mb-3"><label class="form-label">Project Name *</label><input type="text" class="form-control" id="projectName" required></div></div>
+                                <div class="col-md-6"><div class="mb-3"><label class="form-label">Project Code</label><input type="text" class="form-control" id="projectCode"></div></div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6"><div class="mb-3"><label class="form-label">Start Date *</label><input type="date" class="form-control" id="projectStartDate" required></div></div>
+                                <div class="col-md-6"><div class="mb-3"><label class="form-label">Status *</label><select class="form-select" id="projectStatus" required><option value="planning">Planning</option><option value="active">Active</option><option value="on-hold">On Hold</option><option value="completed">Completed</option></select></div></div>
+                            </div>
+                            <div class="mb-3"><label class="form-label">Progress (%)</label><input type="range" class="form-range" id="projectProgress" min="0" max="100" step="5" value="0"><div class="d-flex justify-content-between"><small>0%</small><small id="progressValue">0%</small><small>100%</small></div></div>
+                            
+                            <!-- Budget & Resources -->
+                            <div class="card mt-3 mb-3"><div class="card-header"><h6 class="card-title mb-0">Budget & Resources</h6></div><div class="card-body"><div class="row"><div class="col-md-6"><div class="mb-3"><label class="form-label">Annual Budget ($)</label><input type="number" class="form-control" id="projectBudget" min="0" step="1000"></div></div><div class="col-md-6"><div class="mb-3"><label class="form-label">FTE Allocation</label><input type="number" step="0.1" class="form-control" id="projectFTE" min="0" max="10"></div></div></div><div class="mb-3"><label class="form-label">Funding Source</label><select class="form-select" id="fundingSource"><option value="">Select funding source</option><option value="council">Council Budget</option><option value="state">State Grant</option><option value="federal">Federal Grant</option><option value="partnership">Partnership</option><option value="other">Other</option></select></div></div></div>
+                            
+                            <!-- Approval Workflow -->
+                            <div class="card mt-3 mb-3"><div class="card-header"><h6 class="card-title mb-0">Approval Workflow</h6></div><div class="card-body"><div class="row"><div class="col-md-6"><label class="form-label">Approval Status</label><select class="form-select" id="approvalStatus"><option value="pending">Pending Review</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="revision">Revision Required</option></select></div><div class="col-md-6"><label class="form-label">Reviewer Comments</label><textarea class="form-control" id="approvalComments" rows="2" placeholder="Reviewer comments..."></textarea></div></div></div></div>
+                            
+                            <!-- Risk Assessment -->
+                            <div class="card mt-3 mb-3"><div class="card-header"><h6 class="card-title mb-0">Risk Assessment</h6></div><div class="card-body"><div class="risk-matrix mb-3"><div class="risk-cell risk-low">Low</div><div class="risk-cell risk-low">Low</div><div class="risk-cell risk-medium">Medium</div><div class="risk-cell risk-medium">Medium</div><div class="risk-cell risk-high">High</div></div><div class="mb-3"><label class="form-label">Risk Description</label><textarea class="form-control" id="riskAssessment" rows="2" placeholder="Describe potential risks..."></textarea></div><div class="mb-3"><label class="form-label">Risk Level</label><select class="form-select" id="riskLevel"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div></div></div>
+                            
+                            <!-- Document Upload -->
+                            <div class="card mt-3 mb-3"><div class="card-header"><h6 class="card-title mb-0">Project Documents</h6></div><div class="card-body"><input type="file" class="form-control" id="documentUpload" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png"><div id="documentList" class="mt-3"></div><small class="text-muted">Upload permits, reports, photos, contracts (Max 10MB each)</small></div></div>
+                            
+                            <div class="mb-3"><label class="form-label">Project Location</label><div class="map-container mb-2" id="projectMap"></div><div class="row"><div class="col-md-6"><label class="form-label">Latitude</label><input type="number" step="any" class="form-control" id="projectLatitude" placeholder="e.g., -41.0521"></div><div class="col-md-6"><label class="form-label">Longitude</label><input type="number" step="any" class="form-control" id="projectLongitude" placeholder="e.g., 145.9061"></div></div><button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="useCurrentLocation"><i class="bi bi-geo-alt"></i> Use Current Location</button><button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="clearLocation"><i class="bi bi-x-circle"></i> Clear Location</button><button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="importGPXBtn"><i class="bi bi-upload"></i> Import GPX/KML</button></div>
+                            
+                            <div class="mb-3"><label class="form-label">Description *</label><textarea class="form-control" id="projectDescription" rows="3" required></textarea></div>
+                            <button type="submit" class="btn btn-primary">Save Project</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Custom Form Builder -->
+                <div class="card mt-4"><div class="card-header"><h5 class="card-title mb-0">Custom Monitoring Forms</h5></div><div class="card-body"><div id="form-builder-section"><div class="mb-3"><label class="form-label">Select Project:</label><select class="form-select" id="formBuilderProject"><option value="">Choose a project...</option></select></div><div id="form-builder-interface" style="display: none;"></div></div></div></div>
+            </div>
+
+            <!-- ASSESSMENTS SECTION -->
+            <div id="assessments" class="content-section">
+                <div class="section-header"><h2><i class="bi bi-clipboard-check"></i> Assessments</h2><p class="text-muted">Conduct and review ecosystem health assessments</p></div>
+                <div class="card"><div class="card-header"><h5 class="card-title mb-0">Assessment History</h5></div><div class="card-body"><div class="mb-3"><label class="form-label">Filter by Project:</label><select class="form-select" id="assessmentProjectFilter"><option value="all">All Projects</option></select></div><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Date</th><th>Assessor</th><th>Health Status</th><th>Health Score</th><th>Project</th><th>Actions</th></tr></thead><tbody id="assessments-table"></tbody></table></div></div></div>
+                <div class="card mt-4">
+                    <div class="card-header"><h5 class="card-title mb-0">New Assessment</h5></div>
+                    <div class="card-body">
+                        <form id="assessmentForm">
+                            <div class="row">
+                                <div class="col-md-6"><div class="mb-3"><label class="form-label">Date *</label><input type="date" class="form-control" id="assessmentDate" required></div></div>
+                                <div class="col-md-6"><div class="mb-3"><label class="form-label">Assessor *</label><input type="text" class="form-control" id="assessor" required></div></div>
+                            </div>
+                            <div class="row"><div class="col-md-6"><div class="mb-3"><label class="form-label">Project *</label><select class="form-select" id="assessmentProject" required><option value="">Select a project</option></select></div></div></div>
+                            
+                            <!-- Ecosystem Health Evaluation -->
+                            <div class="card mt-3"><div class="card-header"><h6 class="card-title mb-0">Ecosystem Health Evaluation</h6></div><div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Vegetation Cover (%)</label><input type="number" class="form-control" id="vegetationCover" min="0" max="100" value="0"></div></div>
+                                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Native Species (%)</label><input type="number" class="form-control" id="nativeSpecies" min="0" max="100" value="0"></div></div>
+                                    <div class="col-md-4"><div class="mb-3"><label class="form-label">Weed Cover (%)</label><input type="number" class="form-control" id="weedCover" min="0" max="100" value="0"></div></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6"><div class="mb-3"><label class="form-label">Soil Stability (1-5)</label><select class="form-select" id="soilStability"><option value="1">1 - Very Poor</option><option value="2">2 - Poor</option><option value="3" selected>3 - Fair</option><option value="4">4 - Good</option><option value="5">5 - Excellent</option></select></div></div>
+                                    <div class="col-md-6"><div class="mb-3"><label class="form-label">Species Richness</label><input type="number" class="form-control" id="speciesRichness" min="0" value="0"></div></div>
+                                </div>
+                                <div class="mt-3 p-3 bg-light rounded"><h6>Health Score Preview</h6><div id="healthScorePreview"><p class="text-muted mb-1">Enter values above to see calculated health score</p><div class="d-none" id="scoreDisplay"><div class="progress mb-2" style="height: 20px;"><div class="progress-bar" id="scoreProgress" role="progressbar" style="width: 0%;"></div></div><p class="mb-0"><strong>Score: <span id="scoreValue">0</span>/100</strong> - <span id="scoreRating">No rating</span></p></div></div></div>
+                            </div></div>
+                            
+                            <div class="mb-3 mt-3"><label class="form-label">Description *</label><textarea class="form-control" id="assessmentDescription" rows="3" required></textarea></div>
+                            <button type="submit" class="btn btn-primary">Save Assessment</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SPECIES SECTION -->
+            <div id="species" class="content-section">
+                <div class="section-header"><h2><i class="bi bi-tree"></i> Species</h2><p class="text-muted">Track and manage species in your ecosystems</p></div>
+                <div class="card"><div class="card-header"><h5 class="card-title mb-0">Species Database</h5></div><div class="card-body"><div class="mb-3"><label class="form-label">Filter by Project:</label><select class="form-select" id="speciesProjectFilter"><option value="all">All Projects</option></select></div><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Name</th><th>Scientific Name</th><th>Type</th><th>Status</th><th>Project</th><th>Actions</th></thead><tbody id="species-table"></tbody><table></div></div></div>
+                <div class="card mt-4"><div class="card-header"><h5 class="card-title mb-0">Add New Species</h5></div><div class="card-body"><form id="speciesForm"><div class="row"><div class="col-md-6"><div class="mb-3"><label class="form-label">Common Name *</label><input type="text" class="form-control" id="speciesName" required></div></div><div class="col-md-6"><div class="mb-3"><label class="form-label">Scientific Name</label><input type="text" class="form-control" id="scientificName"></div></div></div><div class="row"><div class="col-md-6"><div class="mb-3"><label class="form-label">Type *</label><select class="form-select" id="speciesType" required><option value="plant">Plant</option><option value="animal">Animal</option><option value="bird">Bird</option><option value="reptile">Reptile</option><option value="insect">Insect</option></select></div></div><div class="col-md-6"><div class="mb-3"><label class="form-label">Status *</label><select class="form-select" id="speciesStatus" required><option value="native">Native</option><option value="introduced">Introduced</option><option value="weed">Weed</option><option value="pest">Pest</option></select></div></div></div><div class="mb-3"><label class="form-label">Project *</label><select class="form-select" id="speciesProject" required><option value="">Select a project</option></select></div><div class="mb-3"><label class="form-label">Description *</label><textarea class="form-control" id="speciesDescription" rows="3" required></textarea></div><button type="submit" class="btn btn-primary">Save Species</button></form></div></div>
+            </div>
+
+            <!-- MAINTENANCE SECTION -->
+            <div id="maintenance" class="content-section">
+                <div class="section-header"><h2><i class="bi bi-tools"></i> Maintenance</h2><p class="text-muted">Schedule and track ecosystem maintenance activities</p></div>
+                <div class="view-toggle btn-group mb-3" role="group"><button type="button" class="btn btn-outline-primary active" data-view="list-view"><i class="bi bi-list-ul"></i> List View</button><button type="button" class="btn btn-outline-primary" data-view="calendar-view"><i class="bi bi-calendar-event"></i> Calendar View</button></div>
+                <div id="list-view" class="list-view active"><div class="card"><div class="card-header"><h5 class="card-title mb-0">Scheduled Maintenance</h5></div><div class="card-body"><div class="mb-3"><label class="form-label">Filter by Project:</label><select class="form-select" id="maintenanceProjectFilter"><option value="all">All Projects</option></select></div><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Activity</th><th>Type</th><th>Scheduled Date</th><th>Status</th><th>Priority</th><th>Project</th><th>Actions</th></thead><tbody id="maintenance-table"></tbody></table></div></div></div></div>
+                <div id="calendar-view" class="calendar-view"><div class="card"><div class="card-header"><h5 class="card-title mb-0">Maintenance Calendar</h5></div><div class="card-body"><div id="calendar"></div></div></div></div>
+                <div class="card mt-4"><div class="card-header"><h5 class="card-title mb-0">Schedule New Maintenance Activity</h5></div><div class="card-body"><form id="maintenanceForm"><div class="row"><div class="col-md-6"><div class="mb-3"><label class="form-label">Activity *</label><input type="text" class="form-control" id="maintenanceActivity" required></div></div><div class="col-md-6"><div class="mb-3"><label class="form-label">Type *</label><select class="form-select" id="maintenanceType" required><option value="weed-control">Weed Control</option><option value="revegetation">Revegetation</option><option value="monitoring">Monitoring</option><option value="survey">Survey</option><option value="erosion-control">Erosion Control</option><option value="pest-management">Pest Management</option><option value="water-quality">Water Quality Testing</option><option value="trail-maintenance">Trail Maintenance</option><option value="equipment">Equipment Maintenance</option><option value="other">Other</option></select></div></div></div><div class="row"><div class="col-md-6"><div class="mb-3"><label class="form-label">Scheduled Date *</label><input type="date" class="form-control" id="maintenanceDate" required></div></div><div class="col-md-6"><div class="mb-3"><label class="form-label">Priority *</label><select class="form-select" id="maintenancePriority" required><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div></div></div><div class="mb-3"><label class="form-label">Project *</label><select class="form-select" id="maintenanceProject" required><option value="">Select a project</option></select></div><div class="mb-3"><label class="form-label">Description *</label><textarea class="form-control" id="maintenanceDescription" rows="3" required></textarea></div><button type="submit" class="btn btn-primary">Schedule Activity</button></form></div></div>
+            </div>
+
+            <!-- ANALYTICS SECTION -->
+            <div id="charts" class="content-section">
+                <div class="section-header"><h2><i class="bi bi-bar-chart"></i> Analytics</h2><p class="text-muted">Visualize and analyze your ecosystem data</p></div>
+                <div class="row"><div class="col-12"><div class="card"><div class="card-header"><h5 class="card-title mb-0">Ecosystem Health Trends</h5></div><div class="card-body"><div class="chart-container" style="height: 400px;"><canvas id="analyticsHealthTrendChart"></canvas></div></div></div></div></div>
+                <div class="row mt-4"><div class="col-md-6"><div class="card"><div class="card-header"><h5 class="card-title mb-0">Species Distribution by Type</h5></div><div class="card-body"><div class="chart-container"><canvas id="speciesTypeChart"></canvas></div></div></div></div><div class="col-md-6"><div class="card"><div class="card-header"><h5 class="card-title mb-0">Maintenance Activity Types</h5></div><div class="card-body"><div class="chart-container"><canvas id="maintenanceTypeChart"></canvas></div></div></div></div></div>
+                <div class="row mt-4"><div class="col-12"><div class="card"><div class="card-header"><h5 class="card-title mb-0">Monthly Activity Overview</h5></div><div class="card-body"><div class="chart-container" style="height: 400px;"><canvas id="monthlyActivityChart"></canvas></div></div></div></div></div>
+            </div>
+
+            <!-- DATA SECTION -->
+            <div id="data" class="content-section">
+                <div class="section-header"><h2><i class="bi bi-database"></i> Data Management</h2><p class="text-muted">Export and import your ecosystem data</p></div>
+                <div class="row"><div class="col-md-6"><div class="card"><div class="card-header"><h5 class="card-title mb-0">Export Data</h5></div><div class="card-body"><div class="mb-3"><label class="form-label">Select Project:</label><select class="form-select" id="exportProject"><option value="all">All Projects</option></select></div><div class="mb-3"><label class="form-label">Export Format:</label><div class="form-check"><input class="form-check-input" type="radio" name="exportFormat" id="exportJSON" value="json" checked><label class="form-check-label">JSON (for backup and sharing)</label></div><div class="form-check"><input class="form-check-input" type="radio" name="exportFormat" id="exportPDF" value="pdf"><label class="form-check-label">PDF Report</label></div><div class="form-check"><input class="form-check-input" type="radio" name="exportFormat" id="exportExcel" value="excel"><label class="form-check-label">Excel Spreadsheet</label></div></div><button type="button" class="btn btn-primary" id="exportButton"><i class="bi bi-download"></i> Export Data</button></div></div></div><div class="col-md-6"><div class="card"><div class="card-header"><h5 class="card-title mb-0">Import Data</h5></div><div class="card-body"><div class="mb-3"><label class="form-label">Select JSON File:</label><input class="form-control" type="file" id="importFile" accept=".json"></div><div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="overwriteData"><label class="form-check-label">Overwrite existing data</label></div><button type="button" class="btn btn-success" id="importButton"><i class="bi bi-upload"></i> Import Data</button></div></div></div></div>
+                <div class="card mt-4"><div class="card-header"><h5 class="card-title mb-0">Data Summary</h5></div><div class="card-body"><div class="row"><div class="col-md-3 col-6"><div class="text-center p-3 border rounded"><h4 id="data-projects-count">0</h4><p>Projects</p></div></div><div class="col-md-3 col-6"><div class="text-center p-3 border rounded"><h4 id="data-assessments-count">0</h4><p>Assessments</p></div></div><div class="col-md-3 col-6"><div class="text-center p-3 border rounded"><h4 id="data-species-count">0</h4><p>Species</p></div></div><div class="col-md-3 col-6"><div class="text-center p-3 border rounded"><h4 id="data-maintenance-count">0</h4><p>Maintenance Tasks</p></div></div></div></div></div>
+            </div>
+
+            <!-- WEATHER SECTION -->
+            <div id="weather" class="content-section">
+                <div class="section-header"><h2><i class="bi bi-cloud-sun"></i> Weather & Environmental Data</h2><p class="text-muted">Monitor weather conditions and environmental factors</p></div>
+                <div class="card mb-3"><div class="card-header"><h6 class="card-title mb-0">Weather API Settings</h6></div><div class="card-body"><div class="row"><div class="col-md-8"><label class="form-label">WeatherAPI.com API Key:</label><div class="input-group"><input type="password" class="form-control" id="apiKeyInput" placeholder="Enter your API key from weatherapi.com"><button class="btn btn-outline-secondary" type="button" id="saveApiKeyBtn"><i class="bi bi-save"></i> Save</button></div><small class="text-muted"><i class="bi bi-info-circle"></i> Get a free API key at <a href="https://www.weatherapi.com/" target="_blank">WeatherAPI.com</a></small></div><div class="col-md-4"><div class="form-check mt-4"><input class="form-check-input" type="checkbox" id="useDemoData" checked><label class="form-check-label">Use demo data (no API key required)</label></div></div></div></div></div>
+                <div class="card mb-3"><div class="card-header"><h6 class="card-title mb-0">Weather Location</h6></div><div class="card-body"><div class="row"><div class="col-md-6"><label class="form-label">Project Location:</label><select class="form-select" id="weatherLocationSelect"><option value="default">Default (Burnie, TAS)</option></select><button class="btn btn-outline-primary btn-sm mt-2" id="useSelectedLocation"><i class="bi bi-geo-alt"></i> Use Selected Location</button></div><div class="col-md-6"><label class="form-label">Use My Location:</label><button class="btn btn-outline-success btn-sm d-block" id="useBrowserLocation"><i class="bi bi-satellite"></i> Get My Location</button><div id="locationNameDisplay" class="mt-2 small text-muted"></div></div></div><div class="mt-3"><button class="btn btn-primary btn-sm" id="refreshWeather"><i class="bi bi-arrow-clockwise"></i> Refresh Weather Data</button><small class="text-muted ms-2" id="lastUpdate"></small></div></div></div>
+                <div class="row"><div class="col-md-6"><div class="card mb-3"><div class="card-header"><h5 class="card-title mb-0">Current Weather Conditions</h5></div><div class="card-body"><div class="weather-widget"><div class="weather-icon"><i class="bi bi-cloud-sun fs-1"></i></div><h3 id="current-temp">--°C</h3><p id="weather-description">Loading...</p><p id="weather-location-name">--</p><div class="d-flex justify-content-between"><div><small>Humidity</small><p id="humidity">--%</p></div><div><small>Wind</small><p id="wind-speed">-- km/h</p></div><div><small>Pressure</small><p id="pressure">-- hPa</p></div></div></div></div></div></div><div class="col-md-6"><div class="card"><div class="card-header"><h5 class="card-title mb-0">Environmental Alerts</h5></div><div class="card-body"><div id="environmental-alerts"></div></div></div></div></div>
+                <div class="row mt-4"><div class="col-12"><div class="card"><div class="card-header"><h5 class="card-title mb-0">7-Day Temperature Forecast</h5></div><div class="card-body"><div class="chart-container" style="height: 300px;"><canvas id="forecastChart"></canvas></div></div></div></div></div>
+                <div class="row mt-4"><div class="col-12"><div class="card"><div class="card-header"><h5 class="card-title mb-0">Historical Weather (Monthly Rainfall & Temperature)</h5></div><div class="card-body"><div class="chart-container" style="height: 400px;"><canvas id="historicalWeatherChart"></canvas></div></div></div></div></div>
+            </div>
+
+            <!-- USER GUIDE SECTION -->
+            <div id="userguide" class="content-section">
+                <div class="section-header"><h2><i class="bi bi-question-circle"></i> User Guide</h2><p class="text-muted">Complete documentation for EcoManager Pro</p></div>
+                <div class="card"><div class="card-body"><iframe id="guideFrame" src="UserGuide.html" style="width: 100%; height: 700px; border: none; border-radius: 8px;" onerror="this.src='about:blank'; this.parentElement.innerHTML='<div class=\'alert alert-info\'><i class=\'bi bi-info-circle\'></i> User Guide document not found. Please ensure UserGuide.html exists in the same directory.</div>'"></iframe></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<div class="modal fade" id="maintenanceModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="modalMaintenanceTitle">Maintenance Details</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="modalMaintenanceBody"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button type="button" class="btn btn-success" id="modalCompleteButton">Mark as Completed</button></div></div></div></div>
+<div class="modal fade" id="projectMapModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="projectMapModalTitle">Project Location</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="map-container" id="modalProjectMap"></div><div class="location-coordinates mt-2" id="modalCoordinates"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div></div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
 <script>
-    // Fix for local file protocol
-    if (window.location.protocol === 'file:') {
-        document.addEventListener('DOMContentLoaded', function() {
-            // Re-attach sidebar click handlers with delegation
-            document.querySelector('.sidebar')?.addEventListener('click', function(e) {
-                const link = e.target.closest('.nav-link[data-target]');
-                if (link && link.getAttribute('data-target')) {
-                    e.preventDefault();
-                    const target = link.getAttribute('data-target');
-                    if (window.navigateTo) window.navigateTo(target);
-                }
-            });
-            
-            // Ensure Bootstrap JS is loaded
-            if (typeof bootstrap === 'undefined') {
-                console.warn('Bootstrap not loaded - check CDN connection');
+// ==================== COMPLETE ENHANCED APPLICATION ====================
+
+// Global variables
+let currentUser = { role: 'viewer', name: 'Demo User', permissions: [] };
+let projectMap = null, projectMarker = null, modalProjectMap = null, calendar = null;
+let projectStatusChart = null, healthTrendChart = null, analyticsHealthTrendChart = null;
+let speciesTypeChart = null, maintenanceTypeChart = null, monthlyActivityChart = null;
+let forecastChart = null, historicalWeatherChart = null;
+let currentTimeRange = 6;
+let currentPolygonLayer = null;
+let drawnItems = null;
+
+// Audit Log System
+let auditLog = JSON.parse(localStorage.getItem('auditLog') || '[]');
+function addAuditLog(action, details) {
+    const logEntry = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        user: currentUser.role,
+        action: action,
+        details: details,
+        ip: 'client-side'
+    };
+    auditLog.unshift(logEntry);
+    if (auditLog.length > 500) auditLog = auditLog.slice(0, 500);
+    localStorage.setItem('auditLog', JSON.stringify(auditLog));
+    console.log('Audit:', logEntry);
+}
+
+// Toast notification with styling
+function showToast(title, message, type = 'success') {
+    const toast = document.getElementById('liveToast');
+    if (!toast) return;
+    document.getElementById('toast-title').textContent = title;
+    document.getElementById('toast-message').innerHTML = message;
+    const header = toast.querySelector('.toast-header');
+    header.className = 'toast-header';
+    if (type === 'error') header.classList.add('bg-danger', 'text-white');
+    else if (type === 'warning') header.classList.add('bg-warning', 'text-dark');
+    else if (type === 'info') header.classList.add('bg-info', 'text-white');
+    else header.classList.add('bg-success', 'text-white');
+    new bootstrap.Toast(toast).show();
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'Not specified';
+    return new Date(dateString).toLocaleDateString('en-AU');
+}
+
+function getProjectName(projectId) {
+    if (!projectId) return 'Unassigned';
+    const project = db.getProjects().find(p => p.id === projectId);
+    return project ? project.name : 'Unknown Project';
+}
+
+function getHealthBadgeClass(health) {
+    const map = { excellent: 'bg-success', good: 'bg-info', fair: 'bg-warning', poor: 'bg-danger', degraded: 'bg-dark' };
+    return map[health] || 'bg-secondary';
+}
+
+function getPriorityBadgeClass(priority) {
+    const map = { low: 'bg-info', medium: 'bg-warning', high: 'bg-danger' };
+    return map[priority] || 'bg-secondary';
+}
+
+function checkPermission(permission) {
+    if (currentUser.permissions.includes('all')) return true;
+    return currentUser.permissions.includes(permission);
+}
+
+// Data validation
+function validateProjectData(project) {
+    if (!project.name || project.name.trim().length < 2) {
+        showToast('Validation Error', 'Project name must be at least 2 characters', 'error');
+        return false;
+    }
+    if (project.startDate && !/^\d{4}-\d{2}-\d{2}$/.test(project.startDate)) {
+        showToast('Validation Error', 'Invalid date format', 'error');
+        return false;
+    }
+    if (project.latitude && (project.latitude < -90 || project.latitude > 90)) {
+        showToast('Validation Error', 'Invalid latitude (-90 to 90)', 'error');
+        return false;
+    }
+    if (project.longitude && (project.longitude < -180 || project.longitude > 180)) {
+        showToast('Validation Error', 'Invalid longitude (-180 to 180)', 'error');
+        return false;
+    }
+    return true;
+}
+
+// ==================== ECOSYSTEM SCORING SYSTEM ====================
+const ecosystemScoring = {
+    calculateHealthScore: function(data) {
+        const scores = {
+            vegetation: Math.min((parseFloat(data.vegetationCover || 0) * 0.5 + parseFloat(data.nativeSpecies || 0) * 0.5), 100),
+            weeds: Math.max(0, 100 - (parseFloat(data.weedCover || 0) * 1.5)),
+            soil: (parseInt(data.soilStability || 3) - 1) * 25,
+            biodiversity: Math.min(parseInt(data.speciesRichness || 0) * 5, 100)
+        };
+        const totalScore = Math.round(scores.vegetation * 0.3 + scores.weeds * 0.3 + scores.soil * 0.2 + scores.biodiversity * 0.2);
+        const rating = totalScore >= 80 ? 'excellent' : totalScore >= 60 ? 'good' : totalScore >= 40 ? 'fair' : totalScore >= 20 ? 'poor' : 'degraded';
+        return { total: totalScore, rating: rating, breakdown: scores };
+    },
+    getHealthColor: (score) => score >= 80 ? 'success' : score >= 60 ? 'info' : score >= 40 ? 'warning' : score >= 20 ? 'danger' : 'dark'
+};
+
+// ==================== DATA LAYER ====================
+const db = {
+    init: function() {
+        if (!localStorage.getItem('projects')) {
+            localStorage.setItem('projects', JSON.stringify([
+                { id: '1', name: 'Burnie Coastal Restoration', code: 'BCR001', startDate: '2023-01-15', status: 'active', progress: 65, description: 'Restoration of coastal vegetation', latitude: -41.0521, longitude: 145.9061, budget: 150000, fte: 2.5, fundingSource: 'council', riskAssessment: 'Moderate risk due to coastal erosion', riskLevel: 'medium', approvalStatus: 'approved', approvalComments: 'Approved by council' },
+                { id: '2', name: 'Tasmanian Wetlands Preservation', code: 'TWP002', startDate: '2023-03-10', status: 'planning', progress: 20, description: 'Preservation of wetland ecosystems', latitude: -42.8821, longitude: 147.3272, budget: 85000, fte: 1.5, fundingSource: 'state', riskAssessment: 'Low risk, high environmental value', riskLevel: 'low', approvalStatus: 'pending', approvalComments: '' }
+            ]));
+        }
+        if (!localStorage.getItem('assessments')) localStorage.setItem('assessments', JSON.stringify([]));
+        if (!localStorage.getItem('species')) localStorage.setItem('species', JSON.stringify([]));
+        if (!localStorage.getItem('maintenance')) localStorage.setItem('maintenance', JSON.stringify([]));
+        if (!localStorage.getItem('documents')) localStorage.setItem('documents', JSON.stringify([]));
+        if (!localStorage.getItem('formTemplates')) localStorage.setItem('formTemplates', JSON.stringify({}));
+    },
+    getProjects: () => JSON.parse(localStorage.getItem('projects') || '[]'),
+    getAssessments: () => JSON.parse(localStorage.getItem('assessments') || '[]'),
+    getSpecies: () => JSON.parse(localStorage.getItem('species') || '[]'),
+    getMaintenance: () => JSON.parse(localStorage.getItem('maintenance') || '[]'),
+    getDocuments: () => JSON.parse(localStorage.getItem('documents') || '[]'),
+    getFormTemplates: () => JSON.parse(localStorage.getItem('formTemplates') || '{}'),
+    
+    saveProject: function(project) {
+        const projects = this.getProjects();
+        if (project.id) {
+            const index = projects.findIndex(p => p.id === project.id);
+            if (index !== -1) projects[index] = project;
+        } else {
+            project.id = Date.now().toString();
+            projects.push(project);
+        }
+        localStorage.setItem('projects', JSON.stringify(projects));
+        addAuditLog('project_saved', `Project: ${project.name}`);
+        return project;
+    },
+    
+    saveAssessment: function(assessment) {
+        const assessments = this.getAssessments();
+        assessment.id = Date.now().toString();
+        assessments.push(assessment);
+        localStorage.setItem('assessments', JSON.stringify(assessments));
+        addAuditLog('assessment_saved', `Score: ${assessment.healthScore?.total}`);
+        return assessment;
+    },
+    
+    saveSpecies: function(species) {
+        const allSpecies = this.getSpecies();
+        species.id = Date.now().toString();
+        allSpecies.push(species);
+        localStorage.setItem('species', JSON.stringify(allSpecies));
+        addAuditLog('species_added', species.name);
+        return species;
+    },
+    
+    saveMaintenance: function(maintenance) {
+        const items = this.getMaintenance();
+        maintenance.id = Date.now().toString();
+        maintenance.status = 'scheduled';
+        items.push(maintenance);
+        localStorage.setItem('maintenance', JSON.stringify(items));
+        addAuditLog('maintenance_scheduled', maintenance.activity);
+        return maintenance;
+    },
+    
+    saveDocument: function(doc) {
+        const docs = this.getDocuments();
+        doc.id = Date.now().toString();
+        docs.push(doc);
+        localStorage.setItem('documents', JSON.stringify(docs));
+        return doc;
+    },
+    
+    updateMaintenanceStatus: function(id, status) {
+        let items = this.getMaintenance();
+        items = items.map(item => item.id === id ? { ...item, status, completedDate: status === 'completed' ? new Date().toISOString().split('T')[0] : item.completedDate } : item);
+        localStorage.setItem('maintenance', JSON.stringify(items));
+        addAuditLog('maintenance_updated', `ID: ${id} to ${status}`);
+        return true;
+    },
+    
+    deleteProject: function(id) {
+        let projects = this.getProjects().filter(p => p.id !== id);
+        localStorage.setItem('projects', JSON.stringify(projects));
+        addAuditLog('project_deleted', id);
+        return true;
+    },
+    
+    deleteAssessment: function(id) {
+        let assessments = this.getAssessments().filter(a => a.id !== id);
+        localStorage.setItem('assessments', JSON.stringify(assessments));
+        return true;
+    },
+    
+    deleteSpecies: function(id) {
+        let species = this.getSpecies().filter(s => s.id !== id);
+        localStorage.setItem('species', JSON.stringify(species));
+        return true;
+    },
+    
+    deleteMaintenance: function(id) {
+        let items = this.getMaintenance().filter(m => m.id !== id);
+        localStorage.setItem('maintenance', JSON.stringify(items));
+        return true;
+    },
+    
+    getDocumentsByProject: function(projectId) {
+        return this.getDocuments().filter(doc => doc.projectId === projectId);
+    }
+};
+
+// ==================== UI RENDERING FUNCTIONS ====================
+function loadDashboard() {
+    document.getElementById('projects-count').textContent = db.getProjects().length;
+    document.getElementById('assessments-count').textContent = db.getAssessments().length;
+    document.getElementById('species-count').textContent = db.getSpecies().length;
+    document.getElementById('maintenance-count').textContent = db.getMaintenance().length;
+    
+    const activities = db.getAssessments().slice(-5).reverse();
+    const activitiesTable = document.getElementById('recent-activities');
+    if (activitiesTable) {
+        activitiesTable.innerHTML = activities.length ? activities.map(a => `<tr><td>${formatDate(a.date)}</td><td>Assessment</td><td>${a.description?.substring(0, 50) || ''}...</td><td>${getProjectName(a.projectId)}</td><td><span class="badge ${getHealthBadgeClass(a.health)}">${a.health || ''}</span></td></tr>`).join('') : '<tr><td colspan="5" class="text-center empty-state"><i class="bi bi-inbox"></i><p>No activities recorded</p></td></tr>';
+    }
+    
+    const upcoming = db.getMaintenance().filter(i => i.status === 'scheduled').sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 5);
+    const upcomingContainer = document.getElementById('upcoming-maintenance');
+    if (upcomingContainer) {
+        upcomingContainer.innerHTML = upcoming.length ? upcoming.map(i => {
+            const isOverdue = new Date(i.date) < new Date();
+            return `<div class="maintenance-item ${isOverdue ? 'maintenance-overdue' : 'maintenance-pending'}"><h6>${i.activity} (${getProjectName(i.projectId)})</h6><p>${formatDate(i.date)} - ${i.type}</p><span class="badge ${getPriorityBadgeClass(i.priority)}">${i.priority} ${isOverdue ? '• OVERDUE' : ''}</span></div>`;
+        }).join('') : '<div class="empty-state"><i class="bi bi-calendar-check"></i><p>No upcoming maintenance</p></div>';
+    }
+    
+    loadProjectSelects();
+    loadHealthChart();
+    loadProjectStatusChart();
+}
+
+function loadHealthChart() {
+    let assessments = db.getAssessments().filter(a => new Date(a.date) >= new Date(new Date().setMonth(new Date().getMonth() - currentTimeRange)));
+    const ctx = document.getElementById('healthTrendChart');
+    if (!ctx) return;
+    if (healthTrendChart) healthTrendChart.destroy();
+    
+    const healthValues = { excellent: 100, good: 75, fair: 50, poor: 25, degraded: 10 };
+    assessments = assessments.sort((a,b) => new Date(a.date) - new Date(b.date));
+    
+    if (assessments.length) {
+        healthTrendChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: assessments.map(a => formatDate(a.date)),
+                datasets: [{
+                    label: 'Overall Health Score',
+                    data: assessments.map(a => a.healthScore?.total || healthValues[a.health] || 50),
+                    borderColor: '#4bc0c0',
+                    backgroundColor: 'rgba(75,192,192,0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { min: 0, max: 100, title: { display: true, text: 'Health Score' } } }
             }
         });
+    } else {
+        healthTrendChart = new Chart(ctx, { type: 'line', data: { labels: ['No Data'], datasets: [{ label: 'No assessments available', data: [null] }] }, options: { responsive: true, maintainAspectRatio: false } });
     }
+}
+
+function loadProjectStatusChart() {
+    const projects = db.getProjects();
+    const statusCount = { planning: 0, active: 0, 'on-hold': 0, completed: 0 };
+    projects.forEach(p => statusCount[p.status]++);
+    const ctx = document.getElementById('projectStatusChart');
+    if (!ctx) return;
+    if (projectStatusChart) projectStatusChart.destroy();
+    projectStatusChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: ['Planning', 'Active', 'On Hold', 'Completed'], datasets: [{ data: Object.values(statusCount), backgroundColor: ['#36a2eb', '#4bc0c0', '#ffce56', '#9966ff'] }] },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+function loadProjects() {
+    const projects = db.getProjects();
+    const searchTerm = document.getElementById('projectSearch')?.value.toLowerCase() || '';
+    const filtered = projects.filter(p => p.name.toLowerCase().includes(searchTerm) || (p.code || '').toLowerCase().includes(searchTerm));
+    const table = document.getElementById('projects-table');
+    if (!table) return;
+    
+    if (filtered.length === 0) {
+        table.innerHTML = '<tr><td colspan="8" class="text-center empty-state"><i class="bi bi-folder-x"></i><p>No projects found. Create your first project!</p></td></tr>';
+        return;
+    }
+    
+    table.innerHTML = filtered.map(p => `<tr>
+        <td><strong>${p.name}</strong></td>
+        <td>${p.code || '-'}</td>
+        <td><span class="badge ${p.status === 'active' ? 'bg-success' : p.status === 'planning' ? 'bg-info' : 'bg-secondary'}">${p.status}</span></td>
+        <td><div class="progress" style="height:8px"><div class="progress-bar" style="width:${p.progress || 0}%"></div></div><small>${p.progress || 0}%</small></td>
+        <td>${formatDate(p.startDate)}</td>
+        <td>$${p.budget?.toLocaleString() || '0'}</td>
+        <td><span class="badge approval-badge ${p.approvalStatus === 'approved' ? 'bg-success' : p.approvalStatus === 'rejected' ? 'bg-danger' : 'bg-warning'}" onclick="showApprovalDetails('${p.id}')">${p.approvalStatus || 'pending'}</span></td>
+        <td>
+            <button class="btn btn-sm btn-outline-primary" onclick="editProject('${p.id}')"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-info" onclick="showProjectInModal('${p.id}')"><i class="bi bi-map"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteProjectItem('${p.id}')"><i class="bi bi-trash"></i></button>
+        </td>
+    </tr>`).join('');
+    loadProjectSelects();
+}
+
+function editProject(id) {
+    if (!checkPermission('edit_projects') && currentUser.role !== 'admin') {
+        showToast('Permission Denied', 'You need Manager or Admin rights', 'error');
+        return;
+    }
+    const project = db.getProjects().find(p => p.id === id);
+    if (project) {
+        document.getElementById('editProjectId').value = project.id;
+        document.getElementById('projectName').value = project.name;
+        document.getElementById('projectCode').value = project.code || '';
+        document.getElementById('projectStartDate').value = project.startDate || '';
+        document.getElementById('projectStatus').value = project.status;
+        document.getElementById('projectProgress').value = project.progress || 0;
+        document.getElementById('progressValue').textContent = `${project.progress || 0}%`;
+        document.getElementById('projectBudget').value = project.budget || '';
+        document.getElementById('projectFTE').value = project.fte || '';
+        document.getElementById('fundingSource').value = project.fundingSource || '';
+        document.getElementById('approvalStatus').value = project.approvalStatus || 'pending';
+        document.getElementById('approvalComments').value = project.approvalComments || '';
+        document.getElementById('riskAssessment').value = project.riskAssessment || '';
+        document.getElementById('riskLevel').value = project.riskLevel || 'low';
+        document.getElementById('projectDescription').value = project.description || '';
+        document.getElementById('projectLatitude').value = project.latitude || '';
+        document.getElementById('projectLongitude').value = project.longitude || '';
+        if (project.latitude && project.longitude && projectMap) {
+            setProjectMarker(project.latitude, project.longitude);
+        }
+        loadDocumentsForProject(id);
+        showToast('Edit Mode', `Editing: ${project.name}`, 'info');
+    }
+}
+
+function showApprovalDetails(projectId) {
+    const project = db.getProjects().find(p => p.id === projectId);
+    if (project) {
+        showToast('Approval Details', `Status: ${project.approvalStatus || 'pending'}<br>Comments: ${project.approvalComments || 'None'}`, 'info');
+    }
+}
+
+function deleteProjectItem(id) {
+    if (confirm('Delete this project? This will not delete associated assessments.')) {
+        db.deleteProject(id);
+        loadProjects();
+        loadDashboard();
+        showToast('Success', 'Project deleted');
+    }
+}
+
+function deleteAssessment(id) {
+    if (confirm('Delete this assessment?')) {
+        db.deleteAssessment(id);
+        loadAssessments();
+        loadDashboard();
+        showToast('Success', 'Assessment deleted');
+    }
+}
+
+function deleteSpecies(id) {
+    if (confirm('Delete this species?')) {
+        db.deleteSpecies(id);
+        loadSpecies();
+        loadDashboard();
+        showToast('Success', 'Species deleted');
+    }
+}
+
+function deleteMaintenance(id) {
+    if (confirm('Delete this maintenance?')) {
+        db.deleteMaintenance(id);
+        loadMaintenance();
+        loadDashboard();
+        showToast('Success', 'Maintenance deleted');
+    }
+}
+
+function completeMaintenance(id) {
+    if (confirm('Mark as completed?')) {
+        db.updateMaintenanceStatus(id, 'completed');
+        loadMaintenance();
+        loadDashboard();
+        if (calendar) calendar.refetchEvents();
+        showToast('Success', 'Maintenance completed');
+    }
+}
+
+function loadAssessments() {
+    let assessments = db.getAssessments();
+    const filter = document.getElementById('assessmentProjectFilter');
+    if (filter && filter.value !== 'all') assessments = assessments.filter(a => a.projectId === filter.value);
+    const table = document.getElementById('assessments-table');
+    if (!table) return;
+    
+    if (assessments.length === 0) {
+        table.innerHTML = '<tr><td colspan="6" class="text-center empty-state"><i class="bi bi-clipboard-data"></i><p>No assessments recorded. Create your first assessment!</p></td></tr>';
+        return;
+    }
+    
+    table.innerHTML = assessments.map(a => `<tr>
+        <td>${formatDate(a.date)}</td>
+        <td>${a.assessor}</td>
+        <td><span class="badge ${getHealthBadgeClass(a.health)}">${a.health}</span></td>
+        <td><strong>${a.healthScore?.total || '-'}</strong>/100</td>
+        <td>${getProjectName(a.projectId)}</td>
+        <td><button class="btn btn-sm btn-outline-danger" onclick="deleteAssessment('${a.id}')">Delete</button></td>
+    </tr>`).join('');
+}
+
+function loadSpecies() {
+    let species = db.getSpecies();
+    const filter = document.getElementById('speciesProjectFilter');
+    if (filter && filter.value !== 'all') species = species.filter(s => s.projectId === filter.value);
+    const table = document.getElementById('species-table');
+    if (!table) return;
+    
+    if (species.length === 0) {
+        table.innerHTML = '<tr><td colspan="6" class="text-center empty-state"><i class="bi bi-tree"></i><p>No species recorded. Add your first species!</p></td></tr>';
+        return;
+    }
+    
+    table.innerHTML = species.map(s => `<tr>
+        <td>${s.name}</td>
+        <td>${s.scientificName || '-'}</td>
+        <td>${s.type}</td>
+        <td><span class="badge bg-info">${s.status}</span></td>
+        <td>${getProjectName(s.projectId)}</td>
+        <td><button class="btn btn-sm btn-outline-danger" onclick="deleteSpecies('${s.id}')">Delete</button></td>
+    </tr>`).join('');
+}
+
+function loadMaintenance() {
+    let items = db.getMaintenance();
+    const filter = document.getElementById('maintenanceProjectFilter');
+    if (filter && filter.value !== 'all') items = items.filter(m => m.projectId === filter.value);
+    const table = document.getElementById('maintenance-table');
+    if (!table) return;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (items.length === 0) {
+        table.innerHTML = '<tr><td colspan="7" class="text-center empty-state"><i class="bi bi-tools"></i><p>No maintenance scheduled. Create your first task!</p></td></tr>';
+        return;
+    }
+    
+    table.innerHTML = items.map(i => {
+        const dueDate = new Date(i.date);
+        const isOverdue = i.status !== 'completed' && dueDate < today;
+        const statusClass = i.status === 'completed' ? 'maintenance-completed' : (isOverdue ? 'maintenance-overdue' : 'maintenance-pending');
+        const statusText = i.status === 'completed' ? 'Completed' : (isOverdue ? 'OVERDUE' : 'Scheduled');
+        return `<tr class="${statusClass}">
+            <td>${i.activity}</td>
+            <td>${i.type.replace('-', ' ').toUpperCase()}</td>
+            <td>${formatDate(i.date)}</td>
+            <td><span class="badge ${i.status === 'completed' ? 'bg-success' : 'bg-warning'}">${statusText}</span></td>
+            <td><span class="badge ${getPriorityBadgeClass(i.priority)}">${i.priority}</span></td>
+            <td>${getProjectName(i.projectId)}</td>
+            <td>
+                ${i.status === 'scheduled' ? `<button class="btn btn-sm btn-outline-success me-1" onclick="completeMaintenance('${i.id}')">Complete</button>` : ''}
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteMaintenance('${i.id}')">Delete</button>
+            </td>
+        </tr>`;
+    }).join('');
+    
+    if (calendar) calendar.refetchEvents();
+}
+
+function loadProjectSelects() {
+    const projects = db.getProjects();
+    const selects = ['assessmentProject', 'speciesProject', 'maintenanceProject', 'assessmentProjectFilter', 'speciesProjectFilter', 'maintenanceProjectFilter', 'exportProject', 'formBuilderProject', 'weatherLocationSelect'];
+    selects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        const currentValue = select.value;
+        select.innerHTML = '<option value="all">All Projects</option>';
+        projects.forEach(project => {
+            const option = document.createElement('option');
+            option.value = project.id;
+            option.textContent = project.name;
+            if (selectId === 'weatherLocationSelect' && project.latitude && project.longitude) {
+                option.textContent = `${project.name} (${project.latitude.toFixed(2)}, ${project.longitude.toFixed(2)})`;
+                option.dataset.lat = project.latitude;
+                option.dataset.lon = project.longitude;
+            }
+            select.appendChild(option);
+        });
+        if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) select.value = currentValue;
+    });
+}
+
+function loadDocumentsForProject(projectId) {
+    const docs = db.getDocumentsByProject(projectId);
+    const container = document.getElementById('documentList');
+    if (!container) return;
+    container.innerHTML = docs.length ? docs.map(d => `<div class="document-item"><i class="bi bi-file-earmark document-icon"></i><div class="flex-grow-1"><strong>${d.fileName}</strong><div class="text-muted small">Uploaded: ${formatDate(d.uploadedAt)} • Size: ${(d.size/1024).toFixed(2)} KB</div></div></div>`).join('') : '<p class="text-muted">No documents uploaded yet</p>';
+}
+
+function loadDataSummary() {
+    document.getElementById('data-projects-count').textContent = db.getProjects().length;
+    document.getElementById('data-assessments-count').textContent = db.getAssessments().length;
+    document.getElementById('data-species-count').textContent = db.getSpecies().length;
+    document.getElementById('data-maintenance-count').textContent = db.getMaintenance().length;
+}
+
+// ==================== CHART FUNCTIONS ====================
+function loadAnalyticsCharts() {
+    const assessments = db.getAssessments().sort((a,b) => new Date(a.date) - new Date(b.date));
+    const ctx1 = document.getElementById('analyticsHealthTrendChart');
+    if (ctx1) {
+        if (analyticsHealthTrendChart) analyticsHealthTrendChart.destroy();
+        analyticsHealthTrendChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: assessments.map(a => formatDate(a.date)),
+                datasets: [{ label: 'Ecosystem Health Score', data: assessments.map(a => a.healthScore?.total || 50), borderColor: '#4bc0c0', tension: 0.3 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+    
+    const species = db.getSpecies();
+    const speciesTypeData = { plant: 0, animal: 0, bird: 0, reptile: 0, insect: 0 };
+    species.forEach(s => speciesTypeData[s.type]++);
+    const ctx2 = document.getElementById('speciesTypeChart');
+    if (ctx2) {
+        if (speciesTypeChart) speciesTypeChart.destroy();
+        speciesTypeChart = new Chart(ctx2, {
+            type: 'pie',
+            data: { labels: Object.keys(speciesTypeData).map(k => k.charAt(0).toUpperCase() + k.slice(1)), datasets: [{ data: Object.values(speciesTypeData), backgroundColor: ['#4bc0c0', '#36a2eb', '#ffce56', '#9966ff', '#ff9f40'] }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+    
+    const maintenance = db.getMaintenance();
+    const maintenanceTypeData = {};
+    maintenance.forEach(m => maintenanceTypeData[m.type] = (maintenanceTypeData[m.type] || 0) + 1);
+    const ctx3 = document.getElementById('maintenanceTypeChart');
+    if (ctx3) {
+        if (maintenanceTypeChart) maintenanceTypeChart.destroy();
+        maintenanceTypeChart = new Chart(ctx3, {
+            type: 'bar',
+            data: { labels: Object.keys(maintenanceTypeData).map(k => k.replace('-', ' ').toUpperCase()), datasets: [{ label: 'Number of Activities', data: Object.values(maintenanceTypeData), backgroundColor: '#36a2eb' }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        });
+    }
+    
+    const monthlyData = {};
+    const lastSixMonths = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        lastSixMonths.push(monthKey);
+        monthlyData[monthKey] = { label: date.toLocaleString('default', { month: 'short', year: 'numeric' }), assessments: 0, maintenance: 0 };
+    }
+    db.getAssessments().forEach(a => { const d = new Date(a.date); const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; if (monthlyData[key]) monthlyData[key].assessments++; });
+    db.getMaintenance().forEach(m => { const d = new Date(m.date); const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; if (monthlyData[key]) monthlyData[key].maintenance++; });
+    const ctx4 = document.getElementById('monthlyActivityChart');
+    if (ctx4) {
+        if (monthlyActivityChart) monthlyActivityChart.destroy();
+        monthlyActivityChart = new Chart(ctx4, {
+            type: 'bar',
+            data: { labels: lastSixMonths.map(k => monthlyData[k].label), datasets: [{ label: 'Assessments', data: lastSixMonths.map(k => monthlyData[k].assessments), backgroundColor: '#4bc0c0' }, { label: 'Maintenance', data: lastSixMonths.map(k => monthlyData[k].maintenance), backgroundColor: '#ff9f40' }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        });
+    }
+}
+
+// ==================== WEATHER FUNCTIONS ====================
+let currentWeatherLat = -41.0521, currentWeatherLon = 145.9061;
+let currentLocationName = 'Burnie, TAS';
+
+async function getLocationNameFromCoords(lat, lon) {
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`);
+        if (response.ok) {
+            const data = await response.json();
+            return data.display_name?.split(',')[0] || `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+        }
+    } catch (e) { console.log('Reverse geocoding failed'); }
+    return `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+}
+
+async function loadWeatherData() {
+    const useDemoData = localStorage.getItem('useDemoData') !== 'false';
+    const savedApiKey = localStorage.getItem('weatherApiKey');
+    
+    document.getElementById('current-temp').textContent = '--°C';
+    document.getElementById('weather-description').textContent = 'Loading...';
+    
+    if (!useDemoData && savedApiKey && savedApiKey !== 'YOUR_API_KEY_HERE' && savedApiKey !== '••••••••••••••••') {
+        try {
+            const response = await fetch(`https://api.weatherapi.com/v1/current.json?key=${savedApiKey}&q=${currentWeatherLat},${currentWeatherLon}&aqi=yes`);
+            if (response.ok) {
+                const data = await response.json();
+                updateWeatherDisplay(data.current, data.location);
+                const forecastRes = await fetch(`https://api.weatherapi.com/v1/forecast.json?key=${savedApiKey}&q=${currentWeatherLat},${currentWeatherLon}&days=7`);
+                if (forecastRes.ok) updateForecastChart(await forecastRes.json());
+                updateHistoricalChart();
+                document.getElementById('lastUpdate').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+                return;
+            }
+        } catch(e) { console.log('API error, using demo'); }
+    }
+    // Demo data
+    updateWeatherDisplay({ temp_c: 22, condition: { text: 'Partly Cloudy' }, humidity: 65, wind_kph: 12, pressure_mb: 1013 }, { name: currentLocationName });
+    updateForecastChart(null);
+    updateHistoricalChart();
+    document.getElementById('lastUpdate').textContent = `Last updated: ${new Date().toLocaleTimeString()} (Demo)`;
+}
+
+function updateWeatherDisplay(current, location) {
+    document.getElementById('current-temp').textContent = `${Math.round(current.temp_c)}°C`;
+    document.getElementById('weather-description').textContent = current.condition.text;
+    document.getElementById('weather-location-name').textContent = location.name || currentLocationName;
+    document.getElementById('humidity').textContent = `${current.humidity}%`;
+    document.getElementById('wind-speed').textContent = `${Math.round(current.wind_kph)} km/h`;
+    document.getElementById('pressure').textContent = `${current.pressure_mb} hPa`;
+    
+    const alerts = document.getElementById('environmental-alerts');
+    let alertHtml = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> <strong>Favorable Conditions</strong><p>Weather conditions are suitable for ecosystem management.</p></div>';
+    if (current.temp_c > 30) alertHtml = '<div class="alert alert-warning"><i class="bi bi-thermometer-sun"></i> <strong>High Temperature Alert</strong><p>Extreme heat may stress vegetation. Consider postponing fieldwork.</p></div>';
+    else if (current.wind_kph > 30) alertHtml = '<div class="alert alert-warning"><i class="bi bi-wind"></i> <strong>Strong Wind Alert</strong><p>High winds may affect monitoring activities and increase fire risk.</p></div>';
+    else if (current.humidity > 80) alertHtml = '<div class="alert alert-info"><i class="bi bi-droplet"></i> <strong>High Humidity</strong><p>Increased disease risk for some species.</p></div>';
+    alerts.innerHTML = alertHtml;
+}
+
+function updateForecastChart(forecastData) {
+    const ctx = document.getElementById('forecastChart');
+    if (!ctx) return;
+    if (forecastChart) forecastChart.destroy();
+    
+    let labels = ['Today', '+1 day', '+2 days', '+3 days', '+4 days', '+5 days', '+6 days'];
+    let temps = [18, 19, 20, 19, 17, 16, 15];
+    if (forecastData?.forecast?.forecastday) {
+        labels = forecastData.forecast.forecastday.map(d => new Date(d.date).toLocaleDateString('en-AU', { weekday: 'short' }));
+        temps = forecastData.forecast.forecastday.map(d => d.day.avgtemp_c);
+    }
+    forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ label: 'Temperature (°C)', data: temps, borderColor: '#ff6384', backgroundColor: 'rgba(255,99,132,0.1)', fill: true, tension: 0.3 }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'Temperature (°C)' } } } }
+    });
+}
+
+function updateHistoricalChart() {
+    const ctx = document.getElementById('historicalWeatherChart');
+    if (!ctx) return;
+    if (historicalWeatherChart) historicalWeatherChart.destroy();
+    
+    // Sample historical data - in production would come from API
+    historicalWeatherChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            datasets: [
+                { label: 'Rainfall (mm)', data: [85, 70, 95, 110, 80, 75, 90, 85, 78, 82, 88, 92], backgroundColor: '#36a2eb', yAxisID: 'y' },
+                { label: 'Temperature (°C)', data: [22, 21, 19, 16, 13, 11, 10, 11, 13, 15, 18, 20], borderColor: '#ff6384', backgroundColor: 'rgba(255,99,132,0.1)', type: 'line', tension: 0.3, fill: false, yAxisID: 'y1' }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { title: { display: true, text: 'Rainfall (mm)' }, beginAtZero: true }, y1: { position: 'right', title: { display: true, text: 'Temperature (°C)' } } }
+        }
+    });
+}
+
+function useBrowserLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            currentWeatherLat = position.coords.latitude;
+            currentWeatherLon = position.coords.longitude;
+            currentLocationName = await getLocationNameFromCoords(currentWeatherLat, currentWeatherLon);
+            document.getElementById('locationNameDisplay').innerHTML = `<i class="bi bi-geo-alt-fill"></i> Using: ${currentLocationName}`;
+            loadWeatherData();
+            showToast('Location Updated', `Weather for ${currentLocationName}`, 'success');
+        }, () => {
+            showToast('Location Error', 'Unable to get your location', 'error');
+        });
+    } else {
+        showToast('Not Supported', 'Geolocation not supported', 'error');
+    }
+}
+
+// ==================== MAP FUNCTIONS ====================
+function initProjectMap() {
+    const mapContainer = document.getElementById('projectMap');
+    if (!mapContainer) return;
+    if (projectMap) projectMap.remove();
+    projectMap = L.map('projectMap').setView([-41.0521, 145.9061], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(projectMap);
+    
+    drawnItems = new L.FeatureGroup();
+    projectMap.addLayer(drawnItems);
+    const drawControl = new L.Control.Draw({ edit: { featureGroup: drawnItems }, draw: { polygon: { allowIntersection: false, showArea: true }, marker: true, polyline: false, circle: false, rectangle: false, circlemarker: false } });
+    projectMap.addControl(drawControl);
+    
+    projectMap.on(L.Draw.Event.CREATED, function(e) {
+        if (e.layerType === 'marker') {
+            setProjectMarker(e.layer.getLatLng().lat, e.layer.getLng().lng);
+        } else if (e.layerType === 'polygon') {
+            if (currentPolygonLayer) drawnItems.removeLayer(currentPolygonLayer);
+            currentPolygonLayer = e.layer;
+            drawnItems.addLayer(currentPolygonLayer);
+            const center = e.layer.getBounds().getCenter();
+            setProjectMarker(center.lat, center.lng);
+            showToast('Polygon Added', 'Project boundary saved', 'success');
+        }
+    });
+    
+    const lat = document.getElementById('projectLatitude')?.value;
+    const lng = document.getElementById('projectLongitude')?.value;
+    if (lat && lng) setProjectMarker(parseFloat(lat), parseFloat(lng));
+    return projectMap;
+}
+
+function setProjectMarker(lat, lng) {
+    const latInput = document.getElementById('projectLatitude');
+    const lngInput = document.getElementById('projectLongitude');
+    if (latInput) latInput.value = lat.toFixed(6);
+    if (lngInput) lngInput.value = lng.toFixed(6);
+    if (projectMarker) projectMap.removeLayer(projectMarker);
+    projectMarker = L.marker([lat, lng]).addTo(projectMap).bindPopup('Project Location').openPopup();
+    projectMap.setView([lat, lng], 12);
+}
+
+function clearProjectMarker() {
+    if (projectMarker) projectMap.removeLayer(projectMarker);
+    if (currentPolygonLayer) drawnItems.removeLayer(currentPolygonLayer);
+    document.getElementById('projectLatitude').value = '';
+    document.getElementById('projectLongitude').value = '';
+    showToast('Location Cleared', 'Project location removed', 'info');
+}
+
+function useCurrentLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            p => setProjectMarker(p.coords.latitude, p.coords.longitude),
+            () => showToast('Location Error', 'Unable to retrieve location', 'error')
+        );
+    } else showToast('Location Error', 'Geolocation not supported', 'error');
+}
+
+function importGPXKML() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.gpx,.kml,.kmz';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            showToast('Import', `File "${file.name}" selected. Parsing would occur here.`, 'info');
+            // In production, use a library like togeojson to parse GPX/KML
+        }
+    };
+    input.click();
+}
+
+function showProjectInModal(projectId) {
+    const project = db.getProjects().find(p => p.id === projectId);
+    if (!project) return;
+    const modalTitle = document.getElementById('projectMapModalTitle');
+    const modalCoordinates = document.getElementById('modalCoordinates');
+    const modalMapContainer = document.getElementById('modalProjectMap');
+    if (modalTitle) modalTitle.textContent = `${project.name} Location`;
+    if (modalMapContainer) {
+        modalMapContainer.innerHTML = '<div id="modalMap" style="height: 100%; width: 100%;"></div>';
+        if (modalProjectMap) modalProjectMap.remove();
+        modalProjectMap = L.map('modalMap').setView([project.latitude || -41.0521, project.longitude || 145.9061], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(modalProjectMap);
+        if (project.latitude && project.longitude) {
+            L.marker([project.latitude, project.longitude]).addTo(modalProjectMap).bindPopup(project.name).openPopup();
+            modalProjectMap.setView([project.latitude, project.longitude], 12);
+            if (modalCoordinates) modalCoordinates.textContent = `Coordinates: ${project.latitude.toFixed(6)}, ${project.longitude.toFixed(6)}`;
+        } else if (modalCoordinates) modalCoordinates.textContent = 'Coordinates: Not specified';
+        setTimeout(() => modalProjectMap.invalidateSize(), 100);
+    }
+    new bootstrap.Modal(document.getElementById('projectMapModal')).show();
+}
+
+// ==================== CALENDAR FUNCTIONS ====================
+function loadCalendar() {
+    const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) return;
+    if (calendar) calendar.destroy();
+    const maintenanceItems = db.getMaintenance();
+    calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
+        events: maintenanceItems.map(item => ({
+            id: item.id,
+            title: `${item.activity} (${getProjectName(item.projectId)})`,
+            start: item.date,
+            allDay: true,
+            backgroundColor: item.priority === 'high' ? '#dc3545' : item.priority === 'medium' ? '#ffc107' : '#28a745',
+            extendedProps: { type: item.type, priority: item.priority, status: item.status, description: item.description, projectId: item.projectId }
+        })),
+        eventClick: function(info) {
+            const event = info.event;
+            document.getElementById('modalMaintenanceTitle').textContent = event.title;
+            document.getElementById('modalMaintenanceBody').innerHTML = `
+                <p><strong>Project:</strong> ${getProjectName(event.extendedProps.projectId)}</p>
+                <p><strong>Date:</strong> ${formatDate(event.startStr)}</p>
+                <p><strong>Type:</strong> ${event.extendedProps.type?.replace('-', ' ').toUpperCase()}</p>
+                <p><strong>Priority:</strong> <span class="badge ${getPriorityBadgeClass(event.extendedProps.priority)}">${event.extendedProps.priority?.toUpperCase()}</span></p>
+                <p><strong>Status:</strong> <span class="badge">${event.extendedProps.status}</span></p>
+                <p><strong>Description:</strong> ${event.extendedProps.description}</p>
+            `;
+            const completeBtn = document.getElementById('modalCompleteButton');
+            if (event.extendedProps.status === 'scheduled' && checkPermission('complete_maintenance')) {
+                completeBtn.style.display = 'block';
+                completeBtn.onclick = () => { completeMaintenance(event.id); bootstrap.Modal.getInstance(document.getElementById('maintenanceModal')).hide(); };
+            } else completeBtn.style.display = 'none';
+            new bootstrap.Modal(document.getElementById('maintenanceModal')).show();
+        }
+    });
+    calendar.render();
+}
+
+// ==================== FORM BUILDER ====================
+const formBuilder = {
+    currentForm: [],
+    show: function(projectId) {
+        const interfaceDiv = document.getElementById('form-builder-interface');
+        if (!interfaceDiv) return;
+        if (!projectId) { interfaceDiv.style.display = 'none'; return; }
+        interfaceDiv.style.display = 'block';
+        interfaceDiv.innerHTML = `<div class="border p-3 mb-3">
+            <h6>Custom Form Builder</h6>
+            <div class="mb-3"><label>Form Title:</label><input type="text" class="form-control" id="formTitle" value="Custom Monitoring Form"></div>
+            <div class="mb-3"><label>Add Field:</label>
+                <div class="btn-group mb-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.formBuilder.addField('text')"><i class="bi bi-text-paragraph"></i> Text</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.formBuilder.addField('number')"><i class="bi bi-123"></i> Number</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.formBuilder.addField('select')"><i class="bi bi-menu-down"></i> Dropdown</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.formBuilder.addField('checkbox')"><i class="bi bi-check-square"></i> Checkbox</button>
+                </div>
+            </div>
+            <div id="form-preview" class="border p-3 bg-light"><h6>Form Preview</h6><form id="custom-form-preview"></form></div>
+            <div class="mt-3">
+                <button class="btn btn-success" onclick="window.formBuilder.saveForm('${projectId}')"><i class="bi bi-save"></i> Save Template</button>
+                <button class="btn btn-outline-secondary" onclick="window.formBuilder.clearForm()"><i class="bi bi-trash"></i> Clear</button>
+            </div>
+        </div>`;
+        this.loadExistingForm(projectId);
+    },
+    addField: function(type) {
+        this.currentForm.push({ id: 'field_' + Date.now(), type: type, label: 'New Field', required: false, options: type === 'select' ? ['Option 1', 'Option 2'] : [] });
+        this.updateFormPreview();
+    },
+    updateFormPreview: function() {
+        const preview = document.getElementById('custom-form-preview');
+        if (!preview) return;
+        preview.innerHTML = this.currentForm.map((field, idx) => `<div class="mb-3">
+            <div class="d-flex justify-content-between">
+                <label>${field.label}</label>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="window.formBuilder.removeField(${idx})"><i class="bi bi-trash"></i></button>
+            </div>
+            ${field.type === 'text' ? '<input type="text" class="form-control" placeholder="Enter value">' : 
+              field.type === 'number' ? '<input type="number" class="form-control">' : 
+              field.type === 'select' ? `<select class="form-select">${field.options.map(o => `<option>${o}</option>`).join('')}</select>` : 
+              '<div class="form-check"><input class="form-check-input" type="checkbox"><label class="form-check-label">Checkbox</label></div>'}
+        </div>`).join('');
+    },
+    removeField: function(index) { this.currentForm.splice(index, 1); this.updateFormPreview(); },
+    saveForm: function(projectId) {
+        const templates = db.getFormTemplates();
+        templates[projectId] = { title: document.getElementById('formTitle').value, fields: this.currentForm };
+        localStorage.setItem('formTemplates', JSON.stringify(templates));
+        showToast('Form Saved', 'Custom monitoring form template saved', 'success');
+    },
+    loadExistingForm: function(projectId) {
+        const templates = db.getFormTemplates();
+        this.currentForm = templates[projectId]?.fields || [];
+        if (document.getElementById('formTitle')) document.getElementById('formTitle').value = templates[projectId]?.title || 'Custom Monitoring Form';
+        this.updateFormPreview();
+    },
+    clearForm: function() { if (confirm('Clear entire form?')) { this.currentForm = []; this.updateFormPreview(); } }
+};
+
+// ==================== HEALTH SCORE PREVIEW ====================
+function updateHealthScorePreview() {
+    const data = {
+        vegetationCover: document.getElementById('vegetationCover')?.value,
+        nativeSpecies: document.getElementById('nativeSpecies')?.value,
+        weedCover: document.getElementById('weedCover')?.value,
+        soilStability: document.getElementById('soilStability')?.value,
+        speciesRichness: document.getElementById('speciesRichness')?.value
+    };
+    const hasData = Object.values(data).some(v => v && v > 0);
+    if (hasData) {
+        const score = ecosystemScoring.calculateHealthScore(data);
+        document.getElementById('scoreValue').textContent = score.total;
+        document.getElementById('scoreRating').textContent = score.rating.toUpperCase();
+        document.getElementById('scoreProgress').style.width = `${score.total}%`;
+        document.getElementById('scoreProgress').className = `progress-bar bg-${ecosystemScoring.getHealthColor(score.total)}`;
+        document.getElementById('scoreDisplay').classList.remove('d-none');
+        document.getElementById('healthScorePreview').querySelector('p.text-muted')?.classList.add('d-none');
+    } else {
+        document.getElementById('scoreDisplay')?.classList.add('d-none');
+        const previewP = document.querySelector('#healthScorePreview p.text-muted');
+        if (previewP) previewP.classList.remove('d-none');
+    }
+}
+
+// ==================== DATA EXPORT/IMPORT ====================
+function exportData() {
+    const projectId = document.getElementById('exportProject')?.value;
+    const format = document.querySelector('input[name="exportFormat"]:checked')?.value;
+    if (format === 'json') {
+        const data = {
+            projects: projectId === 'all' ? db.getProjects() : db.getProjects().filter(p => p.id === projectId),
+            assessments: projectId === 'all' ? db.getAssessments() : db.getAssessments().filter(a => a.projectId === projectId),
+            species: projectId === 'all' ? db.getSpecies() : db.getSpecies().filter(s => s.projectId === projectId),
+            maintenance: projectId === 'all' ? db.getMaintenance() : db.getMaintenance().filter(m => m.projectId === projectId),
+            exportedAt: new Date().toISOString(),
+            version: '2.0'
+        };
+        const link = document.createElement('a');
+        link.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2));
+        link.download = `ecomanager-${projectId === 'all' ? 'all' : projectId}-${new Date().toISOString().slice(0,10)}.json`;
+        link.click();
+        addAuditLog('export_json', `Project filter: ${projectId}`);
+        showToast('Export Successful', 'JSON file downloaded', 'success');
+    } else if (format === 'pdf') {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(20);
+        doc.text('EcoManager Pro Report', 105, 15, { align: 'center' });
+        doc.setFontSize(12);
+        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 105, 25, { align: 'center' });
+        doc.text(`Projects: ${db.getProjects().length}`, 20, 40);
+        doc.text(`Assessments: ${db.getAssessments().length}`, 20, 50);
+        doc.save(`ecomanager-report-${new Date().toISOString().slice(0,10)}.pdf`);
+        showToast('PDF Export', 'Report generated', 'success');
+    } else if (format === 'excel') {
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(db.getProjects().map(p => ({ Name: p.name, Status: p.status, Progress: p.progress, Budget: p.budget }))), 'Projects');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(db.getAssessments().map(a => ({ Date: a.date, Health: a.health, Score: a.healthScore?.total }))), 'Assessments');
+        XLSX.writeFile(wb, `ecomanager-${new Date().toISOString().slice(0,10)}.xlsx`);
+        showToast('Excel Export', 'Spreadsheet generated', 'success');
+    }
+}
+
+function importData() {
+    const fileInput = document.getElementById('importFile');
+    if (!fileInput?.files.length) { showToast('Import Error', 'Select a JSON file', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (document.getElementById('overwriteData')?.checked) {
+                if (data.projects) localStorage.setItem('projects', JSON.stringify(data.projects));
+                if (data.assessments) localStorage.setItem('assessments', JSON.stringify(data.assessments));
+                if (data.species) localStorage.setItem('species', JSON.stringify(data.species));
+                if (data.maintenance) localStorage.setItem('maintenance', JSON.stringify(data.maintenance));
+                showToast('Import Successful', 'Data overwritten', 'success');
+            } else {
+                // Merge logic
+                const existingProjects = db.getProjects();
+                const newProjects = data.projects || [];
+                const mergedProjects = [...existingProjects, ...newProjects.filter(p => !existingProjects.some(ep => ep.id === p.id))];
+                localStorage.setItem('projects', JSON.stringify(mergedProjects));
+                showToast('Import Successful', 'Data merged', 'success');
+            }
+            loadDashboard(); loadProjects(); loadAssessments(); loadSpecies(); loadMaintenance(); loadDataSummary();
+            fileInput.value = '';
+            addAuditLog('import_data', 'JSON import performed');
+        } catch(e) { showToast('Import Error', 'Invalid JSON file', 'error'); }
+    };
+    reader.readAsText(fileInput.files[0]);
+}
+
+// ==================== NAVIGATION ====================
+function navigateTo(sectionId) {
+    document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+    const targetLink = document.querySelector(`[data-target="${sectionId}"]`);
+    if (targetLink) targetLink.classList.add('active');
+    document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) targetSection.classList.add('active');
+    
+    const loaders = {
+        dashboard: loadDashboard,
+        projects: () => { loadProjects(); setTimeout(initProjectMap, 100); },
+        assessments: loadAssessments,
+        species: loadSpecies,
+        maintenance: () => { loadMaintenance(); if (document.querySelector('[data-view="calendar-view"]')?.classList.contains('active')) setTimeout(loadCalendar, 100); },
+        charts: loadAnalyticsCharts,
+        data: loadDataSummary,
+        weather: loadWeatherData,
+        userguide: () => {}
+    };
+    if (loaders[sectionId]) loaders[sectionId]();
+    fixMobileLayout();
+}
+
+// ==================== VIEW TOGGLE ====================
+function setupViewToggle() {
+    const viewButtons = document.querySelectorAll('.view-toggle button');
+    const listView = document.getElementById('list-view');
+    const calendarView = document.getElementById('calendar-view');
+    viewButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            viewButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            if (this.getAttribute('data-view') === 'list-view') {
+                listView.classList.add('active');
+                calendarView.classList.remove('active');
+            } else {
+                listView.classList.remove('active');
+                calendarView.classList.add('active');
+                loadCalendar();
+            }
+        });
+    });
+}
+
+// ==================== MOBILE LAYOUT FIX ====================
+function fixMobileLayout() {
+    if (window.innerWidth <= 768) {
+        document.querySelectorAll('.main-content .row [class*="col-"]').forEach(col => {
+            col.style.width = '100%';
+            col.style.maxWidth = '100%';
+            col.style.flex = '0 0 100%';
+        });
+    }
+    window.dispatchEvent(new Event('resize'));
+}
+
+// ==================== USER ONBOARDING ====================
+const userOnboarding = {
+    showTour: function() {
+        introJs().setOptions({
+            steps: [
+                { element: document.querySelector('.logo'), intro: 'Welcome to EcoManager Pro! Complete ecosystem management system.', position: 'right' },
+                { element: document.querySelector('.sidebar'), intro: 'Navigate between Dashboard, Projects, Assessments, Species, Maintenance, Analytics, Data, Weather, and User Guide.', position: 'right' },
+                { element: document.querySelector('#dashboard'), intro: 'Dashboard shows key metrics, health trends, recent activities, and upcoming maintenance.', position: 'bottom' },
+                { element: document.querySelector('.quick-actions'), intro: 'Quick Actions let you create new items instantly.', position: 'bottom' },
+                { element: document.querySelector('#projects .card:first-child'), intro: 'Manage projects with budgets, locations, risk assessments, documents, and approval workflows.', position: 'top' },
+                { element: document.querySelector('#assessments .card:last-child'), intro: 'Conduct detailed ecosystem health assessments with automatic scoring and color-coded preview.', position: 'top' },
+                { element: document.querySelector('#weather'), intro: 'Monitor weather conditions with API support, forecasts, historical data, and environmental alerts.', position: 'top' }
+            ],
+            showProgress: true
+        }).start();
+    }
+};
+
+// ==================== FORM HANDLERS ====================
+function setupFormHandlers() {
+    document.getElementById('projectForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const project = {
+            id: document.getElementById('editProjectId').value || undefined,
+            name: document.getElementById('projectName').value,
+            code: document.getElementById('projectCode').value,
+            startDate: document.getElementById('projectStartDate').value,
+            status: document.getElementById('projectStatus').value,
+            progress: parseInt(document.getElementById('projectProgress').value) || 0,
+            description: document.getElementById('projectDescription').value,
+            latitude: document.getElementById('projectLatitude').value ? parseFloat(document.getElementById('projectLatitude').value) : null,
+            longitude: document.getElementById('projectLongitude').value ? parseFloat(document.getElementById('projectLongitude').value) : null,
+            budget: document.getElementById('projectBudget').value ? parseInt(document.getElementById('projectBudget').value) : null,
+            fte: document.getElementById('projectFTE').value ? parseFloat(document.getElementById('projectFTE').value) : null,
+            fundingSource: document.getElementById('fundingSource').value,
+            riskAssessment: document.getElementById('riskAssessment').value,
+            riskLevel: document.getElementById('riskLevel').value,
+            approvalStatus: document.getElementById('approvalStatus').value,
+            approvalComments: document.getElementById('approvalComments').value
+        };
+        if (!validateProjectData(project)) return;
+        db.saveProject(project);
+        this.reset();
+        document.getElementById('editProjectId').value = '';
+        document.getElementById('projectProgress').value = 0;
+        document.getElementById('progressValue').textContent = '0%';
+        clearProjectMarker();
+        loadProjects();
+        showToast('Success', project.id ? 'Project updated' : 'Project created', 'success');
+    });
+    
+    document.getElementById('assessmentForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const scoringData = {
+            vegetationCover: parseInt(document.getElementById('vegetationCover').value) || 0,
+            nativeSpecies: parseInt(document.getElementById('nativeSpecies').value) || 0,
+            weedCover: parseInt(document.getElementById('weedCover').value) || 0,
+            soilStability: parseInt(document.getElementById('soilStability').value) || 3,
+            speciesRichness: parseInt(document.getElementById('speciesRichness').value) || 0
+        };
+        const healthScore = ecosystemScoring.calculateHealthScore(scoringData);
+        const assessment = {
+            date: document.getElementById('assessmentDate').value,
+            assessor: document.getElementById('assessor').value,
+            health: healthScore.rating,
+            projectId: document.getElementById('assessmentProject').value,
+            description: document.getElementById('assessmentDescription').value,
+            scoringData: scoringData,
+            healthScore: healthScore
+        };
+        if (!assessment.projectId) { showToast('Error', 'Select a project', 'error'); return; }
+        db.saveAssessment(assessment);
+        this.reset();
+        document.getElementById('vegetationCover').value = 0;
+        document.getElementById('nativeSpecies').value = 0;
+        document.getElementById('weedCover').value = 0;
+        document.getElementById('speciesRichness').value = 0;
+        loadAssessments();
+        loadDashboard();
+        showToast('Assessment Saved', `Health Score: ${healthScore.total}/100 (${healthScore.rating})`, 'success');
+    });
+    
+    document.getElementById('speciesForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        db.saveSpecies({
+            name: document.getElementById('speciesName').value,
+            scientificName: document.getElementById('scientificName').value,
+            type: document.getElementById('speciesType').value,
+            status: document.getElementById('speciesStatus').value,
+            projectId: document.getElementById('speciesProject').value,
+            description: document.getElementById('speciesDescription').value
+        });
+        this.reset();
+        loadSpecies();
+        showToast('Success', 'Species added', 'success');
+    });
+    
+    document.getElementById('maintenanceForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        db.saveMaintenance({
+            activity: document.getElementById('maintenanceActivity').value,
+            type: document.getElementById('maintenanceType').value,
+            date: document.getElementById('maintenanceDate').value,
+            priority: document.getElementById('maintenancePriority').value,
+            projectId: document.getElementById('maintenanceProject').value,
+            description: document.getElementById('maintenanceDescription').value
+        });
+        this.reset();
+        loadMaintenance();
+        loadDashboard();
+        if (calendar) calendar.refetchEvents();
+        showToast('Success', 'Maintenance scheduled', 'success');
+    });
+    
+    document.getElementById('projectProgress')?.addEventListener('input', function() { document.getElementById('progressValue').textContent = `${this.value}%`; });
+    document.getElementById('projectSearch')?.addEventListener('input', function() { loadProjects(); });
+    document.getElementById('assessmentProjectFilter')?.addEventListener('change', loadAssessments);
+    document.getElementById('speciesProjectFilter')?.addEventListener('change', loadSpecies);
+    document.getElementById('maintenanceProjectFilter')?.addEventListener('change', loadMaintenance);
+    document.getElementById('exportButton')?.addEventListener('click', exportData);
+    document.getElementById('importButton')?.addEventListener('click', importData);
+    document.getElementById('useCurrentLocation')?.addEventListener('click', useCurrentLocation);
+    document.getElementById('clearLocation')?.addEventListener('click', clearProjectMarker);
+    document.getElementById('importGPXBtn')?.addEventListener('click', importGPXKML);
+    document.getElementById('refreshWeather')?.addEventListener('click', loadWeatherData);
+    document.getElementById('useBrowserLocation')?.addEventListener('click', useBrowserLocation);
+    document.getElementById('useSelectedLocation')?.addEventListener('click', function() {
+        const select = document.getElementById('weatherLocationSelect');
+        const selectedOption = select.options[select.selectedIndex];
+        if (selectedOption.value !== 'all' && selectedOption.dataset.lat) {
+            currentWeatherLat = parseFloat(selectedOption.dataset.lat);
+            currentWeatherLon = parseFloat(selectedOption.dataset.lon);
+            currentLocationName = selectedOption.text.split('(')[0].trim();
+            document.getElementById('locationNameDisplay').innerHTML = `<i class="bi bi-folder"></i> Using: ${currentLocationName}`;
+            loadWeatherData();
+            showToast('Location Updated', `Weather for ${currentLocationName}`, 'success');
+        } else if (selectedOption.value === 'default') {
+            currentWeatherLat = -41.0521;
+            currentWeatherLon = 145.9061;
+            currentLocationName = 'Burnie, TAS';
+            loadWeatherData();
+        } else {
+            showToast('No Coordinates', 'Selected project has no location data', 'warning');
+        }
+    });
+    
+    document.getElementById('documentUpload')?.addEventListener('change', function(e) {
+        const projectId = document.getElementById('editProjectId').value;
+        if (!projectId) { showToast('Error', 'Save project first before uploading documents', 'error'); return; }
+        Array.from(e.target.files).forEach(file => db.saveDocument({ projectId: projectId, fileName: file.name, size: file.size, uploadedAt: new Date().toISOString() }));
+        loadDocumentsForProject(projectId);
+        showToast('Success', `${e.target.files.length} document(s) uploaded`, 'success');
+        this.value = '';
+    });
+    
+    // Weather API settings
+    document.getElementById('saveApiKeyBtn')?.addEventListener('click', function() {
+        const key = document.getElementById('apiKeyInput').value;
+        const useDemo = document.getElementById('useDemoData').checked;
+        if (!useDemo && (!key || key === '••••••••••••••••')) { showToast('API Key Required', 'Enter a valid API key', 'warning'); return; }
+        localStorage.setItem('weatherApiKey', key);
+        localStorage.setItem('useDemoData', useDemo);
+        showToast('Settings Saved', useDemo ? 'Using demo data' : 'API key saved', 'success');
+        loadWeatherData();
+    });
+    document.getElementById('useDemoData')?.addEventListener('change', function() { document.getElementById('apiKeyInput').disabled = this.checked; if (this.checked) document.getElementById('apiKeyInput').value = ''; });
+    
+    // Health score preview
+    ['vegetationCover', 'nativeSpecies', 'weedCover', 'soilStability', 'speciesRichness'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', updateHealthScorePreview);
+    });
+    setTimeout(updateHealthScorePreview, 100);
+    
+    // Form builder
+    document.getElementById('formBuilderProject')?.addEventListener('change', function() { formBuilder.show(this.value); });
+    
+    // Chart range buttons
+    document.querySelectorAll('[data-range]').forEach(btn => btn.addEventListener('click', function(e) { e.preventDefault(); currentTimeRange = parseInt(this.dataset.range); loadHealthChart(); }));
+    
+    // Dashboard filter view buttons
+    const viewAggregatedBtn = document.getElementById('viewAggregatedBtn');
+    const viewComparisonBtn = document.getElementById('viewComparisonBtn');
+    if (viewAggregatedBtn) {
+        viewAggregatedBtn.addEventListener('click', function() { loadHealthChart(); });
+    }
+}
+
+// ==================== AUTHENTICATION ====================
+window.login = function() {
+    const userRole = document.getElementById('userRole').value;
+    const password = document.getElementById('demoPassword').value;
+    if (password === 'council123') {
+        const roleConfig = {
+            viewer: { name: 'Viewer', permissions: ['view_dashboard', 'view_projects', 'view_assessments', 'view_species', 'view_maintenance', 'view_charts', 'view_data', 'view_weather'], color: 'info' },
+            staff: { name: 'Field Staff', permissions: ['view_dashboard', 'view_projects', 'create_assessments', 'view_assessments', 'create_species', 'view_species', 'create_maintenance', 'view_maintenance', 'complete_maintenance', 'view_charts', 'view_data', 'view_weather'], color: 'success' },
+            manager: { name: 'Project Manager', permissions: ['view_dashboard', 'create_projects', 'edit_projects', 'view_projects', 'create_assessments', 'edit_assessments', 'view_assessments', 'create_species', 'edit_species', 'view_species', 'create_maintenance', 'edit_maintenance', 'view_maintenance', 'approve_projects', 'view_charts', 'export_data', 'view_data', 'view_weather'], color: 'warning' },
+            admin: { name: 'System Administrator', permissions: ['all'], color: 'danger' }
+        };
+        currentUser = { role: userRole, name: roleConfig[userRole].name, permissions: roleConfig[userRole].permissions };
+        document.getElementById('currentUserRole').textContent = roleConfig[userRole].name;
+        document.getElementById('currentUserRole').className = `badge bg-${roleConfig[userRole].color} text-dark mt-1`;
+        document.getElementById('login-screen').style.display = 'none';
+        addAuditLog('login', `User logged in as ${userRole}`);
+        showToast('Welcome', `Logged in as ${roleConfig[userRole].name}`, 'success');
+        loadDashboard();
+        loadProjects();
+    } else showToast('Login Failed', 'Use password "council123"', 'error');
+};
+
+window.logout = function() {
+    addAuditLog('logout', 'User logged out');
+    currentUser = { role: 'viewer', name: 'Demo User', permissions: [] };
+    document.getElementById('login-screen').style.display = 'flex';
+    navigateTo('dashboard');
+};
+
+// ==================== INITIALIZATION ====================
+function initApp() {
+    db.init();
+    setupFormHandlers();
+    setupViewToggle();
+    loadDashboard();
+    loadProjects();
+    loadAssessments();
+    loadSpecies();
+    loadMaintenance();
+    loadDataSummary();
+    initApiKeyManagement();
+    
+    document.querySelectorAll('.sidebar .nav-link[data-target]').forEach(link => {
+        link.addEventListener('click', (e) => { e.preventDefault(); navigateTo(link.getAttribute('data-target')); });
+    });
+    document.querySelectorAll('.quick-action-btn').forEach(btn => {
+        btn.addEventListener('click', () => navigateTo(btn.getAttribute('data-target')));
+    });
+    
+    window.addEventListener('resize', fixMobileLayout);
+    fixMobileLayout();
+    AOS.init({ duration: 800, once: true });
+}
+
+function initApiKeyManagement() {
+    const savedKey = localStorage.getItem('weatherApiKey');
+    const useDemo = localStorage.getItem('useDemoData') !== 'false';
+    const demoCheckbox = document.getElementById('useDemoData');
+    const apiInput = document.getElementById('apiKeyInput');
+    if (demoCheckbox) demoCheckbox.checked = useDemo;
+    if (apiInput) apiInput.disabled = useDemo;
+    if (savedKey && !useDemo && apiInput) apiInput.value = '••••••••••••••••';
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+
+window.navigateTo = navigateTo;
+window.deleteAssessment = deleteAssessment;
+window.deleteSpecies = deleteSpecies;
+window.deleteMaintenance = deleteMaintenance;
+window.completeMaintenance = completeMaintenance;
+window.showProjectInModal = showProjectInModal;
+window.userOnboarding = userOnboarding;
+window.formBuilder = formBuilder;
+window.editProject = editProject;
+window.deleteProjectItem = deleteProjectItem;
 </script>
-```
-
-Why It Works on Netlify
-
-Once deployed to Netlify:
-
-· Files serve over HTTPS (secure protocol)
-· All JavaScript features work normally
-· localStorage persists correctly
-· CDN resources load properly
-· No CORS or file protocol restrictions
-
-Deployment Checklist for Netlify
-
-1. Create a netlify.toml file in your project root:
-
-```toml
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-```
-
-1. Ensure all assets use HTTPS (they already do - good!)
-2. Test before deploying - use VS Code's Live Server extension or run:
-
-```bash
-npx serve .
-```
-
-The Real Issue
-
-Looking at your code, the sidebar uses data-target attributes and your navigateTo function is attached to window. The local file protocol sometimes delays script execution or causes event binding order issues. Your code is structurally sound - it's purely a local file limitation.
-
-Bottom line: Your code is fine. Deploy to Netlify (drag and drop the folder) and it will work perfectly. For local development, consider using VS Code's Live Server or Python's http.server instead of double-clicking the file.
+</body>
+</html>
