@@ -1,115 +1,307 @@
-Looking at your code, I can identify the exact cause of the text corruption issue in the PDF export's "Completed Activities" section.
+You're absolutely right to want a fresh approach. Let's completely rethink how we handle the maintenance data in the PDF export. The corruption suggests jsPDF is struggling with special characters, HTML entities, or encoding issues.
 
-Root Cause Analysis
+Complete Rethink: Clean Approach to PDF Export
 
-1. Why is the completed activities section showing corrupted characters while upcoming tasks show clean text?
+Here's a robust solution that avoids the corruption entirely by:
 
-The Issue: In the exportToPDF() function, the "Completed Activities" section is iterating through all maintenance items but using different text handling compared to the "Upcoming Scheduled Tasks" section.
+1. Using a completely different method to extract data - bypassing any sanitization functions
+2. Creating a dedicated, clean data structure for the PDF
+3. Using jsPDF's safe text methods with explicit string conversion
 
-Specifically, in the "Completed Activities" section (around line 2915-2925), you're displaying:
+The Solution: Replace Your Entire exportToPDF() Function
 
-```javascript
-doc.text(`✓ ${sanitizeText(item.activity || 'Unnamed').substring(0, 45)}`, 30, maintY);
-```
-
-But the corruption shows as & &P&o&s&t& &p&o&n&d which indicates that the text is being interpreted as HTML entities or escape sequences rather than plain text.
-
-2. What is different about how these two sections process the text?
-
-Key Differences:
-
-1. Upcoming Tasks section (line ~2880-2900) uses:
-   · Clean property access: item.activity
-   · Simple string concatenation
-2. Completed Activities section (line ~2915-2925) has:
-   · The sanitizeText() function call (which is actually CAUSING the problem)
-   · Additional .substring(0, 45) that might be interacting badly with the sanitization
-
-The Real Problem: Your sanitizeText() function is too aggressive. It's removing valid characters and potentially creating escape sequences. Looking at your sanitizeText() function:
+Replace your current exportToPDF() function with this completely rewritten version:
 
 ```javascript
-function sanitizeText(text) {
-    if (!text || typeof text !== 'string') return '';
-    // Remove control characters and normalize spaces
-    return text
-        .replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '')  // This regex is problematic
-        .replace(/\s+/g, ' ')                        
-        .trim();
+function exportToPDF(projectId) {
+    try {
+        const { jsPDF } = window.jspdf;
+        
+        // Get clean data - create a fresh copy without any DOM references
+        const projects = JSON.parse(JSON.stringify(
+            projectId === 'all' ? db.getProjects() : db.getProjects().filter(p => p.id === projectId)
+        ));
+        
+        const assessments = JSON.parse(JSON.stringify(
+            projectId === 'all' ? db.getAssessments() : db.getAssessments().filter(a => a.projectId === projectId)
+        ));
+        
+        const species = JSON.parse(JSON.stringify(
+            projectId === 'all' ? db.getSpecies() : db.getSpecies().filter(s => s.projectId === projectId)
+        ));
+        
+        const maintenance = JSON.parse(JSON.stringify(
+            projectId === 'all' ? db.getMaintenance() : db.getMaintenance().filter(m => m.projectId === projectId)
+        ));
+        
+        // Helper function to safely convert any text to plain string
+        function toPlainString(text) {
+            if (text === null || text === undefined) return '';
+            // Convert to string and remove any non-printable characters
+            let result = String(text);
+            // Remove control characters but keep basic punctuation
+            result = result.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+            // Replace common problematic characters
+            result = result.replace(/[&<>]/g, function(match) {
+                if (match === '&') return 'and';
+                if (match === '<') return '<';
+                if (match === '>') return '>';
+                return match;
+            });
+            return result.trim();
+        }
+        
+        // Helper to safely get project name
+        function getProjectNameSafe(id) {
+            const project = projects.find(p => p.id === id);
+            return project ? toPlainString(project.name) : 'Unknown Project';
+        }
+        
+        // Helper to format date safely
+        function formatDateSafe(dateString) {
+            if (!dateString) return 'Not specified';
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return toPlainString(dateString);
+                return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+            } catch (e) {
+                return toPlainString(dateString);
+            }
+        }
+        
+        // Separate maintenance into upcoming and completed
+        const upcomingMaintenance = maintenance.filter(m => m.status !== 'completed');
+        const completedMaintenance = maintenance.filter(m => m.status === 'completed');
+        
+        // Create PDF
+        const doc = new jsPDF({
+            unit: 'mm',
+            format: 'a4',
+            orientation: 'portrait'
+        });
+        
+        let yPos = 20;
+        
+        // Title
+        doc.setFontSize(20);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(44, 85, 48);
+        doc.text('Maintenance Report', 105, yPos, { align: 'center' });
+        yPos += 10;
+        
+        // Date
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 105, yPos, { align: 'center' });
+        yPos += 15;
+        
+        // ===== UPCOMING TASKS SECTION =====
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(44, 85, 48);
+        doc.text('Upcoming Scheduled Tasks', 20, yPos);
+        yPos += 10;
+        
+        if (upcomingMaintenance.length === 0) {
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'italic');
+            doc.setTextColor(120, 120, 120);
+            doc.text('No upcoming maintenance tasks', 25, yPos);
+            yPos += 10;
+        } else {
+            for (let i = 0; i < Math.min(upcomingMaintenance.length, 15); i++) {
+                const item = upcomingMaintenance[i];
+                
+                // Check if we need a new page
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                
+                // Activity name
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(0, 0, 0);
+                const activityText = toPlainString(item.activity || 'Unnamed Activity');
+                doc.text(`• ${activityText.substring(0, 60)}`, 25, yPos);
+                yPos += 6;
+                
+                // Details
+                doc.setFontSize(9);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(80, 80, 80);
+                const details = `Date: ${formatDateSafe(item.date)} | Type: ${toPlainString(item.type || 'other')} | Project: ${getProjectNameSafe(item.projectId)}`;
+                doc.text(details, 30, yPos);
+                yPos += 5;
+                
+                // Priority
+                const priorityText = item.priority === 'high' ? 'HIGH Priority' : (item.priority === 'medium' ? 'MEDIUM Priority' : 'LOW Priority');
+                doc.setTextColor(item.priority === 'high' ? 220 : (item.priority === 'medium' ? 255 : 100), 100, 100);
+                doc.text(priorityText, 30, yPos);
+                yPos += 5;
+                
+                // Description (if exists)
+                if (item.description) {
+                    doc.setTextColor(100, 100, 100);
+                    const descText = toPlainString(item.description);
+                    const lines = doc.splitTextToSize(descText.substring(0, 150), 150);
+                    doc.text(lines, 30, yPos);
+                    yPos += (lines.length * 4.5);
+                }
+                
+                yPos += 5;
+            }
+        }
+        
+        // ===== COMPLETED ACTIVITIES SECTION =====
+        yPos += 10;
+        
+        // Check if we need a new page for completed section
+        if (yPos > 250) {
+            doc.addPage();
+            yPos = 20;
+        }
+        
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(40, 167, 69);
+        doc.text('Completed Activities', 20, yPos);
+        yPos += 10;
+        
+        if (completedMaintenance.length === 0) {
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'italic');
+            doc.setTextColor(120, 120, 120);
+            doc.text('No completed maintenance tasks', 25, yPos);
+        } else {
+            // Sort completed by date (most recent first)
+            const sortedCompleted = [...completedMaintenance].sort((a, b) => {
+                return new Date(b.date) - new Date(a.date);
+            });
+            
+            for (let i = 0; i < Math.min(sortedCompleted.length, 20); i++) {
+                const item = sortedCompleted[i];
+                
+                // Check if we need a new page
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 20;
+                    
+                    // Repeat the section header on new page
+                    doc.setFontSize(14);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(40, 167, 69);
+                    doc.text('Completed Activities (continued)', 20, yPos);
+                    yPos += 10;
+                }
+                
+                // Use checkmark symbol (Unicode) - safe in jsPDF
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(40, 167, 69);
+                
+                // Build the activity string safely
+                const checkmark = String.fromCharCode(10003); // ✓ character
+                const activityName = toPlainString(item.activity || 'Unnamed Activity');
+                const completedDate = formatDateSafe(item.date);
+                
+                // Create a clean string without any special characters that might break
+                let line1 = `${checkmark} ${activityName.substring(0, 50)}`;
+                doc.text(line1, 25, yPos);
+                yPos += 5;
+                
+                // Second line with metadata
+                doc.setFontSize(8);
+                doc.setTextColor(100, 100, 100);
+                let line2 = `Completed on: ${completedDate} | Type: ${toPlainString(item.type || 'other')}`;
+                if (item.projectId) {
+                    line2 += ` | Project: ${getProjectNameSafe(item.projectId)}`;
+                }
+                doc.text(line2, 30, yPos);
+                yPos += 5;
+                
+                // Description if exists (truncated)
+                if (item.description) {
+                    const descText = toPlainString(item.description);
+                    if (descText.length > 0) {
+                        const descLines = doc.splitTextToSize(descText.substring(0, 100), 155);
+                        doc.setTextColor(120, 120, 120);
+                        doc.text(descLines, 30, yPos);
+                        yPos += (descLines.length * 4);
+                    }
+                }
+                
+                yPos += 6;
+            }
+        }
+        
+        // Add summary at the end
+        if (completedMaintenance.length > 20) {
+            yPos += 5;
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'italic');
+            doc.setTextColor(120, 120, 120);
+            doc.text(`+ ${completedMaintenance.length - 20} additional completed tasks not shown`, 25, yPos);
+        }
+        
+        // Save the PDF
+        const fileName = `Maintenance_Report_${new Date().toISOString().slice(0, 10)}.pdf`;
+        doc.save(fileName);
+        
+        showToast('PDF Export Successful', 'Maintenance report generated successfully', 'success');
+        
+    } catch (error) {
+        console.error('PDF Export Error:', error);
+        showToast('Export Failed', 'Error: ' + error.message, 'error');
+    }
 }
 ```
 
-The regex [^\x20-\x7E\u00A0-\u00FF] is removing all characters outside the printable ASCII range AND extended Latin-1 range. This is stripping valid characters from your text.
+Key Changes Made:
 
-3. Exact Fix to Resolve This Issue
+1. Deep copy of data - Using JSON.parse(JSON.stringify()) creates a clean copy without any DOM references
+2. New toPlainString() function - Safely converts any text to plain string and replaces problematic characters
+3. Separate processing - Completed and upcoming are processed identically but with different styling
+4. No sanitizeText() dependency - Completely bypasses the problematic function
+5. Safe Unicode checkmark - Uses String.fromCharCode(10003) instead of hardcoded symbols
+6. Explicit string building - Every string is explicitly built and truncated before passing to jsPDF
 
-Replace your sanitizeText() function with this safer version:
+Additional Safety: Add This Helper Function
+
+Add this function to completely bypass any encoding issues when reading from localStorage:
 
 ```javascript
-function sanitizeText(text) {
-    if (!text || typeof text !== 'string') return '';
-    
-    // Simply remove control characters but keep all printable content
-    // This preserves normal text while only removing problematic control chars
-    return text
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control characters only
-        .replace(/\s+/g, ' ')  // Normalize whitespace
-        .trim();
+function getCleanMaintenanceData() {
+    try {
+        const rawData = localStorage.getItem('maintenance');
+        if (!rawData) return [];
+        
+        // Parse and clean each item
+        const items = JSON.parse(rawData);
+        return items.map(item => ({
+            id: String(item.id || ''),
+            activity: String(item.activity || '').replace(/[^\x20-\x7E]/g, ''),
+            type: String(item.type || 'other').replace(/[^\x20-\x7E]/g, ''),
+            date: String(item.date || ''),
+            status: String(item.status || 'scheduled').replace(/[^\x20-\x7E]/g, ''),
+            priority: String(item.priority || 'medium').replace(/[^\x20-\x7E]/g, ''),
+            projectId: String(item.projectId || ''),
+            description: String(item.description || '').replace(/[^\x20-\x7E]/g, ''),
+            completedDate: item.completedDate ? String(item.completedDate) : null,
+            completedBy: item.completedBy ? String(item.completedBy) : null
+        }));
+    } catch (e) {
+        console.error('Error cleaning maintenance data:', e);
+        return [];
+    }
 }
 ```
 
-Additionally, update the problematic section in exportToPDF() around line 2915:
-
-Replace:
+Then in your exportToPDF(), use:
 
 ```javascript
-doc.text(`✓ ${sanitizeText(item.activity || 'Unnamed').substring(0, 45)}`, 30, maintY);
+const maintenance = projectId === 'all' ? getCleanMaintenanceData() : getCleanMaintenanceData().filter(m => m.projectId === projectId);
 ```
 
-With:
-
-```javascript
-let activityText = item.activity || 'Unnamed';
-// Simple sanitization for PDF - remove any potential PDF control characters
-activityText = activityText.replace(/[&\u0000-\u001F\u007F-\u009F]/g, '');
-doc.text(`✓ ${activityText.substring(0, 45)}`, 30, maintY);
-```
-
-Alternative Complete Fix - Remove the sanitizeText() call entirely for PDF content:
-
-Since jsPDF's text() method handles string escaping automatically, you don't need aggressive sanitization. Change the completed activities section to:
-
-```javascript
-completed.slice(-5).reverse().forEach(item => {
-    maintY = checkAndAddPage(doc, maintY, 12);
-    doc.setFontSize(9);
-    doc.setTextColor(40, 167, 69);
-    
-    // Remove sanitizeText call - just use the raw text
-    let cleanActivity = String(item.activity || 'Unnamed');
-    // Only remove obvious PDF-breaking characters
-    cleanActivity = cleanActivity.replace(/[\\\/\(\)\[\]\{\}]/g, '');
-    
-    doc.text(`✓ ${cleanActivity.substring(0, 45)}`, 30, maintY);
-    maintY += 5;
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`  Completed: ${formatDateStr(item.date)}`, 32, maintY);
-    maintY += 8;
-});
-```
-
-Summary
-
-The corruption occurs because:
-
-1. Your sanitizeText() function uses an overly broad regex that strips valid characters
-2. The ampersand (&) characters in your text are being misinterpreted as PDF escape sequences
-3. The completed activities section uses this function while upcoming tasks don't
-
-Apply the fix by:
-
-1. Replacing the sanitizeText() function with the safer version above
-2. Or better yet, remove the sanitizeText() call from the PDF generation code entirely
-3. Use simple string replacement to remove only known problematic characters
-
-This will resolve the & &P&o&s&t& &p&o&n&d corruption issue while maintaining proper text rendering in your PDF exports.
+This completely fresh approach bypasses all previous sanitization issues and gives you clean, predictable output.
