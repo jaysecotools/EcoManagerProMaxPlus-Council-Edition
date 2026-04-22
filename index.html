@@ -5314,602 +5314,413 @@ function showNoDataMessage(customMessage = null) {
     }
 
 function exportToPDF(projectId) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({
-        unit: 'mm',
-        format: 'a4',
-        orientation: 'portrait'
-    });
-    
-    // Color scheme for professional branding
-    const colors = {
-        primary: [44, 85, 48],      // #2c5530
-        secondary: [74, 124, 89],    // #4a7c59
-        accent: [58, 138, 95],       // #3a8a5f
-        warning: [255, 193, 7],
-        danger: [220, 53, 69],
-        info: [23, 162, 184],
-        light: [248, 249, 250],
-        dark: [30, 43, 30]
-    };
-    
-    // Helper: Add wrapped text
-    function addWrappedText(doc, text, x, y, maxWidth, lineHeight, fontStyle = 'normal') {
-        if (!text) return y;
-        doc.setFont(undefined, fontStyle);
-        const lines = doc.splitTextToSize(text, maxWidth);
-        doc.text(lines, x, y);
-        return y + (lines.length * lineHeight);
-    }
-    
-    // Helper: Check and add new page
-    function checkAndAddPage(doc, currentY, requiredSpace = 20) {
-        if (currentY + requiredSpace > 280) {
-            doc.addPage();
-            addFooter(doc);
-            return 20;
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            unit: 'mm',
+            format: 'a4',
+            orientation: 'portrait'
+        });
+        
+        // Get data
+        const projects = projectId === 'all' ? db.getProjects() : db.getProjects().filter(p => p.id === projectId);
+        const assessments = projectId === 'all' ? db.getAssessments() : db.getAssessments().filter(a => a.projectId === projectId);
+        const species = projectId === 'all' ? db.getSpecies() : db.getSpecies().filter(s => s.projectId === projectId);
+        const maintenance = projectId === 'all' ? db.getMaintenance() : db.getMaintenance().filter(m => m.projectId === projectId);
+        
+        // Helper function for wrapped text
+        function addWrappedText(doc, text, x, y, maxWidth, lineHeight) {
+            if (!text) return y;
+            const lines = doc.splitTextToSize(text, maxWidth);
+            doc.text(lines, x, y);
+            return y + (lines.length * lineHeight);
         }
-        return currentY;
-    }
-    
-    // Helper: Add colored bar
-    function addColoredBar(doc, y, color) {
-        doc.setFillColor(color[0], color[1], color[2]);
-        doc.rect(0, y, 210, 3, 'F');
-    }
-    
-    // Helper: Add footer with page numbers
-    function addFooter(doc) {
+        
+        // Calculate statistics safely
+        const stats = {
+            totalProjects: projects.length,
+            activeProjects: projects.filter(p => p.status === 'active').length,
+            completedProjects: projects.filter(p => p.status === 'completed').length,
+            totalAssessments: assessments.length,
+            avgHealthScore: 0,
+            totalSpecies: species.length,
+            nativeSpecies: species.filter(s => s.status === 'native').length,
+            totalMaintenance: maintenance.length,
+            completedMaintenance: maintenance.filter(m => m.status === 'completed').length,
+            totalBudget: projects.reduce((sum, p) => sum + (parseFloat(p.budget) || 0), 0)
+        };
+        
+        // Calculate average health score safely
+        if (assessments.length > 0) {
+            const healthScores = {
+                excellent: 90,
+                good: 75,
+                fair: 55,
+                poor: 35,
+                degraded: 20
+            };
+            let totalScore = 0;
+            assessments.forEach(a => {
+                totalScore += healthScores[a.health] || 50;
+            });
+            stats.avgHealthScore = Math.round(totalScore / assessments.length);
+        }
+        
+        // ========== PAGE 1: COVER ==========
+        doc.setFontSize(22);
+        doc.setFont(undefined, 'bold');
+        doc.text('EcoManager Pro', 105, 60, { align: 'center' });
+        
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'normal');
+        doc.text('Professional Ecosystem Management Report', 105, 72, { align: 'center' });
+        
+        doc.setFontSize(11);
+        const reportType = projectId === 'all' ? 'COMPREHENSIVE ORGANISATIONAL REPORT' : 'PROJECT-SPECIFIC REPORT';
+        doc.text(reportType, 105, 85, { align: 'center' });
+        
+        if (projectId !== 'all' && projects[0]) {
+            const project = projects[0];
+            doc.setFontSize(13);
+            doc.setFont(undefined, 'bold');
+            doc.text(project.name, 105, 110, { align: 'center' });
+            
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            doc.text(`Status: ${project.status.toUpperCase()} | Progress: ${project.progress || 0}%`, 105, 120, { align: 'center' });
+        }
+        
+        doc.setFontSize(9);
+        doc.text(`Generated: ${new Date().toLocaleString('en-AU')}`, 105, 145, { align: 'center' });
+        doc.text(`Generated by: ${currentUser.role.toUpperCase()}`, 105, 152, { align: 'center' });
+        
+        // ========== PAGE 2: EXECUTIVE SUMMARY ==========
+        doc.addPage();
+        
+        doc.setFontSize(16);
+        doc.setFont(undefined, 'bold');
+        doc.text('Executive Summary', 20, 25);
+        
+        let yPos = 40;
+        yPos = addWrappedText(doc, 
+            `This report provides a comprehensive overview of ecosystem management activities${projectId !== 'all' ? ' for the selected project' : ' across all projects'}.`, 
+            20, yPos, 170, 6);
+        yPos += 5;
+        
+        // Key metrics boxes
+        const metrics = [
+            { label: 'Total Projects', value: stats.totalProjects, x: 20 },
+            { label: 'Active Projects', value: stats.activeProjects, x: 65 },
+            { label: 'Completion Rate', value: stats.totalProjects > 0 ? Math.round((stats.completedProjects / stats.totalProjects) * 100) : 0, unit: '%', x: 110 },
+            { label: 'Health Score', value: stats.avgHealthScore, unit: '/100', x: 155 }
+        ];
+        
+        metrics.forEach(metric => {
+            doc.setFillColor(245, 245, 245);
+            doc.roundedRect(metric.x, yPos, 40, 25, 3, 3, 'F');
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'normal');
+            doc.text(metric.label, metric.x + 3, yPos + 6);
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'bold');
+            doc.text(metric.value.toString(), metric.x + 3, yPos + 18);
+            doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
+            if (metric.unit) doc.text(metric.unit, metric.x + 3, yPos + 23);
+        });
+        
+        yPos += 35;
+        
+        // Key insights
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'bold');
+        doc.text('Key Insights', 20, yPos);
+        yPos += 8;
+        
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        
+        const insights = [
+            `• Ecosystem health score is ${stats.avgHealthScore}/100`,
+            `• ${stats.activeProjects} active projects, ${stats.completedProjects} completed`,
+            `• ${stats.nativeSpecies} native species documented (${stats.totalSpecies > 0 ? Math.round((stats.nativeSpecies / stats.totalSpecies) * 100) : 0}% of total)`,
+            `• ${stats.completedMaintenance} of ${stats.totalMaintenance} maintenance tasks completed`,
+            `• Total investment: $${stats.totalBudget.toLocaleString()}`
+        ];
+        
+        insights.forEach(insight => {
+            yPos = addWrappedText(doc, insight, 20, yPos, 170, 5);
+            yPos += 2;
+        });
+        
+        // ========== PAGE 3: PROJECTS ==========
+        if (projects.length > 0) {
+            doc.addPage();
+            
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'bold');
+            doc.text('Project Portfolio', 20, 25);
+            
+            let projY = 40;
+            
+            projects.slice(0, 5).forEach((project, index) => {
+                if (projY > 250) {
+                    doc.addPage();
+                    projY = 25;
+                }
+                
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'bold');
+                doc.text(`${index + 1}. ${project.name.substring(0, 50)}`, 20, projY);
+                projY += 6;
+                
+                // Progress bar
+                const progress = project.progress || 0;
+                doc.setFillColor(220, 220, 220);
+                doc.rect(20, projY, 60, 4, 'F');
+                doc.setFillColor(58, 138, 95);
+                doc.rect(20, projY, 60 * (progress / 100), 4, 'F');
+                doc.setFontSize(8);
+                doc.setFont(undefined, 'normal');
+                doc.text(`Progress: ${progress}%`, 85, projY + 3);
+                projY += 8;
+                
+                doc.setFontSize(8);
+                doc.text(`Status: ${project.status} | Start: ${formatDate(project.startDate)} | Budget: $${(project.budget || 0).toLocaleString()}`, 20, projY);
+                projY += 6;
+                
+                if (project.description) {
+                    projY = addWrappedText(doc, project.description.substring(0, 150), 20, projY, 170, 4);
+                    projY += 3;
+                }
+                
+                projY += 8;
+            });
+            
+            if (projects.length > 5) {
+                doc.setFontSize(8);
+                doc.text(`+ ${projects.length - 5} additional projects not shown`, 20, projY);
+            }
+        }
+        
+        // ========== PAGE 4: ASSESSMENTS ==========
+        if (assessments.length > 0) {
+            doc.addPage();
+            
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'bold');
+            doc.text('Ecosystem Health Assessments', 20, 25);
+            
+            let assY = 40;
+            
+            // Health distribution summary
+            const healthCounts = {
+                excellent: assessments.filter(a => a.health === 'excellent').length,
+                good: assessments.filter(a => a.health === 'good').length,
+                fair: assessments.filter(a => a.health === 'fair').length,
+                poor: assessments.filter(a => a.health === 'poor').length,
+                degraded: assessments.filter(a => a.health === 'degraded').length
+            };
+            
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'bold');
+            doc.text('Health Status Distribution', 20, assY);
+            assY += 8;
+            
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'normal');
+            Object.entries(healthCounts).forEach(([status, count]) => {
+                if (count > 0) {
+                    doc.text(`${status}: ${count} (${Math.round((count / assessments.length) * 100)}%)`, 25, assY);
+                    assY += 5;
+                }
+            });
+            
+            assY += 8;
+            
+            // Recent assessments
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'bold');
+            doc.text('Recent Assessments', 20, assY);
+            assY += 8;
+            
+            assessments.slice(-5).reverse().forEach(assessment => {
+                if (assY > 260) {
+                    doc.addPage();
+                    assY = 25;
+                }
+                
+                doc.setFontSize(8);
+                doc.setFont(undefined, 'bold');
+                doc.text(`${formatDate(assessment.date)} - ${assessment.assessor.substring(0, 30)}`, 25, assY);
+                assY += 5;
+                
+                doc.setFont(undefined, 'normal');
+                doc.text(`Health: ${assessment.health || 'Not rated'} | Project: ${getProjectName(assessment.projectId)}`, 25, assY);
+                assY += 5;
+                
+                if (assessment.description) {
+                    assY = addWrappedText(doc, assessment.description.substring(0, 100), 30, assY, 155, 4);
+                    assY += 3;
+                }
+                
+                assY += 5;
+            });
+        }
+        
+        // ========== PAGE 5: SPECIES ==========
+        if (species.length > 0) {
+            doc.addPage();
+            
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'bold');
+            doc.text('Species Inventory', 20, 25);
+            
+            let specY = 40;
+            
+            // Species by type
+            const typeCount = {
+                plant: species.filter(s => s.type === 'plant').length,
+                animal: species.filter(s => s.type === 'animal').length,
+                bird: species.filter(s => s.type === 'bird').length,
+                reptile: species.filter(s => s.type === 'reptile').length,
+                insect: species.filter(s => s.type === 'insect').length
+            };
+            
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'bold');
+            doc.text('Species by Type:', 20, specY);
+            specY += 6;
+            
+            doc.setFont(undefined, 'normal');
+            Object.entries(typeCount).forEach(([type, count]) => {
+                if (count > 0) {
+                    doc.text(`${type}: ${count}`, 25, specY);
+                    specY += 5;
+                }
+            });
+            
+            specY += 8;
+            
+            // Species table
+            doc.setFillColor(230, 230, 230);
+            doc.rect(20, specY, 50, 6, 'F');
+            doc.rect(70, specY, 50, 6, 'F');
+            doc.rect(120, specY, 30, 6, 'F');
+            doc.rect(150, specY, 30, 6, 'F');
+            
+            doc.setFontSize(7);
+            doc.setFont(undefined, 'bold');
+            doc.text('Common Name', 22, specY + 4.5);
+            doc.text('Scientific Name', 72, specY + 4.5);
+            doc.text('Type', 122, specY + 4.5);
+            doc.text('Status', 152, specY + 4.5);
+            specY += 8;
+            
+            doc.setFont(undefined, 'normal');
+            species.slice(0, 15).forEach(s => {
+                if (specY > 270) {
+                    doc.addPage();
+                    specY = 25;
+                }
+                doc.text(s.name.substring(0, 20), 22, specY + 3);
+                doc.text((s.scientificName || '-').substring(0, 20), 72, specY + 3);
+                doc.text(s.type, 122, specY + 3);
+                doc.text(s.status, 152, specY + 3);
+                specY += 5;
+            });
+            
+            if (species.length > 15) {
+                specY += 3;
+                doc.setFontSize(7);
+                doc.text(`+ ${species.length - 15} additional species`, 20, specY);
+            }
+        }
+        
+        // ========== PAGE 6: MAINTENANCE ==========
+        if (maintenance.length > 0) {
+            doc.addPage();
+            
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'bold');
+            doc.text('Maintenance Activities', 20, 25);
+            
+            let maintY = 40;
+            
+            const upcoming = maintenance.filter(m => m.status === 'scheduled').slice(0, 8);
+            
+            if (upcoming.length > 0) {
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'bold');
+                doc.text('Upcoming Scheduled Tasks', 20, maintY);
+                maintY += 8;
+                
+                upcoming.forEach(item => {
+                    if (maintY > 260) {
+                        doc.addPage();
+                        maintY = 25;
+                    }
+                    
+                    doc.setFontSize(8);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(`• ${item.activity.substring(0, 40)}`, 25, maintY);
+                    maintY += 5;
+                    
+                    doc.setFont(undefined, 'normal');
+                    doc.text(`  Date: ${formatDate(item.date)} | Priority: ${item.priority} | Project: ${getProjectName(item.projectId)}`, 25, maintY);
+                    maintY += 5;
+                    
+                    if (item.description) {
+                        maintY = addWrappedText(doc, `  ${item.description.substring(0, 80)}`, 25, maintY, 155, 4);
+                        maintY += 2;
+                    }
+                    
+                    maintY += 5;
+                });
+            }
+        }
+        
+        // ========== PAGE 7: RECOMMENDATIONS ==========
+        doc.addPage();
+        
+        doc.setFontSize(16);
+        doc.setFont(undefined, 'bold');
+        doc.text('Recommendations', 20, 25);
+        
+        let recY = 40;
+        
+        const recommendations = [
+            'Continue regular ecosystem health assessments to track improvement',
+            'Prioritize maintenance tasks based on ecological impact',
+            'Increase native species planting in areas with low biodiversity',
+            'Enhance community engagement and volunteer programs',
+            'Consider additional funding for high-priority conservation areas'
+        ];
+        
+        recommendations.forEach(rec => {
+            recY = addWrappedText(doc, `• ${rec}`, 20, recY, 170, 6);
+            recY += 3;
+        });
+        
+        // Footer with page numbers
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
             doc.setFontSize(8);
-            doc.setTextColor(100, 100, 100);
-            doc.text(`EcoManager Pro - Professional Ecosystem Report`, 105, 285, { align: 'center' });
-            doc.text(`Generated: ${new Date().toLocaleString('en-AU')} | Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
-        }
-    }
-    
-    // Helper: Create a metric card
-    function addMetricCard(doc, x, y, width, height, title, value, unit, color) {
-        doc.setFillColor(248, 249, 250);
-        doc.roundedRect(x, y, width, height, 3, 3, 'F');
-        doc.setDrawColor(200, 200, 200);
-        doc.roundedRect(x, y, width, height, 3, 3, 'S');
-        
-        doc.setFontSize(9);
-        doc.setTextColor(100, 100, 100);
-        doc.text(title, x + 5, y + 6);
-        
-        doc.setFontSize(18);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(color[0], color[1], color[2]);
-        doc.text(value.toString(), x + 5, y + 18);
-        
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.text(unit, x + 5, y + 24);
-        
-        doc.setFont(undefined, 'normal');
-        return { width, height };
-    }
-    
-    // Get data
-    const projects = projectId === 'all' ? db.getProjects() : db.getProjects().filter(p => p.id === projectId);
-    const assessments = projectId === 'all' ? db.getAssessments() : db.getAssessments().filter(a => a.projectId === projectId);
-    const species = projectId === 'all' ? db.getSpecies() : db.getSpecies().filter(s => s.projectId === projectId);
-    const maintenance = projectId === 'all' ? db.getMaintenance() : db.getMaintenance().filter(m => m.projectId === projectId);
-    
-    // Calculate statistics
-    const stats = {
-        totalProjects: projects.length,
-        activeProjects: projects.filter(p => p.status === 'active').length,
-        completedProjects: projects.filter(p => p.status === 'completed').length,
-        totalAssessments: assessments.length,
-        avgHealthScore: assessments.length > 0 ? 
-            Math.round(assessments.reduce((sum, a) => {
-                const scores = { excellent: 90, good: 75, fair: 55, poor: 35, degraded: 20 };
-                return sum + (scores[a.health] || 50);
-            }, 0) / assessments.length) : 0,
-        totalSpecies: species.length,
-        nativeSpecies: species.filter(s => s.status === 'native').length,
-        totalMaintenance: maintenance.length,
-        completedMaintenance: maintenance.filter(m => m.status === 'completed').length,
-        totalBudget: projects.reduce((sum, p) => sum + (p.budget || 0), 0),
-        totalArea: 0 // You can add area data if available
-    };
-    
-    // ========== COVER PAGE ==========
-    doc.addPage();
-    
-    // Add decorative bar at top
-    addColoredBar(doc, 0, colors.primary);
-    addColoredBar(doc, 3, colors.secondary);
-    
-    // Logo/Title area
-    doc.setFontSize(28);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-    doc.text('EcoManager Pro', 105, 60, { align: 'center' });
-    
-    doc.setFontSize(16);
-    doc.setTextColor(100, 100, 100);
-    doc.text('Professional Ecosystem Management Report', 105, 72, { align: 'center' });
-    
-    // Report type
-    doc.setFontSize(12);
-    doc.setTextColor(colors.secondary[0], colors.secondary[1], colors.secondary[2]);
-    const reportType = projectId === 'all' ? 'COMPREHENSIVE ORGANISATIONAL REPORT' : 'PROJECT-SPECIFIC REPORT';
-    doc.text(reportType, 105, 85, { align: 'center' });
-    
-    // Divider
-    doc.setDrawColor(200, 200, 200);
-    doc.line(30, 95, 180, 95);
-    
-    // Project info if single project
-    if (projectId !== 'all' && projects[0]) {
-        const project = projects[0];
-        doc.setFontSize(14);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(0, 0, 0);
-        doc.text(project.name, 105, 110, { align: 'center' });
-        
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Project Code: ${project.code || 'N/A'} | Status: ${project.status.toUpperCase()} | Progress: ${project.progress || 0}%`, 105, 120, { align: 'center' });
-    }
-    
-    // Date and author
-    doc.setFontSize(10);
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Report Generated: ${new Date().toLocaleString('en-AU', { dateStyle: 'full', timeStyle: 'short' })}`, 105, 145, { align: 'center' });
-    doc.text(`Generated by: ${currentUser.role.toUpperCase()} | EcoManager Pro v2.0`, 105, 152, { align: 'center' });
-    
-    // Footer on cover
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text('Confidential - Council Ecosystem Management System', 105, 280, { align: 'center' });
-    
-    // ========== EXECUTIVE SUMMARY PAGE ==========
-    doc.addPage();
-    addColoredBar(doc, 0, colors.primary);
-    
-    doc.setFontSize(18);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-    doc.text('Executive Summary', 20, 25);
-    
-    doc.setFontSize(10);
-    doc.setTextColor(80, 80, 80);
-    let summaryY = 40;
-    summaryY = addWrappedText(doc, 
-        `This report provides a comprehensive overview of ecosystem management activities${projectId !== 'all' ? ' for the selected project' : ' across all projects'}. ` +
-        `The data presented reflects current monitoring, assessment, and maintenance activities within the council's ecosystem management program.`, 
-        20, summaryY, 170, 6);
-    summaryY += 5;
-    
-    // Key metrics in card format
-    const cardWidth = 40;
-    const cardHeight = 30;
-    const startX = 20;
-    const row1Y = summaryY + 5;
-    
-    addMetricCard(doc, startX, row1Y, cardWidth, cardHeight, 'Total Projects', stats.totalProjects, '', colors.primary);
-    addMetricCard(doc, startX + cardWidth + 5, row1Y, cardWidth, cardHeight, 'Active Projects', stats.activeProjects, '', colors.secondary);
-    addMetricCard(doc, startX + (cardWidth + 5) * 2, row1Y, cardWidth, cardHeight, 'Completion Rate', Math.round((stats.completedProjects / stats.totalProjects) * 100) || 0, '%', colors.accent);
-    addMetricCard(doc, startX + (cardWidth + 5) * 3, row1Y, cardWidth, cardHeight, 'Health Score', stats.avgHealthScore, '/100', stats.avgHealthScore >= 70 ? colors.success : colors.warning);
-    
-    const row2Y = row1Y + cardHeight + 10;
-    addMetricCard(doc, startX, row2Y, cardWidth, cardHeight, 'Species Tracked', stats.totalSpecies, '', colors.info);
-    addMetricCard(doc, startX + cardWidth + 5, row2Y, cardWidth, cardHeight, 'Native Species', stats.nativeSpecies, '', colors.success);
-    addMetricCard(doc, startX + (cardWidth + 5) * 2, row2Y, cardWidth, cardHeight, 'Maintenance Tasks', stats.totalMaintenance, '', colors.warning);
-    addMetricCard(doc, startX + (cardWidth + 5) * 3, row2Y, cardWidth, cardHeight, 'Budget', `$${(stats.totalBudget / 1000).toFixed(0)}k`, '', colors.secondary);
-    
-    // Key insights
-    let insightsY = row2Y + cardHeight + 15;
-    insightsY = checkAndAddPage(doc, insightsY, 60);
-    
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-    doc.text('Key Insights', 20, insightsY);
-    insightsY += 8;
-    
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
-    
-    const insights = [
-        `• Ecosystem health score is ${stats.avgHealthScore}/100, indicating ${stats.avgHealthScore >= 70 ? 'good' : stats.avgHealthScore >= 50 ? 'fair' : 'poor'} overall condition`,
-        `• ${stats.activeProjects} projects currently active with ${stats.completedProjects} completed`,
-        `• ${stats.nativeSpecies} native species documented (${Math.round((stats.nativeSpecies / stats.totalSpecies) * 100) || 0}% of total)`,
-        `• ${stats.completedMaintenance} of ${stats.totalMaintenance} maintenance tasks completed (${Math.round((stats.completedMaintenance / stats.totalMaintenance) * 100) || 0}% completion rate)`,
-        `• Total investment: $${stats.totalBudget.toLocaleString()} across all projects`
-    ];
-    
-    insights.forEach(insight => {
-        insightsY = addWrappedText(doc, insight, 20, insightsY, 170, 6);
-        insightsY += 2;
-    });
-    
-    // ========== PROJECT DETAILS ==========
-    doc.addPage();
-    addColoredBar(doc, 0, colors.primary);
-    
-    doc.setFontSize(18);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-    doc.text('Project Portfolio', 20, 25);
-    
-    let projectsY = 40;
-    
-    projects.forEach((project, index) => {
-        projectsY = checkAndAddPage(doc, projectsY, 50);
-        
-        // Project header with status color
-        doc.setFillColor(245, 245, 245);
-        doc.roundedRect(20, projectsY, 170, 8, 2, 2, 'F');
-        
-        doc.setFontSize(11);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-        doc.text(`${index + 1}. ${project.name}`, 25, projectsY + 6);
-        
-        // Status badge
-        const statusColors = {
-            active: colors.success,
-            planning: colors.info,
-            'on-hold': colors.warning,
-            completed: [100, 100, 100]
-        };
-        doc.setFillColor(...(statusColors[project.status] || colors.secondary));
-        doc.roundedRect(150, projectsY + 2, 35, 5, 2, 2, 'F');
-        doc.setFontSize(8);
-        doc.setTextColor(255, 255, 255);
-        doc.text(project.status.toUpperCase(), 167.5, projectsY + 6, { align: 'center' });
-        
-        projectsY += 12;
-        
-        // Project details
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(80, 80, 80);
-        
-        // Progress bar
-        const progress = project.progress || 0;
-        doc.setFillColor(230, 230, 230);
-        doc.rect(25, projectsY, 80, 4, 'F');
-        doc.setFillColor(colors.accent[0], colors.accent[1], colors.accent[2]);
-        doc.rect(25, projectsY, 80 * (progress / 100), 4, 'F');
-        doc.text(`Progress: ${progress}%`, 110, projectsY + 3);
-        projectsY += 8;
-        
-        doc.text(`Start Date: ${formatDate(project.startDate)} | Budget: $${(project.budget || 0).toLocaleString()}`, 25, projectsY);
-        projectsY += 6;
-        
-        if (project.description) {
-            projectsY = addWrappedText(doc, project.description, 25, projectsY, 160, 4.5);
-            projectsY += 3;
+            doc.setTextColor(128, 128, 128);
+            doc.text(`EcoManager Pro - Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
         }
         
-        projectsY += 8;
-    });
-    
-    // ========== ECOSYSTEM HEALTH SECTION ==========
-    if (assessments.length > 0) {
-        doc.addPage();
-        addColoredBar(doc, 0, colors.primary);
+        // Save the PDF
+        const fileName = `EcoManager_Report_${projectId === 'all' ? 'All_Projects' : (projects[0]?.name || 'Project').replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+        doc.save(fileName);
         
-        doc.setFontSize(18);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-        doc.text('Ecosystem Health Analysis', 20, 25);
+        showToast('PDF Export Successful', 'Professional report has been generated', 'success');
         
-        let healthY = 40;
-        
-        // Health trend summary
-        const healthDistribution = {
-            excellent: assessments.filter(a => a.health === 'excellent').length,
-            good: assessments.filter(a => a.health === 'good').length,
-            fair: assessments.filter(a => a.health === 'fair').length,
-            poor: assessments.filter(a => a.health === 'poor').length,
-            degraded: assessments.filter(a => a.health === 'degraded').length
-        };
-        
-        doc.setFontSize(12);
-        doc.setFont(undefined, 'bold');
-        doc.text('Health Status Distribution', 20, healthY);
-        healthY += 10;
-        
-        // Create simple bar chart for health distribution
-        const maxCount = Math.max(...Object.values(healthDistribution));
-        const barWidth = 30;
-        let barX = 25;
-        
-        Object.entries(healthDistribution).forEach(([status, count]) => {
-            const barHeight = count > 0 ? (count / maxCount) * 40 : 4;
-            const colors_map = {
-                excellent: [40, 167, 69],
-                good: [23, 162, 184],
-                fair: [255, 193, 7],
-                poor: [253, 126, 20],
-                degraded: [220, 53, 69]
-            };
-            
-            doc.setFillColor(...(colors_map[status] || [100, 100, 100]));
-            doc.rect(barX, healthY + 40 - barHeight, barWidth - 2, barHeight, 'F');
-            doc.setFontSize(8);
-            doc.setTextColor(80, 80, 80);
-            doc.text(status.toUpperCase(), barX + 5, healthY + 48);
-            doc.text(count.toString(), barX + 12, healthY + 55);
-            
-            barX += barWidth;
-        });
-        
-        healthY += 65;
-        
-        // Recent assessments
-        const recentAssessments = assessments.slice(-5).reverse();
-        if (recentAssessments.length > 0) {
-            healthY = checkAndAddPage(doc, healthY, 40);
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'bold');
-            doc.text('Recent Assessments', 20, healthY);
-            healthY += 8;
-            
-            recentAssessments.forEach(assessment => {
-                healthY = checkAndAddPage(doc, healthY, 25);
-                doc.setFontSize(9);
-                doc.setFont(undefined, 'bold');
-                doc.text(`${formatDate(assessment.date)} - ${assessment.assessor}`, 25, healthY);
-                healthY += 5;
-                
-                doc.setFont(undefined, 'normal');
-                doc.text(`Health: ${assessment.health?.toUpperCase() || 'Not rated'} | Project: ${getProjectName(assessment.projectId)}`, 25, healthY);
-                healthY += 5;
-                
-                if (assessment.description) {
-                    healthY = addWrappedText(doc, assessment.description, 25, healthY, 155, 4);
-                    healthY += 3;
-                }
-                healthY += 5;
-            });
-        }
+    } catch (error) {
+        console.error('PDF Export Error:', error);
+        showToast('Export Failed', 'Error generating PDF: ' + error.message, 'error');
     }
-    
-    // ========== BIODIVERSITY SECTION ==========
-    if (species.length > 0) {
-        doc.addPage();
-        addColoredBar(doc, 0, colors.primary);
-        
-        doc.setFontSize(18);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-        doc.text('Biodiversity Inventory', 20, 25);
-        
-        let speciesY = 40;
-        
-        // Species by type
-        const typeCount = {
-            plant: species.filter(s => s.type === 'plant').length,
-            animal: species.filter(s => s.type === 'animal').length,
-            bird: species.filter(s => s.type === 'bird').length,
-            reptile: species.filter(s => s.type === 'reptile').length,
-            insect: species.filter(s => s.type === 'insect').length
-        };
-        
-        doc.setFontSize(11);
-        doc.setFont(undefined, 'bold');
-        doc.text('Species Distribution by Type', 20, speciesY);
-        speciesY += 8;
-        
-        // Display type counts
-        Object.entries(typeCount).forEach(([type, count]) => {
-            if (count > 0) {
-                doc.setFontSize(9);
-                doc.setFont(undefined, 'normal');
-                doc.text(`${type.charAt(0).toUpperCase() + type.slice(1)}s: ${count}`, 25, speciesY);
-                speciesY += 6;
-            }
-        });
-        
-        speciesY += 5;
-        
-        // Species list
-        speciesY = checkAndAddPage(doc, speciesY, 30);
-        doc.setFontSize(11);
-        doc.setFont(undefined, 'bold');
-        doc.text('Species Register', 20, speciesY);
-        speciesY += 8;
-        
-        // Table headers
-        doc.setFillColor(240, 240, 240);
-        doc.rect(20, speciesY, 60, 6, 'F');
-        doc.rect(80, speciesY, 50, 6, 'F');
-        doc.rect(130, speciesY, 30, 6, 'F');
-        doc.rect(160, speciesY, 30, 6, 'F');
-        
-        doc.setFontSize(8);
-        doc.setFont(undefined, 'bold');
-        doc.text('Common Name', 22, speciesY + 4.5);
-        doc.text('Scientific Name', 82, speciesY + 4.5);
-        doc.text('Type', 132, speciesY + 4.5);
-        doc.text('Status', 162, speciesY + 4.5);
-        speciesY += 8;
-        
-        doc.setFont(undefined, 'normal');
-        species.slice(0, 20).forEach(s => {
-            if (speciesY > 270) {
-                doc.addPage();
-                speciesY = 20;
-                addColoredBar(doc, 0, colors.primary);
-            }
-            doc.text(s.name.substring(0, 25), 22, speciesY + 3);
-            doc.text((s.scientificName || '-').substring(0, 20), 82, speciesY + 3);
-            doc.text(s.type, 132, speciesY + 3);
-            doc.text(s.status, 162, speciesY + 3);
-            speciesY += 5;
-        });
-        
-        if (species.length > 20) {
-            speciesY += 3;
-            doc.setFontSize(8);
-            doc.setTextColor(100, 100, 100);
-            doc.text(`+ ${species.length - 20} additional species not shown in this view`, 20, speciesY);
-        }
-    }
-    
-    // ========== MAINTENANCE SCHEDULE ==========
-    if (maintenance.length > 0) {
-        doc.addPage();
-        addColoredBar(doc, 0, colors.primary);
-        
-        doc.setFontSize(18);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-        doc.text('Maintenance & Activities', 20, 25);
-        
-        let maintY = 40;
-        
-        // Upcoming maintenance
-        const upcoming = maintenance.filter(m => m.status === 'scheduled').sort((a, b) => new Date(a.date) - new Date(b.date));
-        
-        if (upcoming.length > 0) {
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'bold');
-            doc.text('Upcoming Scheduled Activities', 20, maintY);
-            maintY += 8;
-            
-            upcoming.slice(0, 10).forEach(item => {
-                maintY = checkAndAddPage(doc, maintY, 20);
-                doc.setFontSize(9);
-                doc.setFont(undefined, 'bold');
-                doc.text(`• ${item.activity}`, 25, maintY);
-                maintY += 5;
-                
-                doc.setFont(undefined, 'normal');
-                const priorityColors = { high: '🔴', medium: '🟡', low: '🟢' };
-                doc.text(`${priorityColors[item.priority] || '⚪'} ${formatDate(item.date)} | ${item.type.replace('-', ' ').toUpperCase()} | Project: ${getProjectName(item.projectId)}`, 30, maintY);
-                maintY += 5;
-                
-                if (item.description) {
-                    maintY = addWrappedText(doc, item.description, 30, maintY, 155, 4);
-                    maintY += 2;
-                }
-                maintY += 5;
-            });
-        }
-        
-        // Completed maintenance summary
-        const completed = maintenance.filter(m => m.status === 'completed');
-        if (completed.length > 0) {
-            maintY = checkAndAddPage(doc, maintY, 30);
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'bold');
-            doc.text('Completed Activities', 20, maintY);
-            maintY += 8;
-            
-            doc.setFontSize(9);
-            doc.setFont(undefined, 'normal');
-            doc.text(`${completed.length} maintenance tasks have been completed`, 25, maintY);
-            maintY += 10;
-            
-            completed.slice(-5).reverse().forEach(item => {
-                maintY = checkAndAddPage(doc, maintY, 15);
-                doc.text(`✓ ${item.activity} (${formatDate(item.date)})`, 30, maintY);
-                maintY += 5;
-            });
-        }
-    }
-    
-    // ========== RECOMMENDATIONS ==========
-    doc.addPage();
-    addColoredBar(doc, 0, colors.primary);
-    
-    doc.setFontSize(18);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-    doc.text('Recommendations', 20, 25);
-    
-    let recY = 40;
-    
-    const recommendations = [];
-    
-    // Generate recommendations based on data
-    if (stats.avgHealthScore < 60) {
-        recommendations.push('Prioritize ecosystem restoration efforts in areas with degraded health scores');
-    }
-    if (stats.nativeSpecies / stats.totalSpecies < 0.7) {
-        recommendations.push('Increase native species planting and weed management programs');
-    }
-    if (stats.completedMaintenance / stats.totalMaintenance < 0.5) {
-        recommendations.push('Improve maintenance completion rates through better scheduling and resource allocation');
-    }
-    if (stats.activeProjects > 5 && stats.completedProjects < 2) {
-        recommendations.push('Review project timelines and resource allocation to accelerate completion rates');
-    }
-    
-    // Add general recommendations
-    recommendations.push('Continue regular ecosystem health assessments to track improvement trends');
-    recommendations.push('Enhance community engagement and citizen science programs');
-    recommendations.push('Consider additional funding for high-priority conservation areas');
-    
-    recommendations.forEach(rec => {
-        recY = checkAndAddPage(doc, recY, 10);
-        doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
-        doc.text(`• ${rec}`, 25, recY);
-        recY += 8;
-    });
-    
-    // ========== APPENDIX ==========
-    doc.addPage();
-    addColoredBar(doc, 0, colors.primary);
-    
-    doc.setFontSize(18);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-    doc.text('Appendix', 20, 25);
-    
-    let appY = 40;
-    
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'bold');
-    doc.text('Data Quality Notes', 20, appY);
-    appY += 8;
-    
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'normal');
-    appY = addWrappedText(doc, 
-        'This report is generated from the EcoManager Pro ecosystem management system. ' +
-        'Data accuracy depends on regular updates from field staff and project managers. ' +
-        'Health scores are calculated using a weighted methodology based on vegetation cover, ' +
-        'native species presence, weed cover, soil stability, and species richness.', 
-        20, appY, 170, 5);
-    appY += 10;
-    
-    doc.text(`Report Version: 2.0`, 20, appY); appY += 6;
-    doc.text(`System: EcoManager Pro - Council Edition`, 20, appY); appY += 6;
-    doc.text(`Data Export: ${new Date().toISOString()}`, 20, appY); appY += 6;
-    doc.text(`User Role: ${currentUser.role}`, 20, appY); appY += 10;
-    
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text('This report is confidential and intended for council use only.', 105, 270, { align: 'center' });
-    
-    // Add footers to all pages
-    addFooter(doc);
-    
-    // Save the PDF
-    const fileName = `EcoManager_Report_${projectId === 'all' ? 'All_Projects' : projects[0]?.name?.replace(/\s/g, '_') || 'Project'}_${new Date().toISOString().slice(0, 10)}.pdf`;
-    doc.save(fileName);
-    
-    auditLog.log('EXPORT_DATA', {
-        format: 'pdf',
-        projectId: projectId,
-        reportType: 'professional'
-    });
-    
-    showToast('PDF Export Successful', 'Professional report has been generated with all sections', 'success');
 }
 
     function importData() {
