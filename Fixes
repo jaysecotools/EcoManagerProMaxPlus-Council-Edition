@@ -1,57 +1,29 @@
-Great question! Let me show you exactly where to place the getCleanMaintenanceData() function and where to use it.
+Ah, I see the typo! In the completed activities section, I accidentally wrote Quintal instead of yPos. Let me give you the corrected version.
 
-Exact Placement in Your Code
+Fix the Typo
 
-1. Add the getCleanMaintenanceData() function near your other helper functions
-
-Place it right after your existing sanitizeText() function (around line 2650-2660 in your original code):
+In the completed activities section, find this line:
 
 ```javascript
-function sanitizeText(text) {
-    if (!text || typeof text !== 'string') return '';
-    return text
-        .replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-}
-
-// ADD THIS NEW FUNCTION RIGHT HERE
-function getCleanMaintenanceData() {
-    try {
-        const rawData = localStorage.getItem('maintenance');
-        if (!rawData) return [];
-        
-        // Parse and clean each item
-        const items = JSON.parse(rawData);
-        return items.map(item => ({
-            id: String(item.id || ''),
-            activity: String(item.activity || '').replace(/[^\x20-\x7E]/g, ''),
-            type: String(item.type || 'other').replace(/[^\x20-\x7E]/g, ''),
-            date: String(item.date || ''),
-            status: String(item.status || 'scheduled').replace(/[^\x20-\x7E]/g, ''),
-            priority: String(item.priority || 'medium').replace(/[^\x20-\x7E]/g, ''),
-            projectId: String(item.projectId || ''),
-            description: String(item.description || '').replace(/[^\x20-\x7E]/g, ''),
-            completedDate: item.completedDate ? String(item.completedDate) : null,
-            completedBy: item.completedBy ? String(item.completedBy) : null
-        }));
-    } catch (e) {
-        console.error('Error cleaning maintenance data:', e);
-        return [];
-    }
-}
+doc.setTextColor(40, 167, Quintal);
 ```
 
-2. Replace the existing exportToPDF() function completely
+Change it to:
 
-Find your current exportToPDF() function (around line 2700-2950) and replace the entire thing with this new version:
+```javascript
+doc.setTextColor(40, 167, 69);
+```
+
+Here's the Complete Corrected exportToPDF() Function
+
+Copy and paste this entire function to replace your existing one:
 
 ```javascript
 function exportToPDF(projectId) {
     try {
         const { jsPDF } = window.jspdf;
         
-        // Get clean data using the new function
+        // Get clean data
         const projects = JSON.parse(JSON.stringify(
             projectId === 'all' ? db.getProjects() : db.getProjects().filter(p => p.id === projectId)
         ));
@@ -64,7 +36,7 @@ function exportToPDF(projectId) {
             projectId === 'all' ? db.getSpecies() : db.getSpecies().filter(s => s.projectId === projectId)
         ));
         
-        // USE THE NEW FUNCTION HERE - THIS IS WHERE THE LINE GOES
+        // Get clean maintenance data
         const allMaintenance = getCleanMaintenanceData();
         const maintenance = projectId === 'all' ? allMaintenance : allMaintenance.filter(m => m.projectId === projectId);
         
@@ -220,7 +192,7 @@ function exportToPDF(projectId) {
                 
                 doc.setFontSize(10);
                 doc.setFont(undefined, 'normal');
-                doc.setTextColor(40, 167, Quintal);
+                doc.setTextColor(40, 167, 69);  // FIXED: Changed from 'Quintal' to 69
                 
                 const checkmark = String.fromCharCode(10003);
                 const activityName = toPlainString(item.activity || 'Unnamed Activity');
@@ -273,10 +245,36 @@ function exportToPDF(projectId) {
 }
 ```
 
-Summary of Changes:
+Also Make Sure getCleanMaintenanceData() Is Defined
 
-1. Line to add: const allMaintenance = getCleanMaintenanceData(); followed by const maintenance = projectId === 'all' ? allMaintenance : allMaintenance.filter(m => m.projectId === projectId);
-2. Where it goes: Inside the exportToPDF() function, right after you get the projects, assessments, and species data
-3. What it does: Creates a completely clean copy of your maintenance data that bypasses all encoding issues
+If you haven't added it yet, add this function right after your sanitizeText() function:
 
-This approach ensures that the data going into your PDF is fresh, clean, and free from any DOM-related corruption or encoding issues that were causing the strange characters.
+```javascript
+function getCleanMaintenanceData() {
+    try {
+        const rawData = localStorage.getItem('maintenance');
+        if (!rawData) return [];
+        
+        const items = JSON.parse(rawData);
+        return items.map(item => ({
+            id: String(item.id || ''),
+            activity: String(item.activity || '').replace(/[^\x20-\x7E]/g, ''),
+            type: String(item.type || 'other').replace(/[^\x20-\x7E]/g, ''),
+            date: String(item.date || ''),
+            status: String(item.status || 'scheduled').replace(/[^\x20-\x7E]/g, ''),
+            priority: String(item.priority || 'medium').replace(/[^\x20-\x7E]/g, ''),
+            projectId: String(item.projectId || ''),
+            description: String(item.description || '').replace(/[^\x20-\x7E]/g, ''),
+            completedDate: item.completedDate ? String(item.completedDate) : null,
+            completedBy: item.completedBy ? String(item.completedBy) : null
+        }));
+    } catch (e) {
+        console.error('Error cleaning maintenance data:', e);
+        return [];
+    }
+}
+```
+
+The typo was the only issue - I wrote Quintal instead of the RGB blue value 69. The corrected line is doc.setTextColor(40, 167, 69); which sets the color to green for completed tasks.
+
+This should now work without any errors!
