@@ -1,14 +1,191 @@
-Maintenance Activities
-Upcoming Scheduled Tasks
-• Marram Grass Spraying
-Ø=Ý4 2 5 / 0 4 / 2 0 2 6 | WEED CON T RO L | P r o j e c t : B u r n i e C o a s t a l D u n e R e s t o r a t i o n
-Spot-spraying of regrowth in southern dune zone.
-• Fence Line Inspection
-Ø=ßá 1 0 / 0 5 / 2 0 2 6 | MON I TOR I NG | P r o j e c t : T a s ma n i a n We t l a n d s C o n s e r v a t i o n
-Check exclusion fencing around sensitive wetland areas.
-• Young Tree Watering
-Ø=Ý4 2 2 / 0 4 / 2 0 2 6 | REVEGE T A T I ON | P r o j e c t : C i t y o f B u r n i e U r b a n G r e e n i n g
-Deep watering of recently planted street trees.
-Completed Activities
-1 maintenance tasks completed
-' P o s t- p l a n t i n g A u d i t ( 1 5 / 1 0 / 2 0 2 5 )
+// ========== MAINTENANCE SECTION (FIXED) ==========
+if (maintenance.length > 0) {
+    doc.addPage();
+    addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+    
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+    doc.text('Maintenance Activities', 20, 25);
+    
+    let maintY = 40;
+    const upcoming = maintenance.filter(m => m.status === 'scheduled').slice(0, 10);
+    
+    if (upcoming.length > 0) {
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(0, 0, 0);
+        doc.text('Upcoming Scheduled Tasks', 20, maintY);
+        maintY += 10;
+        
+        upcoming.forEach(item => {
+            maintY = checkAndAddPage(doc, maintY, 30);
+            
+            // Activity name as bold
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(44, 85, 48);
+            doc.text(`• ${(item.activity || 'Unnamed').substring(0, 50)}`, 25, maintY);
+            maintY += 6;
+            
+            // Details line - using standard ASCII characters only
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(80, 80, 80);
+            
+            // Format date without special characters
+            let dateStr = formatDate(item.date) || 'Date not set';
+            let typeStr = (item.type || 'other').replace(/-/g, ' ').toUpperCase();
+            let projectName = getProjectName(item.projectId);
+            
+            // Build clean text without special spacing
+            let detailText = `Date: ${dateStr}  |  Type: ${typeStr}  |  Project: ${projectName}`;
+            doc.text(detailText, 30, maintY);
+            maintY += 5;
+            
+            // Priority indicator - using text instead of emoji
+            let priorityText = '';
+            if (item.priority === 'high') priorityText = 'Priority: HIGH - Urgent attention required';
+            else if (item.priority === 'medium') priorityText = 'Priority: MEDIUM - Schedule soon';
+            else priorityText = 'Priority: LOW - Routine schedule';
+            
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text(priorityText, 30, maintY);
+            maintY += 5;
+            
+            // Description with proper wrapping
+            if (item.description) {
+                doc.setFontSize(8);
+                doc.setTextColor(120, 120, 120);
+                maintY = addWrappedText(doc, item.description.substring(0, 150), 30, maintY, 155, 4.5);
+                maintY += 3;
+            }
+            maintY += 8;
+        });
+    }
+    
+    // Completed summary
+    const completed = maintenance.filter(m => m.status === 'completed');
+    if (completed.length > 0) {
+        maintY = checkAndAddPage(doc, maintY, 30);
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(0, 0, 0);
+        doc.text('Completed Activities', 20, maintY);
+        maintY += 8;
+        
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(80, 80, 80);
+        doc.text(`${completed.length} maintenance task(s) completed`, 25, maintY);
+        maintY += 10;
+        
+        completed.slice(-5).reverse().forEach(item => {
+            maintY = checkAndAddPage(doc, maintY, 12);
+            doc.setFontSize(9);
+            doc.setTextColor(40, 167, 69);
+            doc.text(`✓ ${(item.activity || 'Unnamed').substring(0, 45)}`, 30, maintY);
+            maintY += 5;
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`  Completed: ${formatDate(item.date)}`, 32, maintY);
+            maintY += 8;
+        });
+    }
+}
+
+// ========== RECOMMENDATIONS SECTION (FIXED - SMALLER FONT) ==========
+doc.addPage();
+addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+
+doc.setFontSize(18);
+doc.setFont(undefined, 'bold');
+doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+doc.text('Recommendations', 20, 25);
+
+let recY = 40;
+
+// Generate dynamic recommendations
+const recommendations = [];
+
+if (stats.avgHealthScore < 60) {
+    recommendations.push('Prioritize ecosystem restoration efforts in areas with degraded health scores');
+}
+if (stats.totalSpecies > 0 && stats.nativeSpecies / stats.totalSpecies < 0.7) {
+    recommendations.push('Increase native species planting and implement enhanced weed management programs');
+}
+if (stats.totalMaintenance > 0 && stats.completedMaintenance / stats.totalMaintenance < 0.5) {
+    recommendations.push('Improve maintenance completion rates through better scheduling and resource allocation');
+}
+if (stats.activeProjects > 3 && stats.completedProjects < 2) {
+    recommendations.push('Review project timelines and resource allocation to accelerate completion rates');
+}
+
+// Add general recommendations
+recommendations.push('Continue regular ecosystem health assessments (quarterly recommended)');
+recommendations.push('Enhance community engagement and citizen science programs');
+recommendations.push('Consider additional funding for high-priority conservation areas');
+recommendations.push('Implement digital field data collection to improve data accuracy');
+
+// SMALLER FONT for recommendations
+doc.setFontSize(9);  // Changed from default to smaller
+doc.setFont(undefined, 'normal');
+doc.setTextColor(60, 60, 60);
+
+recommendations.forEach(rec => {
+    recY = checkAndAddPage(doc, recY, 10);
+    recY = addWrappedText(doc, `• ${rec}`, 20, recY, 170, 5);  // Reduced line height
+    recY += 2;
+});
+
+// Also fix the date formatting function to ensure clean output
+function formatDate(dateString, format = 'full') {
+    if (!dateString) return 'Not specified';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString; // Return original if invalid
+        
+        if (format === 'short') {
+            return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+        }
+        
+        return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+    } catch (e) {
+        return dateString;
+    }
+}
+
+// Also fix the addWrappedText function to ensure clean text rendering
+function addWrappedText(doc, text, x, y, maxWidth, lineHeight, fontStyle = 'normal') {
+    if (!text || text === 'undefined') return y;
+    
+    // Clean the text - remove any special characters that might cause encoding issues
+    let cleanText = String(text)
+        .replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '') // Remove non-printable chars
+        .replace(/\s+/g, ' ') // Normalize spaces
+        .trim();
+    
+    if (cleanText.length === 0) return y;
+    
+    doc.setFont(undefined, fontStyle);
+    const lines = doc.splitTextToSize(cleanText, maxWidth);
+    doc.text(lines, x, y);
+    return y + (lines.length * lineHeight);
+}
+
+// Fix the getProjectName function to ensure clean output
+function getProjectName(projectId) {
+    if (!projectId) return 'Unassigned';
+    try {
+        const projects = db.getProjects();
+        const project = projects.find(p => p.id === projectId);
+        if (project && project.name) {
+            // Clean the project name
+            return String(project.name).replace(/[^\x20-\x7E]/g, '').substring(0, 40);
+        }
+        return 'Unknown Project';
+    } catch (e) {
+        return 'Unknown Project';
+    }
+}
