@@ -5860,43 +5860,35 @@ function exportToPDF(projectId) {
                 });
             }
             
-// Completed summary
-const completed = maintenance.filter(m => m.status === 'completed');
-if (completed.length > 0) {
-    maintY = checkAndAddPage(doc, maintY, 30);
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('Completed Activities', 20, maintY);
-    maintY += 8;
-    
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(80, 80, 80);
-    doc.text(`${completed.length} maintenance task(s) completed`, 25, maintY);
-    maintY += 10;
-    
-    completed.slice(-5).reverse().forEach(item => {
-        maintY = checkAndAddPage(doc, maintY, 12);
-        
-        // Clean the activity name - remove any special characters and extra spaces
-        let activityName = (item.activity || 'Unnamed')
-            .replace(/[^\x20-\x7E]/g, '')  // Remove non-printable characters
-            .replace(/\s+/g, ' ')           // Normalize spaces
-            .trim();
-        
-        doc.setFontSize(9);
-        doc.setTextColor(40, 167, 69);
-        doc.text(`✓ ${activityName.substring(0, 45)}`, 30, maintY);
-        maintY += 5;
-        
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        let completedDate = formatDate(item.date);
-        doc.text(`Completed: ${completedDate}`, 32, maintY);
-        maintY += 8;
-    });
-}
+            // Completed summary
+            const completed = maintenance.filter(m => m.status === 'completed');
+            if (completed.length > 0) {
+                maintY = checkAndAddPage(doc, maintY, 30);
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(0, 0, 0);
+                doc.text('Completed Activities', 20, maintY);
+                maintY += 8;
+                
+                doc.setFontSize(9);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(80, 80, 80);
+                doc.text(`${completed.length} maintenance task(s) completed`, 25, maintY);
+                maintY += 10;
+                
+                completed.slice(-5).reverse().forEach(item => {
+                    maintY = checkAndAddPage(doc, maintY, 12);
+                    doc.setFontSize(9);
+                    doc.setTextColor(40, 167, 69);
+                    doc.text(`✓ ${(item.activity || 'Unnamed').substring(0, 45)}`, 30, maintY);
+                    maintY += 5;
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(`  Completed: ${formatDate(item.date)}`, 32, maintY);
+                    maintY += 8;
+                });
+            }
+        }
         
         // ========== RECOMMENDATIONS (FIXED - SMALLER FONT) ==========
         doc.addPage();
