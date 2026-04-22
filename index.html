@@ -5331,11 +5331,20 @@ function exportToPDF(projectId) {
         const colorDanger = [220, 53, 69];
         const colorInfo = [23, 162, 184];
         
-        // Helper: Add wrapped text
+        // Helper: Add wrapped text with cleaning
         function addWrappedText(doc, text, x, y, maxWidth, lineHeight, fontStyle = 'normal') {
             if (!text || text === 'undefined') return y;
+            
+            // Clean the text - remove any special characters that might cause encoding issues
+            let cleanText = String(text)
+                .replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            
+            if (cleanText.length === 0) return y;
+            
             doc.setFont(undefined, fontStyle);
-            const lines = doc.splitTextToSize(String(text), maxWidth);
+            const lines = doc.splitTextToSize(cleanText, maxWidth);
             doc.text(lines, x, y);
             return y + (lines.length * lineHeight);
         }
@@ -5353,6 +5362,41 @@ function exportToPDF(projectId) {
         function addColoredBar(doc, y, r, g, b) {
             doc.setFillColor(r, g, b);
             doc.rect(0, y, 210, 3, 'F');
+        }
+        
+        // Helper: Format date cleanly
+        function formatDate(dateString, format = 'full') {
+            if (!dateString) return 'Not specified';
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return dateString;
+                
+                const day = date.getDate().toString().padStart(2, '0');
+                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                const year = date.getFullYear();
+                
+                if (format === 'short') {
+                    return `${day}/${month}`;
+                }
+                return `${day}/${month}/${year}`;
+            } catch (e) {
+                return dateString;
+            }
+        }
+        
+        // Helper: Get project name cleanly
+        function getProjectName(projectId) {
+            if (!projectId) return 'Unassigned';
+            try {
+                const projects = db.getProjects();
+                const project = projects.find(p => p.id === projectId);
+                if (project && project.name) {
+                    return String(project.name).replace(/[^\x20-\x7E]/g, '').substring(0, 40);
+                }
+                return 'Unknown Project';
+            } catch (e) {
+                return 'Unknown Project';
+            }
         }
         
         // Get data safely
@@ -5751,7 +5795,7 @@ function exportToPDF(projectId) {
             }
         }
         
-        // ========== MAINTENANCE ==========
+        // ========== MAINTENANCE ACTIVITIES (FIXED) ==========
         if (maintenance.length > 0) {
             doc.addPage();
             addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
@@ -5765,29 +5809,54 @@ function exportToPDF(projectId) {
             const upcoming = maintenance.filter(m => m.status === 'scheduled').slice(0, 10);
             
             if (upcoming.length > 0) {
-                doc.setFontSize(11);
+                doc.setFontSize(12);
                 doc.setFont(undefined, 'bold');
+                doc.setTextColor(0, 0, 0);
                 doc.text('Upcoming Scheduled Tasks', 20, maintY);
-                maintY += 8;
+                maintY += 10;
                 
                 upcoming.forEach(item => {
-                    maintY = checkAndAddPage(doc, maintY, 25);
+                    maintY = checkAndAddPage(doc, maintY, 30);
+                    
+                    // Activity name as bold
+                    doc.setFontSize(10);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(44, 85, 48);
+                    doc.text(`• ${(item.activity || 'Unnamed').substring(0, 50)}`, 25, maintY);
+                    maintY += 6;
+                    
+                    // Details line - using standard ASCII characters only
+                    doc.setFontSize(9);
+                    doc.setFont(undefined, 'normal');
+                    doc.setTextColor(80, 80, 80);
+                    
+                    let dateStr = formatDate(item.date) || 'Date not set';
+                    let typeStr = (item.type || 'other').replace(/-/g, ' ').toUpperCase();
+                    let projectName = getProjectName(item.projectId);
+                    
+                    let detailText = `Date: ${dateStr}  |  Type: ${typeStr}  |  Project: ${projectName}`;
+                    doc.text(detailText, 30, maintY);
+                    maintY += 5;
+                    
+                    // Priority indicator - using text
+                    let priorityText = '';
+                    if (item.priority === 'high') priorityText = 'Priority: HIGH - Urgent attention required';
+                    else if (item.priority === 'medium') priorityText = 'Priority: MEDIUM - Schedule soon';
+                    else priorityText = 'Priority: LOW - Routine schedule';
                     
                     doc.setFontSize(8);
-                    doc.setFont(undefined, 'bold');
-                    doc.text(`• ${(item.activity || 'Unnamed').substring(0, 45)}`, 25, maintY);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(priorityText, 30, maintY);
                     maintY += 5;
                     
-                    doc.setFont(undefined, 'normal');
-                    const priorityIcon = item.priority === 'high' ? '🔴' : (item.priority === 'medium' ? '🟡' : '🟢');
-                    doc.text(`${priorityIcon} ${formatDate(item.date)} | ${(item.type || 'other').replace('-', ' ').toUpperCase()} | Project: ${getProjectName(item.projectId)}`, 30, maintY);
-                    maintY += 5;
-                    
+                    // Description with proper wrapping
                     if (item.description) {
-                        maintY = addWrappedText(doc, item.description.substring(0, 100), 30, maintY, 155, 4);
-                        maintY += 2;
+                        doc.setFontSize(8);
+                        doc.setTextColor(120, 120, 120);
+                        maintY = addWrappedText(doc, item.description.substring(0, 150), 30, maintY, 155, 4.5);
+                        maintY += 3;
                     }
-                    maintY += 5;
+                    maintY += 8;
                 });
             }
             
@@ -5795,25 +5864,33 @@ function exportToPDF(projectId) {
             const completed = maintenance.filter(m => m.status === 'completed');
             if (completed.length > 0) {
                 maintY = checkAndAddPage(doc, maintY, 30);
-                doc.setFontSize(11);
+                doc.setFontSize(12);
                 doc.setFont(undefined, 'bold');
+                doc.setTextColor(0, 0, 0);
                 doc.text('Completed Activities', 20, maintY);
                 maintY += 8;
                 
-                doc.setFontSize(8);
+                doc.setFontSize(9);
                 doc.setFont(undefined, 'normal');
-                doc.text(`${completed.length} maintenance tasks completed`, 25, maintY);
+                doc.setTextColor(80, 80, 80);
+                doc.text(`${completed.length} maintenance task(s) completed`, 25, maintY);
                 maintY += 10;
                 
                 completed.slice(-5).reverse().forEach(item => {
                     maintY = checkAndAddPage(doc, maintY, 12);
-                    doc.text(`✓ ${(item.activity || 'Unnamed').substring(0, 40)} (${formatDate(item.date)})`, 30, maintY);
+                    doc.setFontSize(9);
+                    doc.setTextColor(40, 167, 69);
+                    doc.text(`✓ ${(item.activity || 'Unnamed').substring(0, 45)}`, 30, maintY);
                     maintY += 5;
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(`  Completed: ${formatDate(item.date)}`, 32, maintY);
+                    maintY += 8;
                 });
             }
         }
         
-        // ========== RECOMMENDATIONS ==========
+        // ========== RECOMMENDATIONS (FIXED - SMALLER FONT) ==========
         doc.addPage();
         addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
         
@@ -5846,10 +5923,15 @@ function exportToPDF(projectId) {
         recommendations.push('Consider additional funding for high-priority conservation areas');
         recommendations.push('Implement digital field data collection to improve data accuracy');
         
+        // SMALLER FONT for recommendations
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(60, 60, 60);
+        
         recommendations.forEach(rec => {
             recY = checkAndAddPage(doc, recY, 10);
-            recY = addWrappedText(doc, `• ${rec}`, 20, recY, 170, 5.5);
-            recY += 3;
+            recY = addWrappedText(doc, `• ${rec}`, 20, recY, 170, 5);
+            recY += 2;
         });
         
         // ========== APPENDIX ==========
