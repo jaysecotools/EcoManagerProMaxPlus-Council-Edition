@@ -1,128 +1,196 @@
-Looking at your code, I can see the issue with the PDF export. The problem is in the exportToPDF function's maintenance section where special characters are being inserted. Here's the fix:
+Looking at your code, I can see the AI's analysis is correct. Let me provide clear fixes for each issue:
 
-Replace the maintenance section in your exportToPDF function (around line 3100-3200) with this corrected version:
+Issue 1: Missing Functions (formatDate() and getProjectName())
+
+The PDF export function calls formatDate() and getProjectName() but these don't exist. You already have formatDateStr() and getProjectNameSafe() elsewhere.
+
+Fix - Add these functions before the PDF export code:
+
+Add these lines right before the exportToPDF function (around line 2850):
 
 ```javascript
-// ========== MAINTENANCE ACTIVITIES (FIXED) ==========
-if (maintenance.length > 0) {
-    doc.addPage();
-    addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-    
-    doc.setFontSize(18);
-    doc.setFont(undefined, 'bold');
-    doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-    doc.text('Maintenance Activities', 20, 25);
-    
-    let maintY = 40;
-    const upcoming = maintenance.filter(m => m.status === 'scheduled').slice(0, 10);
-    
-    if (upcoming.length > 0) {
-        doc.setFontSize(12);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(0, 0, 0);
-        doc.text('Upcoming Scheduled Tasks', 20, maintY);
-        maintY += 10;
+// Add these helper functions for PDF export
+function formatDateStr(dateString, format = 'full') {
+    if (!dateString) return 'Not specified';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
         
-        upcoming.forEach(item => {
-            maintY = checkAndAddPage(doc, maintY, 30);
-            
-            // Activity name as bold - CLEAN THE TEXT
-            let activityName = (item.activity || 'Unnamed').substring(0, 50);
-            activityName = activityName.replace(/[^\x20-\x7E]/g, ''); // Remove non-ASCII chars
-            
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'bold');
-            doc.setTextColor(44, 85, 48);
-            doc.text('• ' + activityName, 25, maintY);
-            maintY += 6;
-            
-            // Details line - using standard ASCII characters only
-            doc.setFontSize(9);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(80, 80, 80);
-            
-            let dateStr = formatDate(item.date) || 'Date not set';
-            let typeStr = (item.type || 'other').replace(/-/g, ' ').toUpperCase();
-            let projectName = getProjectName(item.projectId);
-            
-            // Clean the project name too
-            projectName = projectName.replace(/[^\x20-\x7E]/g, '');
-            
-            let detailText = 'Date: ' + dateStr + '  |  Type: ' + typeStr + '  |  Project: ' + projectName;
-            doc.text(detailText, 30, maintY);
-            maintY += 5;
-            
-            // Priority indicator - using text (NO SPECIAL CHARACTERS)
-            let priorityText = '';
-            if (item.priority === 'high') priorityText = 'Priority: HIGH - Urgent attention required';
-            else if (item.priority === 'medium') priorityText = 'Priority: MEDIUM - Schedule soon';
-            else priorityText = 'Priority: LOW - Routine schedule';
-            
-            doc.setFontSize(8);
-            doc.setTextColor(100, 100, 100);
-            doc.text(priorityText, 30, maintY);
-            maintY += 5;
-            
-            // Description with proper wrapping - CLEAN THE TEXT
-            if (item.description) {
-                let description = item.description.substring(0, 150);
-                description = description.replace(/[^\x20-\x7E]/g, ''); // Remove non-ASCII chars
-                doc.setFontSize(8);
-                doc.setTextColor(120, 120, 120);
-                maintY = addWrappedText(doc, description, 30, maintY, 155, 4.5);
-                maintY += 3;
-            }
-            maintY += 8;
-        });
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        
+        if (format === 'short') {
+            return `${day}/${month}`;
+        }
+        return `${day}/${month}/${year}`;
+    } catch (e) {
+        return dateString;
     }
-    
-    // Completed summary
-    const completed = maintenance.filter(m => m.status === 'completed');
-    if (completed.length > 0) {
-        maintY = checkAndAddPage(doc, maintY, 30);
-        doc.setFontSize(12);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(0, 0, 0);
-        doc.text('Completed Activities', 20, maintY);
-        maintY += 8;
-        
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(80, 80, 80);
-        doc.text(completed.length + ' maintenance task(s) completed', 25, maintY);
-        maintY += 10;
-        
-        completed.slice(-5).reverse().forEach(item => {
-            maintY = checkAndAddPage(doc, maintY, 12);
-            
-            let activityName = (item.activity || 'Unnamed').substring(0, 45);
-            activityName = activityName.replace(/[^\x20-\x7E]/g, '');
-            
-            doc.setFontSize(9);
-            doc.setTextColor(40, 167, 69);
-            doc.text('✓ ' + activityName, 30, maintY);
-            maintY += 5;
-            doc.setFontSize(8);
-            doc.setTextColor(100, 100, 100);
-            
-            let dateStr = formatDate(item.date) || 'Date not set';
-            doc.text('  Completed: ' + dateStr, 32, maintY);
-            maintY += 8;
-        });
+}
+
+function getProjectNameSafe(projectId) {
+    if (!projectId) return 'Unassigned';
+    try {
+        const projects = db.getProjects();
+        const project = projects.find(p => p.id === projectId);
+        if (project && project.name) {
+            return String(project.name).substring(0, 40);
+        }
+        return 'Unknown Project';
+    } catch (e) {
+        return 'Unknown Project';
     }
 }
 ```
 
-The main issues that were causing strange characters:
+Then, inside the exportToPDF function, replace these lines:
 
-1. Template literal backticks with embedded expressions were causing encoding issues when generating the PDF
-2. Non-ASCII characters in the data (like smart quotes, em dashes, etc.) weren't being properly sanitized
-3. The addWrappedText function needed to clean the text before processing
+· Replace formatDate( with formatDateStr(
+· Replace getProjectName( with getProjectNameSafe(
 
-The fix:
+Specifically, find and replace:
 
-· Replaced all template literals ( `text ${variable}` ) with string concatenation ('text ' + variable)
-· Added text cleaning with .replace(/[^\x20-\x7E]/g, '') to remove any non-ASCII characters before adding to PDF
-· Ensured all special characters like • and ✓ are now properly handled
+· Line with formatDate(project.startDate) → formatDateStr(project.startDate)
+· Line with getProjectName(assessment.projectId) → getProjectNameSafe(assessment.projectId)
+· Line with getProjectName(item.projectId) → getProjectNameSafe(item.projectId)
 
-This should eliminate the strange characters in the completed activities section of your exported PDF.
+Issue 2: Function Shadowing Bug
+
+Inside addWrappedText function, let cleanText = ... shadows the function name.
+
+Fix - Rename the variable:
+
+Find this code inside exportToPDF (around line 2930):
+
+```javascript
+function addWrappedText(doc, text, x, y, maxWidth, lineHeight, fontStyle = 'normal') {
+    if (!text || text === 'undefined') return y;
+    
+    // Clean the text - remove any special characters
+    let cleanText = String(text)  // <-- THIS SHADOWS THE FUNCTION NAME
+        .replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+```
+
+Change it to:
+
+```javascript
+function addWrappedText(doc, text, x, y, maxWidth, lineHeight, fontStyle = 'normal') {
+    if (!text || text === 'undefined') return y;
+    
+    // Clean the text - remove any special characters
+    let cleanedContent = String(text)  // <-- RENAMED to avoid shadowing
+        .replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    
+    if (cleanedContent.length === 0) return y;
+    
+    doc.setFont(undefined, fontStyle);
+    const lines = doc.splitTextToSize(cleanedContent, maxWidth);  // <-- USE RENAMED VARIABLE
+    doc.text(lines, x, y);
+    return y + (lines.length * lineHeight);
+}
+```
+
+Issue 3: Inconsistent Text Cleaning
+
+You have scattered .replace() calls. Create a single sanitization function.
+
+Fix - Add this function at the top of your script (around line 1200, after other utility functions):
+
+```javascript
+// Single source of truth for text sanitization
+function sanitizeText(text) {
+    if (!text || typeof text !== 'string') return '';
+    // Remove control characters and normalize spaces
+    return text
+        .replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '')  // Keep printable chars only
+        .replace(/\s+/g, ' ')                        // Normalize whitespace
+        .trim();
+}
+```
+
+Then, inside exportToPDF, replace the addWrappedText function's cleaning with a call to this function:
+
+```javascript
+function addWrappedText(doc, text, x, y, maxWidth, lineHeight, fontStyle = 'normal') {
+    if (!text || text === 'undefined') return y;
+    
+    let cleanedContent = sanitizeText(text);  // <-- USE THE SINGLE FUNCTION
+    
+    if (cleanedContent.length === 0) return y;
+    
+    doc.setFont(undefined, fontStyle);
+    const lines = doc.splitTextToSize(cleanedContent, maxWidth);
+    doc.text(lines, x, y);
+    return y + (lines.length * lineHeight);
+}
+```
+
+Issue 4: Maintenance Section Data Corruption
+
+The AI noted that maintenance data might be stored with encoding issues. Add validation when saving maintenance.
+
+Fix - Update the saveMaintenance function in the db object (around line 1750):
+
+Find this code:
+
+```javascript
+saveMaintenance: function(maintenance, user) {
+    const maintenanceItems = this.getMaintenance();
+    maintenance.id = Date.now().toString();
+    maintenance.status = 'scheduled';
+    maintenance.createdBy = user;
+    maintenance.createdAt = new Date().toISOString();
+    maintenanceItems.push(maintenance);
+    localStorage.setItem('maintenance', JSON.stringify(maintenanceItems));
+```
+
+Replace with:
+
+```javascript
+saveMaintenance: function(maintenance, user) {
+    const maintenanceItems = this.getMaintenance();
+    maintenance.id = Date.now().toString();
+    maintenance.status = 'scheduled';
+    maintenance.createdBy = user;
+    maintenance.createdAt = new Date().toISOString();
+    
+    // SANITIZE ALL TEXT FIELDS before saving
+    maintenance.activity = sanitizeText(maintenance.activity);
+    maintenance.description = sanitizeText(maintenance.description);
+    maintenance.type = sanitizeText(maintenance.type);
+    
+    maintenanceItems.push(maintenance);
+    localStorage.setItem('maintenance', JSON.stringify(maintenanceItems));
+```
+
+Quick Summary of Steps:
+
+1. Add the two helper functions (formatDateStr and getProjectNameSafe) before exportToPDF
+2. Rename the shadowed variable inside addWrappedText from cleanText to cleanedContent
+3. Add the sanitizeText function at the top of your script
+4. Update addWrappedText to use sanitizeText()
+5. Update saveMaintenance to sanitize text fields before saving
+
+To Fix Already Corrupted Data:
+
+After applying the fixes, run this in your browser's console (F12) to clean existing corrupted maintenance data:
+
+```javascript
+// Fix existing corrupted maintenance data
+let maintenance = JSON.parse(localStorage.getItem('maintenance') || '[]');
+maintenance = maintenance.map(item => ({
+    ...item,
+    activity: (item.activity || '').replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim(),
+    description: (item.description || '').replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim()
+}));
+localStorage.setItem('maintenance', JSON.stringify(maintenance));
+console.log('Fixed', maintenance.length, 'maintenance records');
+location.reload();
+```
+
+These fixes should resolve both the PDF crash and the text corruption issues.
