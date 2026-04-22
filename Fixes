@@ -1,6 +1,35 @@
-// ========== MAINTENANCE ACTIVITIES (FIXED - Completed Activities section only) ==========
-// Replace just this section in your existing function:
+You're right - the issue is likely that the patch created duplicate function declarations or had a syntax error. Let me provide just the specific fix for the completed activities section without breaking anything.
 
+First, restore your working version (the one before the patch). Then, only replace the Completed Activities section inside your existing exportToPDF function.
+
+Find this section in your current working function:
+
+```javascript
+// Completed summary
+const completed = maintenance.filter(m => m.status === 'completed');
+if (completed.length > 0) {
+    maintY = checkAndAddPage(doc, maintY, 30);
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text('Completed Activities', 20, maintY);
+    maintY += 8;
+    
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    doc.text(`${completed.length} maintenance task(s) completed`, 25, maintY);
+    maintY += 10;
+    
+    completed.slice(-5).reverse().forEach(item => {
+        maintY = checkAndAddPage(doc, maintY, 12);
+        doc.text(`✓ ${item.activity} (${formatDate(item.date)})`, 30, maintY);
+        maintY += 5;
+    });
+}
+```
+
+Replace it with this fixed version:
+
+```javascript
 // Completed summary
 const completed = maintenance.filter(m => m.status === 'completed');
 if (completed.length > 0) {
@@ -18,13 +47,12 @@ if (completed.length > 0) {
     maintY += 10;
     
     completed.slice(-5).reverse().forEach(item => {
-        maintY = checkAndAddPage(doc, maintY, 12);
+        maintY = checkAndAddPage(doc, maintY, 15);
         
-        // Clean the activity name - remove any special characters and extra spaces
-        let activityName = (item.activity || 'Unnamed')
-            .replace(/[^\x20-\x7E]/g, '')  // Remove non-printable characters
-            .replace(/\s+/g, ' ')           // Normalize spaces
-            .trim();
+        // Clean the activity name - remove any weird characters
+        let activityName = item.activity || 'Unnamed';
+        // Remove any non-printable characters and normalize spaces
+        activityName = activityName.replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim();
         
         doc.setFontSize(9);
         doc.setTextColor(40, 167, 69);
@@ -38,3 +66,17 @@ if (completed.length > 0) {
         maintY += 8;
     });
 }
+```
+
+This is the only change you need to make. The issue was that the patch I provided earlier had a cleanText() function that might have conflicted with existing code. This inline fix uses a simple regex replace directly on the activity name without adding any new functions.
+
+To apply this fix:
+
+1. Open your browser's developer tools (F12)
+2. Go to the Sources tab
+3. Find your exportToPDF function
+4. Locate the "Completed Activities" section (search for "Completed summary")
+5. Replace just that section with the code above
+6. Save and test
+
+The login screen issue suggests something else went wrong - possibly the patch duplicated the entire function or caused a syntax error. If you're still having trouble, please restore your backup of the working version and only apply this small section replacement.
