@@ -1,3 +1,6 @@
+Perfect! You just need to add the sanitizeText function right after getProjectNameSafe and before exportToPDF. Here's the complete block you should have:
+
+```javascript
 // Add these helper functions for PDF export
 function formatDateStr(dateString, format = 'full') {
     if (!dateString) return 'Not specified';
@@ -32,4 +35,18 @@ function getProjectNameSafe(projectId) {
     }
 }
 
+// ADD THIS FUNCTION HERE - Text sanitization for PDF export
+function sanitizeText(text) {
+    if (!text || typeof text !== 'string') return '';
+    // Remove control characters and normalize spaces
+    return text
+        .replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '')  // Keep printable chars only
+        .replace(/\s+/g, ' ')                        // Normalize whitespace
+        .trim();
+}
+
 function exportToPDF(projectId) {
+    // ... rest of your PDF function (the one I provided earlier)
+```
+
+Just copy and paste the sanitizeText function right between getProjectNameSafe and exportToPDF. Then your PDF export will work without the "sanitizeText is not defined" error.
