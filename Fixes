@@ -7,7 +7,7 @@ function exportToPDF(projectId) {
             orientation: 'portrait'
         });
         
-        // Color scheme (as separate RGB values)
+        // Color scheme
         const colorPrimary = [44, 85, 48];
         const colorSecondary = [74, 124, 89];
         const colorAccent = [58, 138, 95];
@@ -16,29 +16,22 @@ function exportToPDF(projectId) {
         const colorDanger = [220, 53, 69];
         const colorInfo = [23, 162, 184];
         
-        // Helper: Clean text function
+        // Helper functions
         function cleanText(text) {
             if (!text) return '';
-            return String(text)
-                .replace(/[^\x20-\x7E]/g, '')  // Remove non-printable characters
-                .replace(/\s+/g, ' ')           // Normalize spaces
-                .trim();
+            return String(text).replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim();
         }
         
-        // Helper: Add wrapped text with cleaning
         function addWrappedText(doc, text, x, y, maxWidth, lineHeight, fontStyle = 'normal') {
             if (!text || text === 'undefined') return y;
-            
-            let cleanText = cleanText(text);
+            let cleanText = String(text).replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim();
             if (cleanText.length === 0) return y;
-            
             doc.setFont(undefined, fontStyle);
             const lines = doc.splitTextToSize(cleanText, maxWidth);
             doc.text(lines, x, y);
             return y + (lines.length * lineHeight);
         }
         
-        // Helper: Check and add new page
         function checkAndAddPage(doc, currentY, requiredSpace = 20) {
             if (currentY + requiredSpace > 280) {
                 doc.addPage();
@@ -47,54 +40,43 @@ function exportToPDF(projectId) {
             return currentY;
         }
         
-        // Helper: Add colored bar
         function addColoredBar(doc, y, r, g, b) {
             doc.setFillColor(r, g, b);
             doc.rect(0, y, 210, 3, 'F');
         }
         
-        // Helper: Format date cleanly
-        function formatDate(dateString, format = 'full') {
+        function formatDateStr(dateString) {
             if (!dateString) return 'Not specified';
             try {
                 const date = new Date(dateString);
-                if (isNaN(date.getTime())) return cleanText(dateString);
-                
+                if (isNaN(date.getTime())) return dateString;
                 const day = date.getDate().toString().padStart(2, '0');
                 const month = (date.getMonth() + 1).toString().padStart(2, '0');
                 const year = date.getFullYear();
-                
-                if (format === 'short') {
-                    return `${day}/${month}`;
-                }
                 return `${day}/${month}/${year}`;
             } catch (e) {
-                return cleanText(dateString);
+                return dateString;
             }
         }
         
-        // Helper: Get project name cleanly
-        function getProjectName(projectId) {
+        function getProjectNameSafe(projectId) {
             if (!projectId) return 'Unassigned';
             try {
                 const projects = db.getProjects();
                 const project = projects.find(p => p.id === projectId);
-                if (project && project.name) {
-                    return cleanText(project.name).substring(0, 40);
-                }
-                return 'Unknown Project';
+                return project && project.name ? cleanText(project.name).substring(0, 40) : 'Unknown Project';
             } catch (e) {
                 return 'Unknown Project';
             }
         }
         
-        // Get data safely
+        // Get data
         const projects = (projectId === 'all' ? db.getProjects() : db.getProjects().filter(p => p.id === projectId)) || [];
         const assessments = (projectId === 'all' ? db.getAssessments() : db.getAssessments().filter(a => a.projectId === projectId)) || [];
         const species = (projectId === 'all' ? db.getSpecies() : db.getSpecies().filter(s => s.projectId === projectId)) || [];
         const maintenance = (projectId === 'all' ? db.getMaintenance() : db.getMaintenance().filter(m => m.projectId === projectId)) || [];
         
-        // Calculate statistics safely
+        // Calculate stats
         const stats = {
             totalProjects: projects.length,
             activeProjects: projects.filter(p => p.status === 'active').length,
@@ -108,7 +90,6 @@ function exportToPDF(projectId) {
             totalBudget: projects.reduce((sum, p) => sum + (parseFloat(p.budget) || 0), 0)
         };
         
-        // Calculate average health score
         if (assessments.length > 0) {
             const healthScores = { excellent: 90, good: 75, fair: 55, poor: 35, degraded: 20 };
             let totalScore = 0;
@@ -175,7 +156,7 @@ function exportToPDF(projectId) {
             20, yPos, 170, 6);
         yPos += 5;
         
-        // Key metrics
+        // Metrics row 1
         const metrics = [
             { label: 'Total Projects', value: stats.totalProjects, x: 20 },
             { label: 'Active Projects', value: stats.activeProjects, x: 65 },
@@ -188,17 +169,14 @@ function exportToPDF(projectId) {
             doc.roundedRect(metric.x, yPos, 40, 25, 3, 3, 'F');
             doc.setDrawColor(200, 200, 200);
             doc.roundedRect(metric.x, yPos, 40, 25, 3, 3, 'S');
-            
             doc.setFontSize(8);
             doc.setFont(undefined, 'normal');
             doc.setTextColor(100, 100, 100);
             doc.text(metric.label, metric.x + 3, yPos + 6);
-            
             doc.setFontSize(16);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
             doc.text(metric.value.toString(), metric.x + 3, yPos + 18);
-            
             doc.setFontSize(7);
             doc.setFont(undefined, 'normal');
             doc.setTextColor(100, 100, 100);
@@ -207,6 +185,7 @@ function exportToPDF(projectId) {
         
         yPos += 35;
         
+        // Metrics row 2
         const metrics2 = [
             { label: 'Species Tracked', value: stats.totalSpecies, x: 20 },
             { label: 'Native Species', value: stats.nativeSpecies, x: 65 },
@@ -219,12 +198,10 @@ function exportToPDF(projectId) {
             doc.roundedRect(metric.x, yPos, 40, 25, 3, 3, 'F');
             doc.setDrawColor(200, 200, 200);
             doc.roundedRect(metric.x, yPos, 40, 25, 3, 3, 'S');
-            
             doc.setFontSize(8);
             doc.setFont(undefined, 'normal');
             doc.setTextColor(100, 100, 100);
             doc.text(metric.label, metric.x + 3, yPos + 6);
-            
             doc.setFontSize(14);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(colorSecondary[0], colorSecondary[1], colorSecondary[2]);
@@ -233,6 +210,7 @@ function exportToPDF(projectId) {
         
         yPos += 35;
         
+        // Key insights
         doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
@@ -305,7 +283,7 @@ function exportToPDF(projectId) {
                 projY += 8;
                 
                 doc.setFontSize(8);
-                doc.text(`Start: ${formatDate(project.startDate) || 'N/A'} | Budget: $${(project.budget || 0).toLocaleString()}`, 25, projY);
+                doc.text(`Start: ${formatDateStr(project.startDate)} | Budget: $${(project.budget || 0).toLocaleString()}`, 25, projY);
                 projY += 6;
                 
                 if (project.description) {
@@ -319,7 +297,7 @@ function exportToPDF(projectId) {
             if (projects.length > 8) {
                 doc.setFontSize(8);
                 doc.setTextColor(100, 100, 100);
-                doc.text(`+ ${projects.length - 8} additional projects not shown in this view`, 20, projY);
+                doc.text(`+ ${projects.length - 8} additional projects not shown`, 20, projY);
             }
         }
         
@@ -385,11 +363,11 @@ function exportToPDF(projectId) {
                     healthY = checkAndAddPage(doc, healthY, 25);
                     doc.setFontSize(8);
                     doc.setFont(undefined, 'bold');
-                    doc.text(`${formatDate(assessment.date)} - ${cleanText(assessment.assessor || 'Unknown').substring(0, 30)}`, 25, healthY);
+                    doc.text(`${formatDateStr(assessment.date)} - ${cleanText(assessment.assessor || 'Unknown').substring(0, 30)}`, 25, healthY);
                     healthY += 5;
                     
                     doc.setFont(undefined, 'normal');
-                    doc.text(`Health: ${(assessment.health || 'Not rated').toUpperCase()} | Project: ${getProjectName(assessment.projectId)}`, 25, healthY);
+                    doc.text(`Health: ${(assessment.health || 'Not rated').toUpperCase()} | Project: ${getProjectNameSafe(assessment.projectId)}`, 25, healthY);
                     healthY += 5;
                     
                     if (assessment.description) {
@@ -472,7 +450,7 @@ function exportToPDF(projectId) {
             }
         }
         
-        // ========== MAINTENANCE ACTIVITIES (FULLY FIXED) ==========
+        // ========== MAINTENANCE ACTIVITIES ==========
         if (maintenance.length > 0) {
             doc.addPage();
             addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
@@ -505,18 +483,16 @@ function exportToPDF(projectId) {
                     doc.setFont(undefined, 'normal');
                     doc.setTextColor(80, 80, 80);
                     
-                    let dateStr = formatDate(item.date) || 'Date not set';
+                    let dateStr = formatDateStr(item.date);
                     let typeStr = cleanText(item.type || 'other').replace(/-/g, ' ').toUpperCase();
-                    let projectName = getProjectName(item.projectId);
+                    let projectName = getProjectNameSafe(item.projectId);
                     
-                    let detailText = `Date: ${dateStr}  |  Type: ${typeStr}  |  Project: ${projectName}`;
-                    doc.text(detailText, 30, maintY);
+                    doc.text(`Date: ${dateStr}  |  Type: ${typeStr}  |  Project: ${projectName}`, 30, maintY);
                     maintY += 5;
                     
-                    let priorityText = '';
-                    if (item.priority === 'high') priorityText = 'Priority: HIGH - Urgent attention required';
-                    else if (item.priority === 'medium') priorityText = 'Priority: MEDIUM - Schedule soon';
-                    else priorityText = 'Priority: LOW - Routine schedule';
+                    let priorityText = item.priority === 'high' ? 'Priority: HIGH - Urgent attention required' :
+                                     item.priority === 'medium' ? 'Priority: MEDIUM - Schedule soon' :
+                                     'Priority: LOW - Routine schedule';
                     
                     doc.setFontSize(8);
                     doc.setTextColor(100, 100, 100);
@@ -533,7 +509,7 @@ function exportToPDF(projectId) {
                 });
             }
             
-            // FIXED: Completed Activities section
+            // Completed Activities
             const completed = maintenance.filter(m => m.status === 'completed');
             if (completed.length > 0) {
                 maintY = checkAndAddPage(doc, maintY, 30);
@@ -550,9 +526,8 @@ function exportToPDF(projectId) {
                 maintY += 10;
                 
                 completed.slice(-5).reverse().forEach(item => {
-                    maintY = checkAndAddPage(doc, maintY, 12);
+                    maintY = checkAndAddPage(doc, maintY, 15);
                     
-                    // Clean the activity name thoroughly
                     let activityName = cleanText(item.activity || 'Unnamed');
                     
                     doc.setFontSize(9);
@@ -562,8 +537,7 @@ function exportToPDF(projectId) {
                     
                     doc.setFontSize(8);
                     doc.setTextColor(100, 100, 100);
-                    let completedDate = formatDate(item.date);
-                    doc.text(`Completed: ${completedDate}`, 32, maintY);
+                    doc.text(`Completed: ${formatDateStr(item.date)}`, 32, maintY);
                     maintY += 8;
                 });
             }
@@ -636,8 +610,8 @@ function exportToPDF(projectId) {
             20, appY, 170, 4.5);
         appY += 10;
         
-        doc.text(`Report Version: 2.0`, 20, appY); appY += 5;
-        doc.text(`System: EcoManager Pro - Council Edition`, 20, appY); appY += 5;
+        doc.text('Report Version: 2.0', 20, appY); appY += 5;
+        doc.text('System: EcoManager Pro - Council Edition', 20, appY); appY += 5;
         doc.text(`Data Export: ${new Date().toISOString()}`, 20, appY); appY += 5;
         doc.text(`User Role: ${currentUser.role || 'Viewer'}`, 20, appY); appY += 10;
         
@@ -651,7 +625,7 @@ function exportToPDF(projectId) {
             doc.setPage(i);
             doc.setFontSize(8);
             doc.setTextColor(128, 128, 128);
-            doc.text(`EcoManager Pro - Professional Ecosystem Report`, 105, 285, { align: 'center' });
+            doc.text('EcoManager Pro - Professional Ecosystem Report', 105, 285, { align: 'center' });
             doc.text(`Generated: ${new Date().toLocaleDateString('en-AU')} | Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
         }
         
