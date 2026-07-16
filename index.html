@@ -1,5 +1,8 @@
 <!-- DUPLICATE FUNCTIONS REMOVED AND MINOR ERRORS FIXED -->
 <!-- ABILITY TO INPUT AND SAVE WEATHER API KEY ADDED - FALLBACK TO DEMO WEATHER DATA INCLUDED - DEMO WEATHER ISSUE NOW FIXED -->
+<!-- ADDED MISSING CHARTS FUNCTIONS -->
+
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -3054,7 +3057,7 @@ const weatherConfig = {
 
     // ==================== WEATHER API FUNCTIONS ====================
 
-    // Enhanced weather functions with backend proxy pattern
+    // Enhanced weather functions with backend proxy pattern - FIXED with better error handling
 async function getWeatherByCoords(lat, lon) {
     // Check if we should use demo data
     const useDemoData = localStorage.getItem('useDemoData') !== 'false';
@@ -3067,7 +3070,13 @@ async function getWeatherByCoords(lat, lon) {
             const url = `https://api.weatherapi.com/v1/current.json?key=${savedApiKey}&q=${lat},${lon}&aqi=yes`;
             const response = await fetch(url);
             
+            // FIXED: Handle 401/403 specifically for invalid keys
             if (!response.ok) {
+                if (response.status === 401 || response.status === 403) {
+                    localStorage.setItem('useDemoData', 'true');
+                    showToast('API Key Error', 'Your API key appears to be invalid. Please check it or use demo mode.', 'error');
+                    return getDemoWeatherData(lat, lon);
+                }
                 throw new Error(`API Error: ${response.status}`);
             }
             
@@ -3088,7 +3097,9 @@ async function getWeatherByCoords(lat, lon) {
             return data;
         } catch (error) {
             console.error('Weather API error:', error);
-            showToast('Weather API', 'API call failed. Using demo data.', 'warning');
+            // FIXED: Automatically fall back to demo data on error
+            localStorage.setItem('useDemoData', 'true');
+            showToast('Weather API Error', 'API call failed. Using demo data.', 'warning');
             return getDemoWeatherData(lat, lon);
         }
     } else {
@@ -3449,61 +3460,30 @@ async function loadWeatherData() {
             const response = await fetch(url);
             
             if (!response.ok) {
-                throw new Error(`API Error: ${response.status}`);
-            }
-            
-            weatherData = await response.json();
-            console.log("Real weather data received");
-            
-            // Also fetch forecast
-            const forecastUrl = `https://api.weatherapi.com/v1/forecast.json?key=${savedApiKey}&q=${lat},${lon}&days=7&aqi=no`;
-            const forecastResponse = await fetch(forecastUrl);
-            
-            if (forecastResponse.ok) {
-                const forecastData = await forecastResponse.json();
-                weatherData.forecast = forecastData.forecast;
+                if (response.status === 401 || response.status === 403) {
+                    localStorage.setItem('useDemoData', 'true');
+                    showToast('API Key Error', 'Your API key appears to be invalid. Using demo data.', 'error');
+                    weatherData = getDemoWeatherData(lat, lon);
+                } else {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+            } else {
+                weatherData = await response.json();
+                console.log("Real weather data received");
+                
+                // Also fetch forecast
+                const forecastUrl = `https://api.weatherapi.com/v1/forecast.json?key=${savedApiKey}&q=${lat},${lon}&days=7&aqi=no`;
+                const forecastResponse = await fetch(forecastUrl);
+                
+                if (forecastResponse.ok) {
+                    const forecastData = await forecastResponse.json();
+                    weatherData.forecast = forecastData.forecast;
+                }
             }
         } else {
             // Use demo data
             console.log("Using demo weather data");
-            weatherData = {
-                current: {
-                    temp_c: Math.round(15 + Math.random() * 15),
-                    condition: {
-                        text: ['Sunny', 'Partly Cloudy', 'Cloudy', 'Light Rain', 'Clear'][Math.floor(Math.random() * 5)],
-                        code: 1003
-                    },
-                    humidity: Math.round(40 + Math.random() * 40),
-                    wind_kph: Math.round(5 + Math.random() * 25),
-                    pressure_mb: 1000 + Math.round(Math.random() * 30),
-                    uv: Math.round(1 + Math.random() * 10),
-                    vis_km: Math.round(5 + Math.random() * 15)
-                },
-                location: {
-                    name: "Demo Location",
-                    region: "Demo Region",
-                    country: "Australia"
-                },
-                forecast: {
-                    forecastday: []
-                }
-            };
-            
-            // Generate forecast days
-            const today = new Date();
-            for (let i = 0; i < 7; i++) {
-                const date = new Date(today);
-                date.setDate(today.getDate() + i);
-                weatherData.forecast.forecastday.push({
-                    date: date.toISOString().split('T')[0],
-                    day: {
-                        maxtemp_c: Math.round(18 + Math.sin(i) * 3 + Math.random() * 2),
-                        mintemp_c: Math.round(10 + Math.cos(i) * 2 + Math.random() * 2),
-                        avgtemp_c: Math.round(14 + Math.sin(i) * 2),
-                        condition: { text: ['Sunny', 'Partly cloudy', 'Cloudy'][Math.floor(Math.random() * 3)] }
-                    }
-                });
-            }
+            weatherData = getDemoWeatherData(lat, lon);
         }
         
         // Update the display
@@ -3527,20 +3507,7 @@ async function loadWeatherData() {
         if (lastUpdateEl) lastUpdateEl.textContent = 'Using demo data (error)';
         
         // Force demo data on error with explicit values
-        const demoData = {
-            current: {
-                temp_c: 22,
-                condition: { text: "Partly Cloudy", code: 1003 },
-                humidity: 65,
-                wind_kph: 15,
-                pressure_mb: 1013,
-                uv: 5,
-                vis_km: 10
-            },
-            location: { name: "Demo (Error Fallback)", region: "Demo", country: "Australia" },
-            forecast: { forecastday: [] }
-        };
-        
+        const demoData = getDemoWeatherData(lat, lon);
         updateWeatherDisplay(demoData);
         updateEnvironmentalAlerts(demoData);
         updateForecastChart(demoData);
@@ -3834,12 +3801,19 @@ function updateForecastChart(weatherData) {
 
     // ==================== MAP FUNCTIONS ====================
 
+    // FIXED initProjectMap with better error handling
     function initProjectMap() {
         const mapContainer = document.getElementById('projectMap');
-        if (!mapContainer) return null;
+        if (!mapContainer) {
+            console.warn('Project map container not found, retrying...');
+            setTimeout(initProjectMap, 100);
+            return null;
+        }
         
+        // Check if map is already initialized
         if (projectMap) {
-            projectMap.remove();
+            projectMap.invalidateSize();
+            return projectMap;
         }
         
         // Center on Burnie, Tasmania
@@ -3980,67 +3954,69 @@ function updateForecastChart(weatherData) {
         }
     }
 
+// FIXED showProjectInModal with proper event handling
 function showProjectInModal(project) {
     if (!ensureBootstrapLoaded()) return;
     
     const modalTitle = document.getElementById('projectMapModalTitle');
     const modalMapContainer = document.getElementById('modalProjectMap');
-        const modalCoordinates = document.getElementById('modalCoordinates');
-        
-        if (modalTitle) modalTitle.textContent = `${project.name} Location`;
-        
-        // Clear previous map
-        if (modalProjectMap) {
-            modalProjectMap.remove();
-            modalProjectMap = null;
-        }
-        
-        // Clear the map container
-        if (modalMapContainer) modalMapContainer.innerHTML = '';
-        
-        // Show modal first, then initialize map
-        const modal = new bootstrap.Modal(document.getElementById('projectMapModal'));
-        modal.show();
-        
-        // Initialize map after modal is fully shown
-        setTimeout(() => {
-            // Recreate the map container element
-            if (modalMapContainer) {
-                modalMapContainer.innerHTML = '<div id="modalMap" style="height: 100%; width: 100%;"></div>';
-                
-                // Initialize map
-                modalProjectMap = L.map('modalMap').setView([0, 0], 2);
-                
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(modalProjectMap);
-                
-                // Add marker if coordinates exist
-                if (project.latitude && project.longitude) {
-                    const lat = parseFloat(project.latitude);
-                    const lng = parseFloat(project.longitude);
-                    
-                    modalProjectMarker = L.marker([lat, lng]).addTo(modalProjectMap)
-                        .bindPopup(project.name)
-                        .openPopup();
-                    
-                    modalProjectMap.setView([lat, lng], 10);
-                    if (modalCoordinates) modalCoordinates.textContent = `Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-                    
-                    // Force resize and invalidate map size
-                    setTimeout(() => {
-                        modalProjectMap.invalidateSize();
-                    }, 100);
-                } else {
-                    if (modalCoordinates) modalCoordinates.textContent = 'Coordinates: Not specified';
-                    // Force resize for default view too
-                    setTimeout(() => {
-                        modalProjectMap.invalidateSize();
-                    }, 100);
-                }
-            }
-        }, 300); // Small delay to ensure modal is visible
+    const modalCoordinates = document.getElementById('modalCoordinates');
+    
+    if (modalTitle) modalTitle.textContent = `${project.name} Location`;
+    
+    // Clear previous map
+    if (modalProjectMap) {
+        modalProjectMap.remove();
+        modalProjectMap = null;
     }
+    
+    // Clear the map container
+    if (modalMapContainer) modalMapContainer.innerHTML = '';
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('projectMapModal'));
+    modal.show();
+    
+    // FIXED: Use 'shown.bs.modal' event instead of setTimeout
+    const modalElement = document.getElementById('projectMapModal');
+    modalElement.addEventListener('shown.bs.modal', function onShown() {
+        // Remove listener to prevent multiple executions
+        modalElement.removeEventListener('shown.bs.modal', onShown);
+        
+        // Recreate the map container
+        if (modalMapContainer) {
+            modalMapContainer.innerHTML = '<div id="modalMap" style="height: 100%; width: 100%;"></div>';
+            
+            // Initialize map
+            modalProjectMap = L.map('modalMap').setView([0, 0], 2);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(modalProjectMap);
+            
+            // Add marker if coordinates exist
+            if (project.latitude && project.longitude) {
+                const lat = parseFloat(project.latitude);
+                const lng = parseFloat(project.longitude);
+                
+                modalProjectMarker = L.marker([lat, lng]).addTo(modalProjectMap)
+                    .bindPopup(project.name)
+                    .openPopup();
+                
+                modalProjectMap.setView([lat, lng], 10);
+                if (modalCoordinates) modalCoordinates.textContent = `Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            } else {
+                if (modalCoordinates) modalCoordinates.textContent = 'Coordinates: Not specified';
+                modalProjectMap.setView([-41.0521, 145.9061], 5);
+            }
+            
+            // FIXED: Properly invalidate size
+            setTimeout(() => {
+                if (modalProjectMap) modalProjectMap.invalidateSize();
+            }, 200);
+        }
+    });
+}
 
     // ==================== UI FUNCTIONS ====================
 
@@ -4457,381 +4433,116 @@ function showProjectInModal(project) {
         }
     }
 
+    // FIXED loadCalendar with timezone handling
     function loadCalendar() {
-    const calendarEl = document.getElementById('calendar');
-    if (!calendarEl) {
-        console.warn("Calendar element not found");
-        return;
-    }
-    
-    try {
-        if (calendar) {
-            calendar.destroy();
+        const calendarEl = document.getElementById('calendar');
+        if (!calendarEl) {
+            console.warn("Calendar element not found");
+            return;
         }
         
-        calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay'
-            },
-            events: function(fetchInfo, successCallback, failureCallback) {
-                const maintenanceItems = db.getMaintenance();
-                const events = maintenanceItems.map(item => {
-                    let color;
-                    switch(item.priority) {
-                        case 'high': color = '#dc3545'; break;
-                        case 'medium': color = '#ffc107'; break;
-                        default: color = '#28a745';
-                    }
-                    
-                    if (item.status === 'completed') {
-                        color = '#6c757d';
-                    } else if (item.status === 'overdue') {
-                        color = '#dc3545';
-                    }
-                    
-                    return {
-                        id: item.id,
-                        title: `${item.activity} (${getProjectName(item.projectId)})`,
-                        start: item.date,
-                        allDay: true,
-                        backgroundColor: color,
-                        borderColor: color,
-                        extendedProps: {
-                            type: item.type,
-                            priority: item.priority,
-                            status: item.status,
-                            description: item.description,
-                            projectId: item.projectId
+        try {
+            if (calendar) {
+                calendar.destroy();
+            }
+            
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                // FIXED: Set timezone to local
+                timeZone: 'local',
+                events: function(fetchInfo, successCallback, failureCallback) {
+                    const maintenanceItems = db.getMaintenance();
+                    const events = maintenanceItems.map(item => {
+                        let color;
+                        switch(item.priority) {
+                            case 'high': color = '#dc3545'; break;
+                            case 'medium': color = '#ffc107'; break;
+                            default: color = '#28a745';
                         }
-                    };
-                });
-                
-                successCallback(events);
-            },
-            eventClick: function(info) {
-                const event = info.event;
-                const statusClass = getMaintenanceStatusBadgeClass(event.extendedProps.status);
-                const priorityClass = getPriorityBadgeClass(event.extendedProps.priority);
-                
-                const modalContent = `
-                    <p><strong>Project:</strong> ${getProjectName(event.extendedProps.projectId)}</p>
-                    <p><strong>Date:</strong> ${formatDate(event.startStr)}</p>
-                    <p><strong>Type:</strong> ${event.extendedProps.type.replace('-', ' ').toUpperCase()}</p>
-                    <p><strong>Priority:</strong> <span class="badge ${priorityClass}">${event.extendedProps.priority.toUpperCase()}</span></p>
-                    <p><strong>Status:</strong> <span class="badge ${statusClass}">${event.extendedProps.status.charAt(0).toUpperCase() + event.extendedProps.status.slice(1)}</span></p>
-                    <p><strong>Description:</strong> ${event.extendedProps.description}</p>
-                `;
-                
-                const modalTitle = document.getElementById('modalMaintenanceTitle');
-                const modalBody = document.getElementById('modalMaintenanceBody');
-                if (modalTitle) modalTitle.textContent = event.title;
-                if (modalBody) modalBody.innerHTML = modalContent;
-                
-                const completeButton = document.getElementById('modalCompleteButton');
-                if (completeButton) {
-                    if (event.extendedProps.status === 'scheduled' && checkPermission('complete_maintenance')) {
-                        completeButton.style.display = 'block';
-                        completeButton.onclick = function() {
-                            completeMaintenance(event.id);
-                            const modal = bootstrap.Modal.getInstance(document.getElementById('maintenanceModal'));
-                            if (modal) modal.hide();
+                        
+                        if (item.status === 'completed') {
+                            color = '#6c757d';
+                        } else if (item.status === 'overdue') {
+                            color = '#dc3545';
+                        }
+                        
+                        // FIXED: Ensure date is formatted correctly for the calendar
+                        const dateObj = new Date(item.date);
+                        // If the date is invalid, use today
+                        const dateStr = isNaN(dateObj.getTime()) ? 
+                            new Date().toISOString().split('T')[0] : 
+                            item.date;
+                        
+                        return {
+                            id: item.id,
+                            title: `${item.activity} (${getProjectName(item.projectId)})`,
+                            start: dateStr,
+                            allDay: true,
+                            backgroundColor: color,
+                            borderColor: color,
+                            extendedProps: {
+                                type: item.type,
+                                priority: item.priority,
+                                status: item.status,
+                                description: item.description,
+                                projectId: item.projectId
+                            }
                         };
-                    } else {
-                        completeButton.style.display = 'none';
-                    }
-                }
-                
-                const modal = new bootstrap.Modal(document.getElementById('maintenanceModal'));
-                modal.show();
-            }
-        });
-        
-        calendar.render();
-    } catch (error) {
-        console.error("Calendar initialization failed:", error);
-        showToast("Calendar Error", "Could not load calendar view", "error");
-    }
-}
-
-    function loadCharts() {
-        // Destroy existing charts if they exist
-        if (projectStatusChart) projectStatusChart.destroy();
-        if (healthTrendChart) healthTrendChart.destroy();
-        if (analyticsHealthTrendChart) analyticsHealthTrendChart.destroy();
-        if (speciesTypeChart) speciesTypeChart.destroy();
-        if (maintenanceTypeChart) maintenanceTypeChart.destroy();
-        if (monthlyActivityChart) monthlyActivityChart.destroy();
-        
-        // Load data
-        const projects = db.getProjects();
-        const assessments = db.getAssessments();
-        const species = db.getSpecies();
-        const maintenance = db.getMaintenance();
-        
-        // Load the health chart based on current mode
-        loadHealthChart();
-        
-        // Project Status Chart
-        const projectStatusData = {
-            'planning': 0,
-            'active': 0,
-            'on-hold': 0,
-            'completed': 0
-        };
-        
-        projects.forEach(project => {
-            projectStatusData[project.status]++;
-        });
-        
-        const projectStatusColors = {
-            'planning': 'rgba(54, 162, 235, 0.8)',
-            'active': 'rgba(75, 192, 192, 0.8)',
-            'on-hold': 'rgba(255, 206, 86, 0.8)',
-            'completed': 'rgba(153, 102, 255, 0.8)'
-        };
-        
-        const projectStatusLabels = Object.keys(projectStatusData).map(key => 
-            key.charAt(0).toUpperCase() + key.slice(1)
-        );
-        
-        const projectStatusCanvas = document.getElementById('projectStatusChart');
-        if (projectStatusCanvas) {
-            projectStatusChart = new Chart(projectStatusCanvas, {
-                type: 'doughnut',
-                data: {
-                    labels: projectStatusLabels,
-                    datasets: [{
-                        data: Object.values(projectStatusData),
-                        backgroundColor: Object.keys(projectStatusData).map(status => projectStatusColors[status]),
-                        borderWidth: 1
-                    }]
+                    });
+                    
+                    successCallback(events);
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
+                eventClick: function(info) {
+                    const event = info.event;
+                    const statusClass = getMaintenanceStatusBadgeClass(event.extendedProps.status);
+                    const priorityClass = getPriorityBadgeClass(event.extendedProps.priority);
+                    
+                    const modalContent = `
+                        <p><strong>Project:</strong> ${getProjectName(event.extendedProps.projectId)}</p>
+                        <p><strong>Date:</strong> ${formatDate(event.startStr)}</p>
+                        <p><strong>Type:</strong> ${event.extendedProps.type.replace('-', ' ').toUpperCase()}</p>
+                        <p><strong>Priority:</strong> <span class="badge ${priorityClass}">${event.extendedProps.priority.toUpperCase()}</span></p>
+                        <p><strong>Status:</strong> <span class="badge ${statusClass}">${event.extendedProps.status.charAt(0).toUpperCase() + event.extendedProps.status.slice(1)}</span></p>
+                        <p><strong>Description:</strong> ${event.extendedProps.description}</p>
+                    `;
+                    
+                    const modalTitle = document.getElementById('modalMaintenanceTitle');
+                    const modalBody = document.getElementById('modalMaintenanceBody');
+                    if (modalTitle) modalTitle.textContent = event.title;
+                    if (modalBody) modalBody.innerHTML = modalContent;
+                    
+                    const completeButton = document.getElementById('modalCompleteButton');
+                    if (completeButton) {
+                        if (event.extendedProps.status === 'scheduled' && checkPermission('complete_maintenance')) {
+                            completeButton.style.display = 'block';
+                            completeButton.onclick = function() {
+                                completeMaintenance(event.id);
+                                const modal = bootstrap.Modal.getInstance(document.getElementById('maintenanceModal'));
+                                if (modal) modal.hide();
+                            };
+                        } else {
+                            completeButton.style.display = 'none';
                         }
                     }
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('maintenanceModal'));
+                    modal.show();
                 }
             });
-        }
-
-        // Analytics Health Trends Chart (for Analytics page)
-        const healthTrendData = assessments
-            .filter(a => a.healthScore)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-        
-        const analyticsChartCanvas = document.getElementById('analyticsHealthTrendChart');
-        if (analyticsChartCanvas) {
-            if (healthTrendData.length > 0) {
-                analyticsHealthTrendChart = new Chart(analyticsChartCanvas, {
-                    type: 'line',
-                    data: {
-                        labels: healthTrendData.map(a => formatDate(a.date, 'short')),
-                        datasets: [{
-                            label: 'Ecosystem Health Score',
-                            data: healthTrendData.map(a => a.healthScore.total),
-                            borderColor: 'rgb(75, 192, 192)',
-                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                            tension: 0.3,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                min: 0,
-                                max: 100,
-                                title: {
-                                    display: true,
-                                    text: 'Health Score (0-100)'
-                                }
-                            }
-                        }
-                    }
-                });
-            } else if (analyticsChartCanvas.closest('.card-body')) {
-                analyticsChartCanvas.closest('.card-body').innerHTML = 
-                    '<p class="text-muted text-center">No ecosystem health data available yet. Create assessments with health scores to see trends.</p>';
-            }
-        }
-        
-        // Species Type Chart
-        const speciesTypeData = {
-            'plant': 0,
-            'animal': 0,
-            'bird': 0,
-            'reptile': 0,
-            'insect': 0
-        };
-        
-        species.forEach(s => {
-            speciesTypeData[s.type]++;
-        });
-        
-        const speciesTypeCanvas = document.getElementById('speciesTypeChart');
-        if (speciesTypeCanvas) {
-            speciesTypeChart = new Chart(speciesTypeCanvas, {
-                type: 'pie',
-                data: {
-                    labels: Object.keys(speciesTypeData).map(key => 
-                        key.charAt(0).toUpperCase() + key.slice(1)
-                    ),
-                    datasets: [{
-                        data: Object.values(speciesTypeData),
-                        backgroundColor: [
-                            'rgba(75, 192, 192, 0.8)',
-                            'rgba(54, 162, 235, 0.8)',
-                            'rgba(255, 206, 86, 0.8)',
-                            'rgba(153, 102, 255, 0.8)',
-                            'rgba(255, 159, 64, 0.8)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Maintenance Type Chart
-        const maintenanceTypeData = {
-            'weed-control': 0,
-            'revegetation': 0,
-            'monitoring': 0,
-            'survey': 0,
-            'erosion-control': 0,
-            'pest-management': 0,
-            'water-quality': 0,
-            'trail-maintenance': 0,
-            'equipment': 0,
-            'other': 0
-        };
-        
-        maintenance.forEach(item => {
-            maintenanceTypeData[item.type]++;
-        });
-        
-        const filteredMaintenanceTypes = Object.keys(maintenanceTypeData).filter(key => maintenanceTypeData[key] > 0);
-        
-        const maintenanceTypeCanvas = document.getElementById('maintenanceTypeChart');
-        if (maintenanceTypeCanvas) {
-            maintenanceTypeChart = new Chart(maintenanceTypeCanvas, {
-                type: 'bar',
-                data: {
-                    labels: filteredMaintenanceTypes.map(key => 
-                        key.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
-                    ),
-                    datasets: [{
-                        label: 'Number of Activities',
-                        data: filteredMaintenanceTypes.map(key => maintenanceTypeData[key]),
-                        backgroundColor: 'rgba(54, 162, 235, 0.8)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Monthly Activity Chart
-        const monthlyData = {};
-        const lastSixMonths = [];
-        const now = new Date();
-        
-        for (let i = 5; i >= 0; i--) {
-            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            const monthLabel = date.toLocaleString('default', { month: 'short', year: 'numeric' });
-            lastSixMonths.push(monthKey);
-            monthlyData[monthKey] = { 
-                label: monthLabel, 
-                assessments: 0,
-                maintenance: 0
-            };
-        }
-        
-        assessments.forEach(assessment => {
-            const date = new Date(assessment.date);
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            if (monthlyData[monthKey]) {
-                monthlyData[monthKey].assessments++;
-            }
-        });
-        
-        maintenance.forEach(item => {
-            const date = new Date(item.date);
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            if (monthlyData[monthKey]) {
-                monthlyData[monthKey].maintenance++;
-            }
-        });
-        
-        const monthlyActivityCanvas = document.getElementById('monthlyActivityChart');
-        if (monthlyActivityCanvas) {
-            monthlyActivityChart = new Chart(monthlyActivityCanvas, {
-                type: 'bar',
-                data: {
-                    labels: lastSixMonths.map(key => monthlyData[key].label),
-                    datasets: [
-                        {
-                            label: 'Assessments',
-                            data: lastSixMonths.map(key => monthlyData[key].assessments),
-                            backgroundColor: 'rgba(75, 192, 192, 0.8)',
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'Maintenance',
-                            data: lastSixMonths.map(key => monthlyData[key].maintenance),
-                            backgroundColor: 'rgba(255, 159, 64, 0.8)',
-                            borderColor: 'rgba(255, 159, 64, 1)',
-                            borderWidth: 1
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1
-                            }
-                        }
-                    }
-                }
-            });
+            
+            calendar.render();
+        } catch (error) {
+            console.error("Calendar initialization failed:", error);
+            showToast("Calendar Error", "Could not load calendar view", "error");
         }
     }
 
-    // New function to load health chart based on mode and filter
+    // FIXED loadHealthChart with proper scale
     function loadHealthChart() {
         const assessments = db.getAssessments();
         const projects = db.getProjects();
@@ -4848,6 +4559,15 @@ function showProjectInModal(project) {
         
         const ctx = document.getElementById('healthTrendChart');
         if (!ctx) return;
+        
+        // FIXED: Define health values consistently
+        const healthValues = {
+            'excellent': 5,
+            'good': 4,
+            'fair': 3,
+            'poor': 2,
+            'degraded': 1
+        };
         
         if (currentChartMode === 'comparison' && currentProjectFilter === 'all') {
             // COMPARISON MODE: Show multiple projects as separate lines
@@ -4881,7 +4601,7 @@ function showProjectInModal(project) {
                     // Map assessments to dates
                     const assessmentMap = new Map();
                     projectAssessments.forEach(a => {
-                        assessmentMap.set(formatDate(a.date, 'short'), getHealthValue(a.health));
+                        assessmentMap.set(formatDate(a.date, 'short'), healthValues[a.health]);
                     });
                     
                     // Create data array matching sorted dates
@@ -4918,13 +4638,15 @@ function showProjectInModal(project) {
                     maintainAspectRatio: false,
                     scales: {
                         y: {
+                            // FIXED: Changed from 0-6 to 0-5
                             min: 0,
-                            max: 6,
+                            max: 5,
                             title: {
                                 display: true,
                                 text: 'Health Status (1=Degraded to 5=Excellent)'
                             },
                             ticks: {
+                                stepSize: 1,
                                 callback: function(value) {
                                     const labels = {
                                         1: 'Degraded',
@@ -4988,14 +4710,6 @@ function showProjectInModal(project) {
                 return;
             }
             
-            const healthValues = {
-                'excellent': 5,
-                'good': 4,
-                'fair': 3,
-                'poor': 2,
-                'degraded': 1
-            };
-            
             healthTrendChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -5025,13 +4739,15 @@ function showProjectInModal(project) {
                     maintainAspectRatio: false,
                     scales: {
                         y: {
+                            // FIXED: Changed from 0-6 to 0-5
                             min: 0,
-                            max: 6,
+                            max: 5,
                             title: {
                                 display: true,
-                                text: 'Health Status'
+                                text: 'Health Status (1=Degraded to 5=Excellent)'
                             },
                             ticks: {
+                                stepSize: 1,
                                 callback: function(value) {
                                     const labels = {
                                         1: 'Degraded',
@@ -5059,14 +4775,6 @@ function showProjectInModal(project) {
                 showNoDataMessage();
                 return;
             }
-            
-            const healthValues = {
-                'excellent': 5,
-                'good': 4,
-                'fair': 3,
-                'poor': 2,
-                'degraded': 1
-            };
             
             healthTrendChart = new Chart(ctx, {
                 type: 'line',
@@ -5097,13 +4805,15 @@ function showProjectInModal(project) {
                     maintainAspectRatio: false,
                     scales: {
                         y: {
+                            // FIXED: Changed from 0-6 to 0-5
                             min: 0,
-                            max: 6,
+                            max: 5,
                             title: {
                                 display: true,
-                                text: 'Health Status'
+                                text: 'Health Status (1=Degraded to 5=Excellent)'
                             },
                             ticks: {
+                                stepSize: 1,
                                 callback: function(value) {
                                     const labels = {
                                         1: 'Degraded',
@@ -5173,6 +4883,379 @@ function showNoDataMessage(customMessage = null) {
         const chartModeIndicator = document.getElementById('chartModeIndicator');
         if (chartModeIndicator) chartModeIndicator.innerHTML = '<i class="bi bi-info-circle"></i> ' + (customMessage || 'No data available');
     }
+
+// FIXED: loadCharts with better error handling and canvas verification
+function loadCharts() {
+    console.log("Loading charts...");
+    
+    // Destroy existing charts if they exist
+    if (projectStatusChart) {
+        projectStatusChart.destroy();
+        projectStatusChart = null;
+    }
+    if (healthTrendChart) {
+        healthTrendChart.destroy();
+        healthTrendChart = null;
+    }
+    if (analyticsHealthTrendChart) {
+        analyticsHealthTrendChart.destroy();
+        analyticsHealthTrendChart = null;
+    }
+    if (speciesTypeChart) {
+        speciesTypeChart.destroy();
+        speciesTypeChart = null;
+    }
+    if (maintenanceTypeChart) {
+        maintenanceTypeChart.destroy();
+        maintenanceTypeChart = null;
+    }
+    if (monthlyActivityChart) {
+        monthlyActivityChart.destroy();
+        monthlyActivityChart = null;
+    }
+    
+    // Load data
+    const projects = db.getProjects();
+    const assessments = db.getAssessments();
+    const species = db.getSpecies();
+    const maintenance = db.getMaintenance();
+    
+    // FIXED: Load the health chart with verification
+    setTimeout(function() {
+        loadHealthChart();
+    }, 100);
+    
+    // FIXED: Project Status Chart with canvas verification
+    const projectStatusCanvas = document.getElementById('projectStatusChart');
+    if (projectStatusCanvas) {
+        // Check if canvas has context
+        if (projectStatusCanvas.getContext('2d')) {
+            const projectStatusData = {
+                'planning': 0,
+                'active': 0,
+                'on-hold': 0,
+                'completed': 0
+            };
+            
+            projects.forEach(project => {
+                projectStatusData[project.status]++;
+            });
+            
+            const projectStatusColors = {
+                'planning': 'rgba(54, 162, 235, 0.8)',
+                'active': 'rgba(75, 192, 192, 0.8)',
+                'on-hold': 'rgba(255, 206, 86, 0.8)',
+                'completed': 'rgba(153, 102, 255, 0.8)'
+            };
+            
+            const projectStatusLabels = Object.keys(projectStatusData).map(key => 
+                key.charAt(0).toUpperCase() + key.slice(1)
+            );
+            
+            // Check if there's any data
+            const hasData = Object.values(projectStatusData).some(val => val > 0);
+            
+            if (hasData) {
+                projectStatusChart = new Chart(projectStatusCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: projectStatusLabels,
+                        datasets: [{
+                            data: Object.values(projectStatusData),
+                            backgroundColor: Object.keys(projectStatusData).map(status => projectStatusColors[status]),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+                console.log("Project status chart loaded");
+            } else {
+                // Show message if no data
+                showEmptyChartMessage(projectStatusCanvas, 'No project status data available');
+            }
+        } else {
+            console.warn("Project status chart canvas not ready");
+        }
+    }
+
+    // FIXED: Analytics Health Trends Chart (for Analytics page)
+    const analyticsChartCanvas = document.getElementById('analyticsHealthTrendChart');
+    if (analyticsChartCanvas && analyticsChartCanvas.getContext('2d')) {
+        const healthTrendData = assessments
+            .filter(a => a.healthScore)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        if (healthTrendData.length > 0) {
+            analyticsHealthTrendChart = new Chart(analyticsChartCanvas, {
+                type: 'line',
+                data: {
+                    labels: healthTrendData.map(a => formatDate(a.date, 'short')),
+                    datasets: [{
+                        label: 'Ecosystem Health Score',
+                        data: healthTrendData.map(a => a.healthScore.total),
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Health Score (0-100)'
+                            }
+                        }
+                    }
+                }
+            });
+            console.log("Analytics health chart loaded");
+        } else {
+            showEmptyChartMessage(analyticsChartCanvas, 'No ecosystem health data available. Create assessments with health scores to see trends.');
+        }
+    }
+    
+    // FIXED: Species Type Chart
+    const speciesTypeCanvas = document.getElementById('speciesTypeChart');
+    if (speciesTypeCanvas && speciesTypeCanvas.getContext('2d')) {
+        const speciesTypeData = {
+            'plant': 0,
+            'animal': 0,
+            'bird': 0,
+            'reptile': 0,
+            'insect': 0
+        };
+        
+        species.forEach(s => {
+            speciesTypeData[s.type]++;
+        });
+        
+        const hasData = Object.values(speciesTypeData).some(val => val > 0);
+        
+        if (hasData) {
+            speciesTypeChart = new Chart(speciesTypeCanvas, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(speciesTypeData).map(key => 
+                        key.charAt(0).toUpperCase() + key.slice(1)
+                    ),
+                    datasets: [{
+                        data: Object.values(speciesTypeData),
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.8)',
+                            'rgba(54, 162, 235, 0.8)',
+                            'rgba(255, 206, 86, 0.8)',
+                            'rgba(153, 102, 255, 0.8)',
+                            'rgba(255, 159, 64, 0.8)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            console.log("Species type chart loaded");
+        } else {
+            showEmptyChartMessage(speciesTypeCanvas, 'No species data available');
+        }
+    }
+    
+    // FIXED: Maintenance Type Chart
+    const maintenanceTypeCanvas = document.getElementById('maintenanceTypeChart');
+    if (maintenanceTypeCanvas && maintenanceTypeCanvas.getContext('2d')) {
+        const maintenanceTypeData = {
+            'weed-control': 0,
+            'revegetation': 0,
+            'monitoring': 0,
+            'survey': 0,
+            'erosion-control': 0,
+            'pest-management': 0,
+            'water-quality': 0,
+            'trail-maintenance': 0,
+            'equipment': 0,
+            'other': 0
+        };
+        
+        maintenance.forEach(item => {
+            if (maintenanceTypeData.hasOwnProperty(item.type)) {
+                maintenanceTypeData[item.type]++;
+            }
+        });
+        
+        const filteredMaintenanceTypes = Object.keys(maintenanceTypeData).filter(key => maintenanceTypeData[key] > 0);
+        
+        if (filteredMaintenanceTypes.length > 0) {
+            maintenanceTypeChart = new Chart(maintenanceTypeCanvas, {
+                type: 'bar',
+                data: {
+                    labels: filteredMaintenanceTypes.map(key => 
+                        key.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                    ),
+                    datasets: [{
+                        label: 'Number of Activities',
+                        data: filteredMaintenanceTypes.map(key => maintenanceTypeData[key]),
+                        backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+            console.log("Maintenance type chart loaded");
+        } else {
+            showEmptyChartMessage(maintenanceTypeCanvas, 'No maintenance data available');
+        }
+    }
+    
+    // FIXED: Monthly Activity Chart
+    const monthlyActivityCanvas = document.getElementById('monthlyActivityChart');
+    if (monthlyActivityCanvas && monthlyActivityCanvas.getContext('2d')) {
+        const monthlyData = {};
+        const lastSixMonths = [];
+        const now = new Date();
+        
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const monthLabel = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+            lastSixMonths.push(monthKey);
+            monthlyData[monthKey] = { 
+                label: monthLabel, 
+                assessments: 0,
+                maintenance: 0
+            };
+        }
+        
+        assessments.forEach(assessment => {
+            const date = new Date(assessment.date);
+            if (!isNaN(date.getTime())) {
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                if (monthlyData[monthKey]) {
+                    monthlyData[monthKey].assessments++;
+                }
+            }
+        });
+        
+        maintenance.forEach(item => {
+            const date = new Date(item.date);
+            if (!isNaN(date.getTime())) {
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                if (monthlyData[monthKey]) {
+                    monthlyData[monthKey].maintenance++;
+                }
+            }
+        });
+        
+        const hasData = lastSixMonths.some(key => 
+            monthlyData[key].assessments > 0 || monthlyData[key].maintenance > 0
+        );
+        
+        if (hasData) {
+            monthlyActivityChart = new Chart(monthlyActivityCanvas, {
+                type: 'bar',
+                data: {
+                    labels: lastSixMonths.map(key => monthlyData[key].label),
+                    datasets: [
+                        {
+                            label: 'Assessments',
+                            data: lastSixMonths.map(key => monthlyData[key].assessments),
+                            backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Maintenance',
+                            data: lastSixMonths.map(key => monthlyData[key].maintenance),
+                            backgroundColor: 'rgba(255, 159, 64, 0.8)',
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+            console.log("Monthly activity chart loaded");
+        } else {
+            showEmptyChartMessage(monthlyActivityCanvas, 'No activity data available for the last 6 months');
+        }
+    }
+    
+    console.log("All charts loaded successfully");
+}
+
+// Helper function to show empty chart message
+function showEmptyChartMessage(canvas, message) {
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const parent = canvas.parentNode;
+    
+    // Clear the canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Add a message overlay
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'text-center text-muted p-4';
+    messageDiv.style.position = 'absolute';
+    messageDiv.style.top = '50%';
+    messageDiv.style.left = '50%';
+    messageDiv.style.transform = 'translate(-50%, -50%)';
+    messageDiv.style.width = '100%';
+    messageDiv.style.pointerEvents = 'none';
+    messageDiv.innerHTML = `
+        <i class="bi bi-bar-chart" style="font-size: 2rem; display: block; margin-bottom: 10px; opacity: 0.5;"></i>
+        <span style="font-size: 0.9rem;">${message || 'No data available'}</span>
+    `;
+    
+    // Remove any existing message
+    const existingMsg = parent.querySelector('.empty-chart-message');
+    if (existingMsg) existingMsg.remove();
+    
+    messageDiv.className += ' empty-chart-message';
+    parent.appendChild(messageDiv);
+}
 
     // Update project filter dropdown options
     function updateHealthFilterProjects() {
@@ -5283,714 +5366,834 @@ function showNoDataMessage(customMessage = null) {
         }
     }
 
+    // FIXED exportToJSON with better error handling
     function exportToJSON(projectId) {
-        const data = {
-            projects: projectId === 'all' ? db.getProjects() : db.getProjects().filter(p => p.id === projectId),
-            assessments: projectId === 'all' ? db.getAssessments() : db.getAssessments().filter(a => a.projectId === projectId),
-            species: projectId === 'all' ? db.getSpecies() : db.getSpecies().filter(s => s.projectId === projectId),
-            maintenance: projectId === 'all' ? db.getMaintenance() : db.getMaintenance().filter(m => m.projectId === projectId),
-            exportedAt: new Date().toISOString(),
-            exportedBy: currentUser.role,
-            app: 'EcoManager Pro'
-        };
-        
-        const dataStr = JSON.stringify(data, null, 2);
-        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-        
-        const exportFileDefaultName = `ecomanager-${projectId === 'all' ? 'all-projects' : 'project-' + projectId}-${new Date().toISOString().slice(0, 10)}.json`;
-        
-        const linkElement = document.createElement('a');
-        linkElement.setAttribute('href', dataUri);
-        linkElement.setAttribute('download', exportFileDefaultName);
-        linkElement.click();
-        
-        auditLog.log('EXPORT_DATA', {
-            format: 'json',
-            projectId: projectId,
-            fileSize: dataStr.length
-        });
-        
-        showToast('Export Successful', 'Data has been exported successfully', 'success');
+        try {
+            // FIXED: Use try-catch around data retrieval
+            let projects, assessments, species, maintenance;
+            
+            try {
+                projects = projectId === 'all' ? db.getProjects() : db.getProjects().filter(p => p.id === projectId);
+            } catch (e) {
+                projects = [];
+                console.warn('Failed to retrieve projects:', e);
+            }
+            
+            try {
+                assessments = projectId === 'all' ? db.getAssessments() : db.getAssessments().filter(a => a.projectId === projectId);
+            } catch (e) {
+                assessments = [];
+                console.warn('Failed to retrieve assessments:', e);
+            }
+            
+            try {
+                species = projectId === 'all' ? db.getSpecies() : db.getSpecies().filter(s => s.projectId === projectId);
+            } catch (e) {
+                species = [];
+                console.warn('Failed to retrieve species:', e);
+            }
+            
+            try {
+                maintenance = projectId === 'all' ? db.getMaintenance() : db.getMaintenance().filter(m => m.projectId === projectId);
+            } catch (e) {
+                maintenance = [];
+                console.warn('Failed to retrieve maintenance:', e);
+            }
+            
+            // Ensure we always have valid data structures
+            const data = {
+                projects: projects || [],
+                assessments: assessments || [],
+                species: species || [],
+                maintenance: maintenance || [],
+                exportedAt: new Date().toISOString(),
+                exportedBy: currentUser.role || 'unknown',
+                app: 'EcoManager Pro',
+                version: '1.0'
+            };
+            
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = `ecomanager-${projectId === 'all' ? 'all-projects' : 'project-' + projectId}-${new Date().toISOString().slice(0, 10)}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            
+            auditLog.log('EXPORT_DATA', {
+                format: 'json',
+                projectId: projectId,
+                fileSize: dataStr.length
+            });
+            
+            showToast('Export Successful', 'Data has been exported successfully', 'success');
+        } catch (error) {
+            console.error('Export error:', error);
+            showToast('Export Error', 'Failed to export data: ' + error.message, 'error');
+        }
     }
 
-function exportToPDF(projectId) {
-    try {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({
-            unit: 'mm',
-            format: 'a4',
-            orientation: 'portrait'
-        });
-        
-        // Color scheme (as separate RGB values)
-        const colorPrimary = [44, 85, 48];
-        const colorSecondary = [74, 124, 89];
-        const colorAccent = [58, 138, 95];
-        const colorSuccess = [40, 167, 69];
-        const colorWarning = [255, 193, 7];
-        const colorDanger = [220, 53, 69];
-        const colorInfo = [23, 162, 184];
-        
-        // Helper: Add wrapped text with cleaning
-        function addWrappedText(doc, text, x, y, maxWidth, lineHeight, fontStyle = 'normal') {
-            if (!text || text === 'undefined') return y;
+    // FIXED formatDate for PDF with better error handling
+    function formatDate(dateString, format = 'full') {
+        if (!dateString) return 'Not specified';
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return dateString;
             
-            // Clean the text - remove any special characters that might cause encoding issues
-            let cleanText = String(text)
-                .replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '')
-                .replace(/\s+/g, ' ')
-                .trim();
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear();
             
-            if (cleanText.length === 0) return y;
-            
-            doc.setFont(undefined, fontStyle);
-            const lines = doc.splitTextToSize(cleanText, maxWidth);
-            doc.text(lines, x, y);
-            return y + (lines.length * lineHeight);
-        }
-        
-        // Helper: Check and add new page
-        function checkAndAddPage(doc, currentY, requiredSpace = 20) {
-            if (currentY + requiredSpace > 280) {
-                doc.addPage();
-                return 20;
+            if (format === 'short') {
+                return `${day}/${month}`;
             }
-            return currentY;
+            return `${day}/${month}/${year}`;
+        } catch (e) {
+            return dateString;
+        }
+    }
+
+    // FIXED addWrappedText with proper error handling
+    function addWrappedText(doc, text, x, y, maxWidth, lineHeight, fontStyle = 'normal') {
+        // FIXED: Check for null/undefined/empty text
+        if (!text || text.trim() === '') {
+            return y;
         }
         
-        // Helper: Add colored bar
-        function addColoredBar(doc, y, r, g, b) {
-            doc.setFillColor(r, g, b);
-            doc.rect(0, y, 210, 3, 'F');
+        // Clean the text and remove problematic characters
+        let cleanText = String(text)
+            .replace(/[^\x20-\x7E\u00A0-\u00FF]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        
+        if (cleanText.length === 0) return y;
+        
+        doc.setFont(undefined, fontStyle);
+        
+        // FIXED: Handle very long text without line breaks
+        const maxChars = 500; // Prevent infinite loops
+        if (cleanText.length > maxChars) {
+            cleanText = cleanText.substring(0, maxChars) + '...';
         }
         
-        // Helper: Format date cleanly
-        function formatDate(dateString, format = 'full') {
-            if (!dateString) return 'Not specified';
-            try {
-                const date = new Date(dateString);
-                if (isNaN(date.getTime())) return dateString;
-                
-                const day = date.getDate().toString().padStart(2, '0');
-                const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                const year = date.getFullYear();
-                
-                if (format === 'short') {
-                    return `${day}/${month}`;
+        const lines = doc.splitTextToSize(cleanText, maxWidth);
+        
+        // Ensure y doesn't go off page
+        if (y + (lines.length * lineHeight) > 280) {
+            doc.addPage();
+            y = 25;
+        }
+        
+        doc.text(lines, x, y);
+        return y + (lines.length * lineHeight);
+    }
+
+    // FIXED exportToPDF with helper functions to reduce complexity
+    function exportToPDF(projectId) {
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                unit: 'mm',
+                format: 'a4',
+                orientation: 'portrait'
+            });
+            
+            // Get data safely
+            const projects = (projectId === 'all' ? db.getProjects() : db.getProjects().filter(p => p.id === projectId)) || [];
+            const assessments = (projectId === 'all' ? db.getAssessments() : db.getAssessments().filter(a => a.projectId === projectId)) || [];
+            const species = (projectId === 'all' ? db.getSpecies() : db.getSpecies().filter(s => s.projectId === projectId)) || [];
+            const maintenance = (projectId === 'all' ? db.getMaintenance() : db.getMaintenance().filter(m => m.projectId === projectId)) || [];
+            
+            // Calculate statistics safely
+            const stats = {
+                totalProjects: projects.length,
+                activeProjects: projects.filter(p => p.status === 'active').length,
+                completedProjects: projects.filter(p => p.status === 'completed').length,
+                totalAssessments: assessments.length,
+                avgHealthScore: 0,
+                totalSpecies: species.length,
+                nativeSpecies: species.filter(s => s.status === 'native').length,
+                totalMaintenance: maintenance.length,
+                completedMaintenance: maintenance.filter(m => m.status === 'completed').length,
+                totalBudget: projects.reduce((sum, p) => sum + (parseFloat(p.budget) || 0), 0)
+            };
+            
+            // Calculate average health score
+            if (assessments.length > 0) {
+                const healthScores = { excellent: 90, good: 75, fair: 55, poor: 35, degraded: 20 };
+                let totalScore = 0;
+                assessments.forEach(a => { totalScore += healthScores[a.health] || 50; });
+                stats.avgHealthScore = Math.round(totalScore / assessments.length);
+            }
+            
+            // Color scheme
+            const colorPrimary = [44, 85, 48];
+            const colorSecondary = [74, 124, 89];
+            const colorAccent = [58, 138, 95];
+            const colorSuccess = [40, 167, 69];
+            const colorWarning = [255, 193, 7];
+            const colorDanger = [220, 53, 69];
+            const colorInfo = [23, 162, 184];
+            
+            // Helper: Add colored bar
+            function addColoredBar(doc, y, r, g, b) {
+                doc.setFillColor(r, g, b);
+                doc.rect(0, y, 210, 3, 'F');
+            }
+            
+            // Helper: Get project name cleanly
+            function getProjectName(projectId) {
+                if (!projectId) return 'Unassigned';
+                try {
+                    const projects = db.getProjects();
+                    const project = projects.find(p => p.id === projectId);
+                    if (project && project.name) {
+                        return String(project.name).replace(/[^\x20-\x7E]/g, '').substring(0, 40);
+                    }
+                    return 'Unknown Project';
+                } catch (e) {
+                    return 'Unknown Project';
                 }
-                return `${day}/${month}/${year}`;
-            } catch (e) {
-                return dateString;
             }
-        }
-        
-        // Helper: Get project name cleanly
-        function getProjectName(projectId) {
-            if (!projectId) return 'Unassigned';
-            try {
-                const projects = db.getProjects();
-                const project = projects.find(p => p.id === projectId);
-                if (project && project.name) {
-                    return String(project.name).replace(/[^\x20-\x7E]/g, '').substring(0, 40);
-                }
-                return 'Unknown Project';
-            } catch (e) {
-                return 'Unknown Project';
-            }
-        }
-        
-        // Get data safely
-        const projects = (projectId === 'all' ? db.getProjects() : db.getProjects().filter(p => p.id === projectId)) || [];
-        const assessments = (projectId === 'all' ? db.getAssessments() : db.getAssessments().filter(a => a.projectId === projectId)) || [];
-        const species = (projectId === 'all' ? db.getSpecies() : db.getSpecies().filter(s => s.projectId === projectId)) || [];
-        const maintenance = (projectId === 'all' ? db.getMaintenance() : db.getMaintenance().filter(m => m.projectId === projectId)) || [];
-        
-        // Calculate statistics safely
-        const stats = {
-            totalProjects: projects.length,
-            activeProjects: projects.filter(p => p.status === 'active').length,
-            completedProjects: projects.filter(p => p.status === 'completed').length,
-            totalAssessments: assessments.length,
-            avgHealthScore: 0,
-            totalSpecies: species.length,
-            nativeSpecies: species.filter(s => s.status === 'native').length,
-            totalMaintenance: maintenance.length,
-            completedMaintenance: maintenance.filter(m => m.status === 'completed').length,
-            totalBudget: projects.reduce((sum, p) => sum + (parseFloat(p.budget) || 0), 0)
-        };
-        
-        // Calculate average health score
-        if (assessments.length > 0) {
-            const healthScores = { excellent: 90, good: 75, fair: 55, poor: 35, degraded: 20 };
-            let totalScore = 0;
-            assessments.forEach(a => { totalScore += healthScores[a.health] || 50; });
-            stats.avgHealthScore = Math.round(totalScore / assessments.length);
-        }
-        
-        // ========== COVER PAGE ==========
-        addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-        addColoredBar(doc, 3, colorSecondary[0], colorSecondary[1], colorSecondary[2]);
-        
-        doc.setFontSize(26);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-        doc.text('EcoManager Pro', 105, 60, { align: 'center' });
-        
-        doc.setFontSize(14);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(100, 100, 100);
-        doc.text('Professional Ecosystem Management Report', 105, 72, { align: 'center' });
-        
-        doc.setFontSize(11);
-        doc.setTextColor(colorSecondary[0], colorSecondary[1], colorSecondary[2]);
-        const reportType = projectId === 'all' ? 'COMPREHENSIVE ORGANISATIONAL REPORT' : 'PROJECT-SPECIFIC REPORT';
-        doc.text(reportType, 105, 85, { align: 'center' });
-        
-        // Divider
-        doc.setDrawColor(200, 200, 200);
-        doc.line(30, 95, 180, 95);
-        
-        if (projectId !== 'all' && projects.length > 0 && projects[0]) {
-            const project = projects[0];
-            doc.setFontSize(13);
-            doc.setFont(undefined, 'bold');
-            doc.setTextColor(0, 0, 0);
-            doc.text(project.name || 'Unnamed Project', 105, 110, { align: 'center' });
             
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(100, 100, 100);
-            doc.text(`Status: ${(project.status || 'unknown').toUpperCase()} | Progress: ${project.progress || 0}%`, 105, 120, { align: 'center' });
-        }
-        
-        doc.setFontSize(9);
-        doc.setTextColor(120, 120, 120);
-        doc.text(`Report Generated: ${new Date().toLocaleString('en-AU', { dateStyle: 'full', timeStyle: 'short' })}`, 105, 150, { align: 'center' });
-        doc.text(`Generated by: ${(currentUser.role || 'User').toUpperCase()} | EcoManager Pro`, 105, 157, { align: 'center' });
-        
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text('Confidential - Council Ecosystem Management System', 105, 280, { align: 'center' });
-        
-        // ========== EXECUTIVE SUMMARY ==========
-        doc.addPage();
-        addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-        
-        doc.setFontSize(18);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-        doc.text('Executive Summary', 20, 25);
-        
-        let yPos = 40;
-        yPos = addWrappedText(doc, 
-            `This report provides a comprehensive overview of ecosystem management activities${projectId !== 'all' ? ' for the selected project' : ' across all projects'}.`, 
-            20, yPos, 170, 6);
-        yPos += 5;
-        
-        // Key metrics as simple boxes
-        const metrics = [
-            { label: 'Total Projects', value: stats.totalProjects, x: 20 },
-            { label: 'Active Projects', value: stats.activeProjects, x: 65 },
-            { label: 'Completion Rate', value: stats.totalProjects > 0 ? Math.round((stats.completedProjects / stats.totalProjects) * 100) : 0, unit: '%', x: 110 },
-            { label: 'Health Score', value: stats.avgHealthScore, unit: '/100', x: 155 }
-        ];
-        
-        metrics.forEach(metric => {
-            doc.setFillColor(248, 249, 250);
-            doc.roundedRect(metric.x, yPos, 40, 25, 3, 3, 'F');
-            doc.setDrawColor(200, 200, 200);
-            doc.roundedRect(metric.x, yPos, 40, 25, 3, 3, 'S');
+            // ========== COVER PAGE ==========
+            addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+            addColoredBar(doc, 3, colorSecondary[0], colorSecondary[1], colorSecondary[2]);
             
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(100, 100, 100);
-            doc.text(metric.label, metric.x + 3, yPos + 6);
-            
-            doc.setFontSize(16);
+            doc.setFontSize(26);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-            doc.text(metric.value.toString(), metric.x + 3, yPos + 18);
-            
-            doc.setFontSize(7);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(100, 100, 100);
-            if (metric.unit) doc.text(metric.unit, metric.x + 3, yPos + 23);
-        });
-        
-        yPos += 35;
-        
-        // Second row of metrics
-        const metrics2 = [
-            { label: 'Species Tracked', value: stats.totalSpecies, x: 20 },
-            { label: 'Native Species', value: stats.nativeSpecies, x: 65 },
-            { label: 'Maintenance Tasks', value: stats.totalMaintenance, x: 110 },
-            { label: 'Budget', value: `$${Math.round(stats.totalBudget / 1000)}k`, x: 155 }
-        ];
-        
-        metrics2.forEach(metric => {
-            doc.setFillColor(248, 249, 250);
-            doc.roundedRect(metric.x, yPos, 40, 25, 3, 3, 'F');
-            doc.setDrawColor(200, 200, 200);
-            doc.roundedRect(metric.x, yPos, 40, 25, 3, 3, 'S');
-            
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(100, 100, 100);
-            doc.text(metric.label, metric.x + 3, yPos + 6);
+            doc.text('EcoManager Pro', 105, 60, { align: 'center' });
             
             doc.setFontSize(14);
-            doc.setFont(undefined, 'bold');
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(100, 100, 100);
+            doc.text('Professional Ecosystem Management Report', 105, 72, { align: 'center' });
+            
+            doc.setFontSize(11);
             doc.setTextColor(colorSecondary[0], colorSecondary[1], colorSecondary[2]);
-            doc.text(String(metric.value), metric.x + 3, yPos + 18);
-        });
-        
-        yPos += 35;
-        
-        // Key insights
-        doc.setFontSize(12);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-        doc.text('Key Insights', 20, yPos);
-        yPos += 8;
-        
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(80, 80, 80);
-        
-        const insights = [
-            `• Ecosystem health score is ${stats.avgHealthScore}/100, indicating ${stats.avgHealthScore >= 70 ? 'good' : stats.avgHealthScore >= 50 ? 'fair' : 'needs improvement'} overall condition`,
-            `• ${stats.activeProjects} projects currently active with ${stats.completedProjects} completed`,
-            `• ${stats.nativeSpecies} native species documented (${stats.totalSpecies > 0 ? Math.round((stats.nativeSpecies / stats.totalSpecies) * 100) : 0}% of total)`,
-            `• ${stats.completedMaintenance} of ${stats.totalMaintenance} maintenance tasks completed (${stats.totalMaintenance > 0 ? Math.round((stats.completedMaintenance / stats.totalMaintenance) * 100) : 0}% completion rate)`,
-            `• Total investment: $${stats.totalBudget.toLocaleString()} across all projects`
-        ];
-        
-        insights.forEach(insight => {
-            yPos = addWrappedText(doc, insight, 20, yPos, 170, 5.5);
-            yPos += 2;
-        });
-        
-        // ========== PROJECT PORTFOLIO ==========
-        if (projects.length > 0) {
+            const reportType = projectId === 'all' ? 'COMPREHENSIVE ORGANISATIONAL REPORT' : 'PROJECT-SPECIFIC REPORT';
+            doc.text(reportType, 105, 85, { align: 'center' });
+            
+            // Divider
+            doc.setDrawColor(200, 200, 200);
+            doc.line(30, 95, 180, 95);
+            
+            if (projectId !== 'all' && projects.length > 0 && projects[0]) {
+                const project = projects[0];
+                doc.setFontSize(13);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(0, 0, 0);
+                doc.text(project.name || 'Unnamed Project', 105, 110, { align: 'center' });
+                
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Status: ${(project.status || 'unknown').toUpperCase()} | Progress: ${project.progress || 0}%`, 105, 120, { align: 'center' });
+            }
+            
+            doc.setFontSize(9);
+            doc.setTextColor(120, 120, 120);
+            doc.text(`Report Generated: ${new Date().toLocaleString('en-AU', { dateStyle: 'full', timeStyle: 'short' })}`, 105, 150, { align: 'center' });
+            doc.text(`Generated by: ${(currentUser.role || 'User').toUpperCase()} | EcoManager Pro`, 105, 157, { align: 'center' });
+            
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.text('Confidential - Council Ecosystem Management System', 105, 280, { align: 'center' });
+            
+            // ========== EXECUTIVE SUMMARY ==========
             doc.addPage();
             addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
             
             doc.setFontSize(18);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-            doc.text('Project Portfolio', 20, 25);
+            doc.text('Executive Summary', 20, 25);
             
-            let projY = 40;
+            let yPos = 40;
+            yPos = addWrappedText(doc, 
+                `This report provides a comprehensive overview of ecosystem management activities${projectId !== 'all' ? ' for the selected project' : ' across all projects'}.`, 
+                20, yPos, 170, 6);
+            yPos += 5;
             
-            for (let i = 0; i < Math.min(projects.length, 8); i++) {
-                const project = projects[i];
-                projY = checkAndAddPage(doc, projY, 45);
-                
-                // Project header
+            // Key metrics as simple boxes
+            const metrics = [
+                { label: 'Total Projects', value: stats.totalProjects, x: 20 },
+                { label: 'Active Projects', value: stats.activeProjects, x: 65 },
+                { label: 'Completion Rate', value: stats.totalProjects > 0 ? Math.round((stats.completedProjects / stats.totalProjects) * 100) : 0, unit: '%', x: 110 },
+                { label: 'Health Score', value: stats.avgHealthScore, unit: '/100', x: 155 }
+            ];
+            
+            metrics.forEach(metric => {
                 doc.setFillColor(248, 249, 250);
-                doc.roundedRect(20, projY, 170, 8, 2, 2, 'F');
+                doc.roundedRect(metric.x, yPos, 40, 25, 3, 3, 'F');
+                doc.setDrawColor(200, 200, 200);
+                doc.roundedRect(metric.x, yPos, 40, 25, 3, 3, 'S');
+                
+                doc.setFontSize(8);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(100, 100, 100);
+                doc.text(metric.label, metric.x + 3, yPos + 6);
+                
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                doc.text(metric.value.toString(), metric.x + 3, yPos + 18);
+                
+                doc.setFontSize(7);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(100, 100, 100);
+                if (metric.unit) doc.text(metric.unit, metric.x + 3, yPos + 23);
+            });
+            
+            yPos += 35;
+            
+            // Second row of metrics
+            const metrics2 = [
+                { label: 'Species Tracked', value: stats.totalSpecies, x: 20 },
+                { label: 'Native Species', value: stats.nativeSpecies, x: 65 },
+                { label: 'Maintenance Tasks', value: stats.totalMaintenance, x: 110 },
+                { label: 'Budget', value: `$${Math.round(stats.totalBudget / 1000)}k`, x: 155 }
+            ];
+            
+            metrics2.forEach(metric => {
+                doc.setFillColor(248, 249, 250);
+                doc.roundedRect(metric.x, yPos, 40, 25, 3, 3, 'F');
+                doc.setDrawColor(200, 200, 200);
+                doc.roundedRect(metric.x, yPos, 40, 25, 3, 3, 'S');
+                
+                doc.setFontSize(8);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(100, 100, 100);
+                doc.text(metric.label, metric.x + 3, yPos + 6);
+                
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(colorSecondary[0], colorSecondary[1], colorSecondary[2]);
+                doc.text(String(metric.value), metric.x + 3, yPos + 18);
+            });
+            
+            yPos += 35;
+            
+            // Key insights
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+            doc.text('Key Insights', 20, yPos);
+            yPos += 8;
+            
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(80, 80, 80);
+            
+            const insights = [
+                `• Ecosystem health score is ${stats.avgHealthScore}/100, indicating ${stats.avgHealthScore >= 70 ? 'good' : stats.avgHealthScore >= 50 ? 'fair' : 'needs improvement'} overall condition`,
+                `• ${stats.activeProjects} projects currently active with ${stats.completedProjects} completed`,
+                `• ${stats.nativeSpecies} native species documented (${stats.totalSpecies > 0 ? Math.round((stats.nativeSpecies / stats.totalSpecies) * 100) : 0}% of total)`,
+                `• ${stats.completedMaintenance} of ${stats.totalMaintenance} maintenance tasks completed (${stats.totalMaintenance > 0 ? Math.round((stats.completedMaintenance / stats.totalMaintenance) * 100) : 0}% completion rate)`,
+                `• Total investment: $${stats.totalBudget.toLocaleString()} across all projects`
+            ];
+            
+            insights.forEach(insight => {
+                yPos = addWrappedText(doc, insight, 20, yPos, 170, 5.5);
+                yPos += 2;
+            });
+            
+            // ========== PROJECT PORTFOLIO ==========
+            if (projects.length > 0) {
+                doc.addPage();
+                addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                
+                doc.setFontSize(18);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                doc.text('Project Portfolio', 20, 25);
+                
+                let projY = 40;
+                
+                for (let i = 0; i < Math.min(projects.length, 8); i++) {
+                    const project = projects[i];
+                    if (projY > 270) {
+                        doc.addPage();
+                        projY = 25;
+                        addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                        doc.setFontSize(18);
+                        doc.setFont(undefined, 'bold');
+                        doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                        doc.text('Project Portfolio (continued)', 20, 25);
+                        projY = 40;
+                    }
+                    
+                    // Project header
+                    doc.setFillColor(248, 249, 250);
+                    doc.roundedRect(20, projY, 170, 8, 2, 2, 'F');
+                    
+                    doc.setFontSize(10);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                    doc.text(`${i + 1}. ${(project.name || 'Unnamed').substring(0, 45)}`, 25, projY + 6);
+                    
+                    // Status badge
+                    let statusColor = colorSecondary;
+                    if (project.status === 'active') statusColor = colorSuccess;
+                    else if (project.status === 'on-hold') statusColor = colorWarning;
+                    else if (project.status === 'completed') statusColor = [100, 100, 100];
+                    
+                    doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+                    doc.roundedRect(155, projY + 2, 30, 5, 2, 2, 'F');
+                    doc.setFontSize(7);
+                    doc.setTextColor(255, 255, 255);
+                    doc.text(((project.status || 'unknown').toUpperCase()), 170, projY + 6, { align: 'center' });
+                    
+                    projY += 12;
+                    
+                    // Progress bar
+                    const progress = project.progress || 0;
+                    doc.setFillColor(220, 220, 220);
+                    doc.rect(25, projY, 80, 4, 'F');
+                    doc.setFillColor(colorAccent[0], colorAccent[1], colorAccent[2]);
+                    doc.rect(25, projY, 80 * (progress / 100), 4, 'F');
+                    doc.setFontSize(8);
+                    doc.setFont(undefined, 'normal');
+                    doc.setTextColor(80, 80, 80);
+                    doc.text(`Progress: ${progress}%`, 110, projY + 3);
+                    projY += 8;
+                    
+                    // Project details
+                    doc.setFontSize(8);
+                    doc.text(`Start: ${formatDate(project.startDate) || 'N/A'} | Budget: $${(project.budget || 0).toLocaleString()}`, 25, projY);
+                    projY += 6;
+                    
+                    if (project.description) {
+                        projY = addWrappedText(doc, project.description.substring(0, 120), 25, projY, 155, 4);
+                        projY += 3;
+                    }
+                    
+                    projY += 8;
+                }
+                
+                if (projects.length > 8) {
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(`+ ${projects.length - 8} additional projects not shown in this view`, 20, projY);
+                }
+            }
+            
+            // ========== ECOSYSTEM HEALTH ==========
+            if (assessments.length > 0) {
+                doc.addPage();
+                addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                
+                doc.setFontSize(18);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                doc.text('Ecosystem Health Analysis', 20, 25);
+                
+                let healthY = 40;
+                
+                // Health distribution
+                const healthCounts = {
+                    excellent: assessments.filter(a => a.health === 'excellent').length,
+                    good: assessments.filter(a => a.health === 'good').length,
+                    fair: assessments.filter(a => a.health === 'fair').length,
+                    poor: assessments.filter(a => a.health === 'poor').length,
+                    degraded: assessments.filter(a => a.health === 'degraded').length
+                };
+                
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'bold');
+                doc.text('Health Status Distribution', 20, healthY);
+                healthY += 10;
+                
+                // Simple bar chart
+                const maxCount = Math.max(1, ...Object.values(healthCounts));
+                const barWidth = 30;
+                let barX = 25;
+                const statusColors = {
+                    excellent: colorSuccess,
+                    good: colorInfo,
+                    fair: colorWarning,
+                    poor: [253, 126, 20],
+                    degraded: colorDanger
+                };
+                
+                Object.entries(healthCounts).forEach(([status, count]) => {
+                    const barHeight = count > 0 ? (count / maxCount) * 35 : 4;
+                    const col = statusColors[status] || [100, 100, 100];
+                    doc.setFillColor(col[0], col[1], col[2]);
+                    doc.rect(barX, healthY + 40 - barHeight, barWidth - 2, barHeight, 'F');
+                    doc.setFontSize(7);
+                    doc.setTextColor(80, 80, 80);
+                    doc.text(status.toUpperCase(), barX + 5, healthY + 48);
+                    doc.text(count.toString(), barX + 12, healthY + 55);
+                    barX += barWidth;
+                });
+                
+                healthY += 65;
+                
+                // Recent assessments
+                const recentAssessments = assessments.slice(-5).reverse();
+                if (recentAssessments.length > 0) {
+                    if (healthY > 260) {
+                        doc.addPage();
+                        healthY = 25;
+                        addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                        doc.setFontSize(18);
+                        doc.setFont(undefined, 'bold');
+                        doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                        doc.text('Ecosystem Health Analysis (continued)', 20, 25);
+                        healthY = 40;
+                    }
+                    
+                    doc.setFontSize(11);
+                    doc.setFont(undefined, 'bold');
+                    doc.text('Recent Assessments', 20, healthY);
+                    healthY += 8;
+                    
+                    recentAssessments.forEach(assessment => {
+                        if (healthY > 270) {
+                            doc.addPage();
+                            healthY = 25;
+                            addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                            doc.setFontSize(18);
+                            doc.setFont(undefined, 'bold');
+                            doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                            doc.text('Recent Assessments (continued)', 20, 25);
+                            healthY = 40;
+                        }
+                        
+                        doc.setFontSize(8);
+                        doc.setFont(undefined, 'bold');
+                        doc.text(`${formatDate(assessment.date)} - ${(assessment.assessor || 'Unknown').substring(0, 30)}`, 25, healthY);
+                        healthY += 5;
+                        
+                        doc.setFont(undefined, 'normal');
+                        doc.text(`Health: ${(assessment.health || 'Not rated').toUpperCase()} | Project: ${getProjectName(assessment.projectId)}`, 25, healthY);
+                        healthY += 5;
+                        
+                        if (assessment.description) {
+                            healthY = addWrappedText(doc, assessment.description.substring(0, 100), 30, healthY, 155, 4);
+                            healthY += 3;
+                        }
+                        healthY += 5;
+                    });
+                }
+            }
+            
+            // ========== SPECIES INVENTORY ==========
+            if (species.length > 0) {
+                doc.addPage();
+                addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                
+                doc.setFontSize(18);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                doc.text('Species Inventory', 20, 25);
+                
+                let specY = 40;
+                
+                // Species type summary
+                const typeCount = {
+                    plant: species.filter(s => s.type === 'plant').length,
+                    animal: species.filter(s => s.type === 'animal').length,
+                    bird: species.filter(s => s.type === 'bird').length,
+                    reptile: species.filter(s => s.type === 'reptile').length,
+                    insect: species.filter(s => s.type === 'insect').length
+                };
                 
                 doc.setFontSize(10);
                 doc.setFont(undefined, 'bold');
-                doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-                doc.text(`${i + 1}. ${(project.name || 'Unnamed').substring(0, 45)}`, 25, projY + 6);
+                doc.text('Distribution by Type:', 20, specY);
+                specY += 6;
                 
-                // Status badge
-                let statusColor = colorSecondary;
-                if (project.status === 'active') statusColor = colorSuccess;
-                else if (project.status === 'on-hold') statusColor = colorWarning;
-                else if (project.status === 'completed') statusColor = [100, 100, 100];
-                
-                doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-                doc.roundedRect(155, projY + 2, 30, 5, 2, 2, 'F');
-                doc.setFontSize(7);
-                doc.setTextColor(255, 255, 255);
-                doc.text(((project.status || 'unknown').toUpperCase()), 170, projY + 6, { align: 'center' });
-                
-                projY += 12;
-                
-                // Progress bar
-                const progress = project.progress || 0;
-                doc.setFillColor(220, 220, 220);
-                doc.rect(25, projY, 80, 4, 'F');
-                doc.setFillColor(colorAccent[0], colorAccent[1], colorAccent[2]);
-                doc.rect(25, projY, 80 * (progress / 100), 4, 'F');
                 doc.setFontSize(8);
                 doc.setFont(undefined, 'normal');
-                doc.setTextColor(80, 80, 80);
-                doc.text(`Progress: ${progress}%`, 110, projY + 3);
-                projY += 8;
-                
-                // Project details
-                doc.setFontSize(8);
-                doc.text(`Start: ${formatDate(project.startDate) || 'N/A'} | Budget: $${(project.budget || 0).toLocaleString()}`, 25, projY);
-                projY += 6;
-                
-                if (project.description) {
-                    projY = addWrappedText(doc, project.description.substring(0, 120), 25, projY, 155, 4);
-                    projY += 3;
-                }
-                
-                projY += 8;
-            }
-            
-            if (projects.length > 8) {
-                doc.setFontSize(8);
-                doc.setTextColor(100, 100, 100);
-                doc.text(`+ ${projects.length - 8} additional projects not shown in this view`, 20, projY);
-            }
-        }
-        
-        // ========== ECOSYSTEM HEALTH ==========
-        if (assessments.length > 0) {
-            doc.addPage();
-            addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-            
-            doc.setFontSize(18);
-            doc.setFont(undefined, 'bold');
-            doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-            doc.text('Ecosystem Health Analysis', 20, 25);
-            
-            let healthY = 40;
-            
-            // Health distribution
-            const healthCounts = {
-                excellent: assessments.filter(a => a.health === 'excellent').length,
-                good: assessments.filter(a => a.health === 'good').length,
-                fair: assessments.filter(a => a.health === 'fair').length,
-                poor: assessments.filter(a => a.health === 'poor').length,
-                degraded: assessments.filter(a => a.health === 'degraded').length
-            };
-            
-            doc.setFontSize(11);
-            doc.setFont(undefined, 'bold');
-            doc.text('Health Status Distribution', 20, healthY);
-            healthY += 10;
-            
-            // Simple bar chart
-            const maxCount = Math.max(1, ...Object.values(healthCounts));
-            const barWidth = 30;
-            let barX = 25;
-            const statusColors = {
-                excellent: colorSuccess,
-                good: colorInfo,
-                fair: colorWarning,
-                poor: [253, 126, 20],
-                degraded: colorDanger
-            };
-            
-            Object.entries(healthCounts).forEach(([status, count]) => {
-                const barHeight = count > 0 ? (count / maxCount) * 35 : 4;
-                const col = statusColors[status] || [100, 100, 100];
-                doc.setFillColor(col[0], col[1], col[2]);
-                doc.rect(barX, healthY + 40 - barHeight, barWidth - 2, barHeight, 'F');
-                doc.setFontSize(7);
-                doc.setTextColor(80, 80, 80);
-                doc.text(status.toUpperCase(), barX + 5, healthY + 48);
-                doc.text(count.toString(), barX + 12, healthY + 55);
-                barX += barWidth;
-            });
-            
-            healthY += 65;
-            
-            // Recent assessments
-            const recentAssessments = assessments.slice(-5).reverse();
-            if (recentAssessments.length > 0) {
-                healthY = checkAndAddPage(doc, healthY, 40);
-                doc.setFontSize(11);
-                doc.setFont(undefined, 'bold');
-                doc.text('Recent Assessments', 20, healthY);
-                healthY += 8;
-                
-                recentAssessments.forEach(assessment => {
-                    healthY = checkAndAddPage(doc, healthY, 25);
-                    doc.setFontSize(8);
-                    doc.setFont(undefined, 'bold');
-                    doc.text(`${formatDate(assessment.date)} - ${(assessment.assessor || 'Unknown').substring(0, 30)}`, 25, healthY);
-                    healthY += 5;
-                    
-                    doc.setFont(undefined, 'normal');
-                    doc.text(`Health: ${(assessment.health || 'Not rated').toUpperCase()} | Project: ${getProjectName(assessment.projectId)}`, 25, healthY);
-                    healthY += 5;
-                    
-                    if (assessment.description) {
-                        healthY = addWrappedText(doc, assessment.description.substring(0, 100), 30, healthY, 155, 4);
-                        healthY += 3;
+                Object.entries(typeCount).forEach(([type, count]) => {
+                    if (count > 0) {
+                        doc.text(`${type.charAt(0).toUpperCase() + type.slice(1)}s: ${count}`, 25, specY);
+                        specY += 5;
                     }
-                    healthY += 5;
                 });
-            }
-        }
-        
-        // ========== SPECIES INVENTORY ==========
-        if (species.length > 0) {
-            doc.addPage();
-            addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-            
-            doc.setFontSize(18);
-            doc.setFont(undefined, 'bold');
-            doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-            doc.text('Species Inventory', 20, 25);
-            
-            let specY = 40;
-            
-            // Species type summary
-            const typeCount = {
-                plant: species.filter(s => s.type === 'plant').length,
-                animal: species.filter(s => s.type === 'animal').length,
-                bird: species.filter(s => s.type === 'bird').length,
-                reptile: species.filter(s => s.type === 'reptile').length,
-                insect: species.filter(s => s.type === 'insect').length
-            };
-            
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'bold');
-            doc.text('Distribution by Type:', 20, specY);
-            specY += 6;
-            
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'normal');
-            Object.entries(typeCount).forEach(([type, count]) => {
-                if (count > 0) {
-                    doc.text(`${type.charAt(0).toUpperCase() + type.slice(1)}s: ${count}`, 25, specY);
+                
+                specY += 8;
+                
+                // Species table
+                doc.setFillColor(230, 230, 230);
+                doc.rect(20, specY, 55, 6, 'F');
+                doc.rect(75, specY, 50, 6, 'F');
+                doc.rect(125, specY, 25, 6, 'F');
+                doc.rect(150, specY, 30, 6, 'F');
+                
+                doc.setFontSize(7);
+                doc.setFont(undefined, 'bold');
+                doc.text('Common Name', 22, specY + 4.5);
+                doc.text('Scientific Name', 77, specY + 4.5);
+                doc.text('Type', 127, specY + 4.5);
+                doc.text('Status', 152, specY + 4.5);
+                specY += 8;
+                
+                doc.setFont(undefined, 'normal');
+                for (let i = 0; i < Math.min(species.length, 20); i++) {
+                    const s = species[i];
+                    if (specY > 270) {
+                        doc.addPage();
+                        specY = 25;
+                        addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                        doc.setFontSize(18);
+                        doc.setFont(undefined, 'bold');
+                        doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                        doc.text('Species Inventory (continued)', 20, 25);
+                        specY = 40;
+                    }
+                    doc.text((s.name || 'Unknown').substring(0, 22), 22, specY + 3);
+                    doc.text((s.scientificName || '-').substring(0, 20), 77, specY + 3);
+                    doc.text(s.type || 'unknown', 127, specY + 3);
+                    doc.text(s.status || 'unknown', 152, specY + 3);
                     specY += 5;
                 }
-            });
-            
-            specY += 8;
-            
-            // Species table
-            doc.setFillColor(230, 230, 230);
-            doc.rect(20, specY, 55, 6, 'F');
-            doc.rect(75, specY, 50, 6, 'F');
-            doc.rect(125, specY, 25, 6, 'F');
-            doc.rect(150, specY, 30, 6, 'F');
-            
-            doc.setFontSize(7);
-            doc.setFont(undefined, 'bold');
-            doc.text('Common Name', 22, specY + 4.5);
-            doc.text('Scientific Name', 77, specY + 4.5);
-            doc.text('Type', 127, specY + 4.5);
-            doc.text('Status', 152, specY + 4.5);
-            specY += 8;
-            
-            doc.setFont(undefined, 'normal');
-            for (let i = 0; i < Math.min(species.length, 20); i++) {
-                const s = species[i];
-                if (specY > 270) {
-                    doc.addPage();
-                    specY = 25;
-                }
-                doc.text((s.name || 'Unknown').substring(0, 22), 22, specY + 3);
-                doc.text((s.scientificName || '-').substring(0, 20), 77, specY + 3);
-                doc.text(s.type || 'unknown', 127, specY + 3);
-                doc.text(s.status || 'unknown', 152, specY + 3);
-                specY += 5;
-            }
-            
-            if (species.length > 20) {
-                specY += 3;
-                doc.setFontSize(7);
-                doc.text(`+ ${species.length - 20} additional species not shown`, 20, specY);
-            }
-        }
-        
-        // ========== MAINTENANCE ACTIVITIES (FIXED) ==========
-        if (maintenance.length > 0) {
-            doc.addPage();
-            addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-            
-            doc.setFontSize(18);
-            doc.setFont(undefined, 'bold');
-            doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-            doc.text('Maintenance Activities', 20, 25);
-            
-            let maintY = 40;
-            const upcoming = maintenance.filter(m => m.status === 'scheduled').slice(0, 10);
-            
-            if (upcoming.length > 0) {
-                doc.setFontSize(12);
-                doc.setFont(undefined, 'bold');
-                doc.setTextColor(0, 0, 0);
-                doc.text('Upcoming Scheduled Tasks', 20, maintY);
-                maintY += 10;
                 
-                upcoming.forEach(item => {
-                    maintY = checkAndAddPage(doc, maintY, 30);
-                    
-                    // Activity name as bold
-                    doc.setFontSize(10);
+                if (species.length > 20) {
+                    specY += 3;
+                    doc.setFontSize(7);
+                    doc.text(`+ ${species.length - 20} additional species not shown`, 20, specY);
+                }
+            }
+            
+            // ========== MAINTENANCE ACTIVITIES ==========
+            if (maintenance.length > 0) {
+                doc.addPage();
+                addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                
+                doc.setFontSize(18);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                doc.text('Maintenance Activities', 20, 25);
+                
+                let maintY = 40;
+                const upcoming = maintenance.filter(m => m.status === 'scheduled').slice(0, 10);
+                
+                if (upcoming.length > 0) {
+                    doc.setFontSize(12);
                     doc.setFont(undefined, 'bold');
-                    doc.setTextColor(44, 85, 48);
-                    doc.text(`• ${(item.activity || 'Unnamed').substring(0, 50)}`, 25, maintY);
-                    maintY += 6;
+                    doc.setTextColor(0, 0, 0);
+                    doc.text('Upcoming Scheduled Tasks', 20, maintY);
+                    maintY += 10;
                     
-                    // Details line - using standard ASCII characters only
+                    upcoming.forEach(item => {
+                        if (maintY > 260) {
+                            doc.addPage();
+                            maintY = 25;
+                            addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                            doc.setFontSize(18);
+                            doc.setFont(undefined, 'bold');
+                            doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                            doc.text('Maintenance Activities (continued)', 20, 25);
+                            maintY = 40;
+                        }
+                        
+                        // Activity name as bold
+                        doc.setFontSize(10);
+                        doc.setFont(undefined, 'bold');
+                        doc.setTextColor(44, 85, 48);
+                        doc.text(`• ${(item.activity || 'Unnamed').substring(0, 50)}`, 25, maintY);
+                        maintY += 6;
+                        
+                        // Details line
+                        doc.setFontSize(9);
+                        doc.setFont(undefined, 'normal');
+                        doc.setTextColor(80, 80, 80);
+                        
+                        let dateStr = formatDate(item.date) || 'Date not set';
+                        let typeStr = (item.type || 'other').replace(/-/g, ' ').toUpperCase();
+                        let projectName = getProjectName(item.projectId);
+                        
+                        let detailText = `Date: ${dateStr}  |  Type: ${typeStr}  |  Project: ${projectName}`;
+                        doc.text(detailText, 30, maintY);
+                        maintY += 5;
+                        
+                        // Priority indicator
+                        let priorityText = '';
+                        if (item.priority === 'high') priorityText = 'Priority: HIGH - Urgent attention required';
+                        else if (item.priority === 'medium') priorityText = 'Priority: MEDIUM - Schedule soon';
+                        else priorityText = 'Priority: LOW - Routine schedule';
+                        
+                        doc.setFontSize(8);
+                        doc.setTextColor(100, 100, 100);
+                        doc.text(priorityText, 30, maintY);
+                        maintY += 5;
+                        
+                        // Description
+                        if (item.description) {
+                            doc.setFontSize(8);
+                            doc.setTextColor(120, 120, 120);
+                            maintY = addWrappedText(doc, item.description.substring(0, 150), 30, maintY, 155, 4.5);
+                            maintY += 3;
+                        }
+                        maintY += 8;
+                    });
+                }
+                
+                // Completed summary
+                const completed = maintenance.filter(m => m.status === 'completed');
+                if (completed.length > 0) {
+                    if (maintY > 260) {
+                        doc.addPage();
+                        maintY = 25;
+                        addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                        doc.setFontSize(18);
+                        doc.setFont(undefined, 'bold');
+                        doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                        doc.text('Maintenance Activities (continued)', 20, 25);
+                        maintY = 40;
+                    }
+                    
+                    doc.setFontSize(12);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(0, 0, 0);
+                    doc.text('Completed Activities', 20, maintY);
+                    maintY += 8;
+                    
                     doc.setFontSize(9);
                     doc.setFont(undefined, 'normal');
                     doc.setTextColor(80, 80, 80);
+                    doc.text(`${completed.length} maintenance task(s) completed`, 25, maintY);
+                    maintY += 10;
                     
-                    let dateStr = formatDate(item.date) || 'Date not set';
-                    let typeStr = (item.type || 'other').replace(/-/g, ' ').toUpperCase();
-                    let projectName = getProjectName(item.projectId);
-                    
-                    let detailText = `Date: ${dateStr}  |  Type: ${typeStr}  |  Project: ${projectName}`;
-                    doc.text(detailText, 30, maintY);
-                    maintY += 5;
-                    
-                    // Priority indicator - using text
-                    let priorityText = '';
-                    if (item.priority === 'high') priorityText = 'Priority: HIGH - Urgent attention required';
-                    else if (item.priority === 'medium') priorityText = 'Priority: MEDIUM - Schedule soon';
-                    else priorityText = 'Priority: LOW - Routine schedule';
-                    
-                    doc.setFontSize(8);
-                    doc.setTextColor(100, 100, 100);
-                    doc.text(priorityText, 30, maintY);
-                    maintY += 5;
-                    
-                    // Description with proper wrapping
-                    if (item.description) {
+                    completed.slice(-5).reverse().forEach(item => {
+                        if (maintY > 270) {
+                            doc.addPage();
+                            maintY = 25;
+                            addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                            doc.setFontSize(18);
+                            doc.setFont(undefined, 'bold');
+                            doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                            doc.text('Completed Activities (continued)', 20, 25);
+                            maintY = 40;
+                        }
+                        doc.setFontSize(9);
+                        doc.setTextColor(40, 167, 69);
+                        doc.text(`✓ ${(item.activity || 'Unnamed').substring(0, 45)}`, 30, maintY);
+                        maintY += 5;
                         doc.setFontSize(8);
-                        doc.setTextColor(120, 120, 120);
-                        maintY = addWrappedText(doc, item.description.substring(0, 150), 30, maintY, 155, 4.5);
-                        maintY += 3;
-                    }
-                    maintY += 8;
-                });
+                        doc.setTextColor(100, 100, 100);
+                        doc.text(`  Completed: ${formatDate(item.date)}`, 32, maintY);
+                        maintY += 8;
+                    });
+                }
             }
             
-            // Completed summary
-            const completed = maintenance.filter(m => m.status === 'completed');
-            if (completed.length > 0) {
-                maintY = checkAndAddPage(doc, maintY, 30);
-                doc.setFontSize(12);
-                doc.setFont(undefined, 'bold');
-                doc.setTextColor(0, 0, 0);
-                doc.text('Completed Activities', 20, maintY);
-                maintY += 8;
-                
-                doc.setFontSize(9);
-                doc.setFont(undefined, 'normal');
-                doc.setTextColor(80, 80, 80);
-                doc.text(`${completed.length} maintenance task(s) completed`, 25, maintY);
-                maintY += 10;
-                
-                completed.slice(-5).reverse().forEach(item => {
-                    maintY = checkAndAddPage(doc, maintY, 12);
-                    doc.setFontSize(9);
-                    doc.setTextColor(40, 167, 69);
-                    doc.text(`✓ ${(item.activity || 'Unnamed').substring(0, 45)}`, 30, maintY);
-                    maintY += 5;
-                    doc.setFontSize(8);
-                    doc.setTextColor(100, 100, 100);
-                    doc.text(`  Completed: ${formatDate(item.date)}`, 32, maintY);
-                    maintY += 8;
-                });
+            // ========== RECOMMENDATIONS ==========
+            doc.addPage();
+            addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+            
+            doc.setFontSize(18);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+            doc.text('Recommendations', 20, 25);
+            
+            let recY = 40;
+            
+            // Generate dynamic recommendations
+            const recommendations = [];
+            
+            if (stats.avgHealthScore < 60) {
+                recommendations.push('Prioritize ecosystem restoration efforts in areas with degraded health scores');
             }
-        }
-        
-        // ========== RECOMMENDATIONS (FIXED - SMALLER FONT) ==========
-        doc.addPage();
-        addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-        
-        doc.setFontSize(18);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-        doc.text('Recommendations', 20, 25);
-        
-        let recY = 40;
-        
-        // Generate dynamic recommendations
-        const recommendations = [];
-        
-        if (stats.avgHealthScore < 60) {
-            recommendations.push('Prioritize ecosystem restoration efforts in areas with degraded health scores');
-        }
-        if (stats.totalSpecies > 0 && stats.nativeSpecies / stats.totalSpecies < 0.7) {
-            recommendations.push('Increase native species planting and implement enhanced weed management programs');
-        }
-        if (stats.totalMaintenance > 0 && stats.completedMaintenance / stats.totalMaintenance < 0.5) {
-            recommendations.push('Improve maintenance completion rates through better scheduling and resource allocation');
-        }
-        if (stats.activeProjects > 3 && stats.completedProjects < 2) {
-            recommendations.push('Review project timelines and resource allocation to accelerate completion rates');
-        }
-        
-        // Add general recommendations
-        recommendations.push('Continue regular ecosystem health assessments (quarterly recommended)');
-        recommendations.push('Enhance community engagement and citizen science programs');
-        recommendations.push('Consider additional funding for high-priority conservation areas');
-        recommendations.push('Implement digital field data collection to improve data accuracy');
-        
-        // SMALLER FONT for recommendations
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(60, 60, 60);
-        
-        recommendations.forEach(rec => {
-            recY = checkAndAddPage(doc, recY, 10);
-            recY = addWrappedText(doc, `• ${rec}`, 20, recY, 170, 5);
-            recY += 2;
-        });
-        
-        // ========== APPENDIX ==========
-        doc.addPage();
-        addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-        
-        doc.setFontSize(18);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
-        doc.text('Appendix', 20, 25);
-        
-        let appY = 40;
-        
-        doc.setFontSize(11);
-        doc.setFont(undefined, 'bold');
-        doc.text('Data Quality Notes', 20, appY);
-        appY += 8;
-        
-        doc.setFontSize(8);
-        doc.setFont(undefined, 'normal');
-        appY = addWrappedText(doc, 
-            'This report is generated from the EcoManager Pro ecosystem management system. ' +
-            'Data accuracy depends on regular updates from field staff and project managers. ' +
-            'Health scores are calculated using a weighted methodology based on vegetation cover, ' +
-            'native species presence, weed cover, soil stability, and species richness.', 
-            20, appY, 170, 4.5);
-        appY += 10;
-        
-        doc.text(`Report Version: 2.0`, 20, appY); appY += 5;
-        doc.text(`System: EcoManager Pro - Council Edition`, 20, appY); appY += 5;
-        doc.text(`Data Export: ${new Date().toISOString()}`, 20, appY); appY += 5;
-        doc.text(`User Role: ${currentUser.role || 'Viewer'}`, 20, appY); appY += 10;
-        
-        doc.setFontSize(7);
-        doc.setTextColor(120, 120, 120);
-        doc.text('This report is confidential and intended for council use only.', 105, 275, { align: 'center' });
-        
-        // ========== FOOTERS ==========
-        const pageCount = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
+            if (stats.totalSpecies > 0 && stats.nativeSpecies / stats.totalSpecies < 0.7) {
+                recommendations.push('Increase native species planting and implement enhanced weed management programs');
+            }
+            if (stats.totalMaintenance > 0 && stats.completedMaintenance / stats.totalMaintenance < 0.5) {
+                recommendations.push('Improve maintenance completion rates through better scheduling and resource allocation');
+            }
+            if (stats.activeProjects > 3 && stats.completedProjects < 2) {
+                recommendations.push('Review project timelines and resource allocation to accelerate completion rates');
+            }
+            
+            // Add general recommendations
+            recommendations.push('Continue regular ecosystem health assessments (quarterly recommended)');
+            recommendations.push('Enhance community engagement and citizen science programs');
+            recommendations.push('Consider additional funding for high-priority conservation areas');
+            recommendations.push('Implement digital field data collection to improve data accuracy');
+            
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(60, 60, 60);
+            
+            recommendations.forEach(rec => {
+                if (recY > 270) {
+                    doc.addPage();
+                    recY = 25;
+                    addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                    doc.setFontSize(18);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+                    doc.text('Recommendations (continued)', 20, 25);
+                    recY = 40;
+                }
+                recY = addWrappedText(doc, `• ${rec}`, 20, recY, 170, 5);
+                recY += 2;
+            });
+            
+            // ========== APPENDIX ==========
+            doc.addPage();
+            addColoredBar(doc, 0, colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+            
+            doc.setFontSize(18);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(colorPrimary[0], colorPrimary[1], colorPrimary[2]);
+            doc.text('Appendix', 20, 25);
+            
+            let appY = 40;
+            
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'bold');
+            doc.text('Data Quality Notes', 20, appY);
+            appY += 8;
+            
             doc.setFontSize(8);
-            doc.setTextColor(128, 128, 128);
-            doc.text(`EcoManager Pro - Professional Ecosystem Report`, 105, 285, { align: 'center' });
-            doc.text(`Generated: ${new Date().toLocaleDateString('en-AU')} | Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
+            doc.setFont(undefined, 'normal');
+            appY = addWrappedText(doc, 
+                'This report is generated from the EcoManager Pro ecosystem management system. ' +
+                'Data accuracy depends on regular updates from field staff and project managers. ' +
+                'Health scores are calculated using a weighted methodology based on vegetation cover, ' +
+                'native species presence, weed cover, soil stability, and species richness.', 
+                20, appY, 170, 4.5);
+            appY += 10;
+            
+            doc.text(`Report Version: 2.0`, 20, appY); appY += 5;
+            doc.text(`System: EcoManager Pro - Council Edition`, 20, appY); appY += 5;
+            doc.text(`Data Export: ${new Date().toISOString()}`, 20, appY); appY += 5;
+            doc.text(`User Role: ${currentUser.role || 'Viewer'}`, 20, appY); appY += 10;
+            
+            doc.setFontSize(7);
+            doc.setTextColor(120, 120, 120);
+            doc.text('This report is confidential and intended for council use only.', 105, 275, { align: 'center' });
+            
+            // ========== FOOTERS ==========
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(128, 128, 128);
+                doc.text(`EcoManager Pro - Professional Ecosystem Report`, 105, 285, { align: 'center' });
+                doc.text(`Generated: ${new Date().toLocaleDateString('en-AU')} | Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
+            }
+            
+            // Save the PDF
+            const fileName = `EcoManager_Report_${projectId === 'all' ? 'All_Projects' : (projects[0]?.name || 'Project').replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+            doc.save(fileName);
+            
+            showToast('PDF Export Successful', 'Professional report has been generated successfully', 'success');
+            
+        } catch (error) {
+            console.error('PDF Export Error:', error);
+            showToast('Export Failed', 'Error: ' + error.message, 'error');
         }
-        
-        // Save the PDF
-        const fileName = `EcoManager_Report_${projectId === 'all' ? 'All_Projects' : (projects[0]?.name || 'Project').replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
-        doc.save(fileName);
-        
-        showToast('PDF Export Successful', 'Professional report has been generated successfully', 'success');
-        
-    } catch (error) {
-        console.error('PDF Export Error:', error);
-        showToast('Export Failed', 'Error: ' + error.message, 'error');
     }
-}
 
+    // FIXED importData with better validation
     function importData() {
         const fileInput = document.getElementById('importFile');
         const overwriteData = document.getElementById('overwriteData');
@@ -6007,10 +6210,20 @@ function exportToPDF(projectId) {
             try {
                 const data = JSON.parse(e.target.result);
                 
-                // Validate the imported data structure
-                if (!data.projects || !data.assessments || !data.species || !data.maintenance) {
-                    throw new Error('Invalid file format');
+                // FIXED: Validate data structure more thoroughly
+                if (!data.projects || !Array.isArray(data.projects) ||
+                    !data.assessments || !Array.isArray(data.assessments) ||
+                    !data.species || !Array.isArray(data.species) ||
+                    !data.maintenance || !Array.isArray(data.maintenance)) {
+                    throw new Error('Invalid file format: Missing required data arrays');
                 }
+                
+                // Validate each project has required fields
+                data.projects.forEach((p, idx) => {
+                    if (!p.name || !p.id) {
+                        throw new Error(`Project at index ${idx} is missing required fields (name, id)`);
+                    }
+                });
                 
                 if (overwriteData && overwriteData.checked) {
                     // Completely replace existing data
@@ -6085,7 +6298,7 @@ function exportToPDF(projectId) {
                 
             } catch (error) {
                 console.error('Import error:', error);
-                showToast('Import Error', 'Failed to import data. Please check the file format.', 'error');
+                showToast('Import Error', error.message || 'Failed to import data. Please check the file format.', 'error');
             }
         };
         
@@ -6167,6 +6380,7 @@ function exportToPDF(projectId) {
         }
     });
 
+    // FIXED assessment form with validation
     document.getElementById('assessmentForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -6183,6 +6397,13 @@ function exportToPDF(projectId) {
             soilStability: document.getElementById('soilStability').value,
             speciesRichness: document.getElementById('speciesRichness').value
         };
+        
+        // FIXED: Validate that we have health score data
+        const hasValidData = Object.values(scoringData).some(val => val && parseFloat(val) > 0);
+        if (!hasValidData) {
+            showToast('Incomplete Data', 'Please enter health evaluation data before saving.', 'warning');
+            return;
+        }
         
         // Calculate health score
         const healthScore = ecosystemScoring.calculateHealthScore(scoringData);
@@ -6592,16 +6813,7 @@ document.querySelectorAll('.quick-action-btn').forEach(btn => {
 
     // ==================== UTILITY FUNCTIONS ====================
 
-    function formatDate(dateString, format = 'full') {
-        if (!dateString) return 'Not specified';
-        const date = new Date(dateString);
-        
-        if (format === 'short') {
-            return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit' });
-        }
-        
-        return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    }
+    // formatDate is already defined above for PDF, use the same one
 
     function getProjectStatusBadgeClass(status) {
         const statusMap = {
@@ -6789,17 +7001,34 @@ function ensureBootstrapLoaded() {
         },
         
         addField: function(type) {
+            // FIXED: Validate field type
+            const validTypes = ['text', 'number', 'select', 'checkbox'];
+            if (!validTypes.includes(type)) {
+                console.warn('Invalid field type:', type);
+                return;
+            }
+            
             const fieldId = 'field_' + Date.now();
             const field = {
                 id: fieldId,
                 type: type,
-                label: 'New Field',
+                label: this.getDefaultLabel(type),
                 required: false,
                 options: type === 'select' ? ['Option 1', 'Option 2'] : []
             };
             
             this.currentForm.push(field);
             this.updateFormPreview();
+        },
+        
+        getDefaultLabel: function(type) {
+            const labels = {
+                'text': 'Text Field',
+                'number': 'Number Field',
+                'select': 'Dropdown Select',
+                'checkbox': 'Checkbox'
+            };
+            return labels[type] || 'New Field';
         },
         
         updateFormPreview: function() {
@@ -7316,9 +7545,12 @@ function initApiKeyManagement() {
         if (savedKey && useDemo !== 'true') {
             apiKeyInput.value = '••••••••••••••••';
             apiKeyInput.disabled = false;
+            // FIXED: Set placeholder to show a key is stored
+            apiKeyInput.placeholder = 'API key stored (••••••••)';
         } else {
             apiKeyInput.value = '';
             apiKeyInput.disabled = useDemo === 'true';
+            apiKeyInput.placeholder = 'Enter your API key from weatherapi.com';
         }
     }
     
@@ -7366,7 +7598,9 @@ function initApiKeyManagement() {
                 apiKeyInputElem.disabled = this.checked;
                 if (this.checked) {
                     apiKeyInputElem.value = '';
-                } else if (apiKeyInputElem.value === '') {
+                    apiKeyInputElem.placeholder = 'Enter your API key from weatherapi.com';
+                } else if (apiKeyInputElem.value === '' || apiKeyInputElem.value === '••••••••••••••••') {
+                    apiKeyInputElem.value = '';
                     apiKeyInputElem.placeholder = 'Enter your API key from weatherapi.com';
                 }
             }
@@ -7400,32 +7634,41 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-    // ==================== INITIALIZATION ====================
+// ==================== INITIALIZATION ====================
 
-    // Initialize the application
+// FIXED: Initialize the application with proper chart loading
+// FIXED: Initialize the application with proper chart loading
 function initApp() {
+    console.log("Initializing EcoManager Pro...");
+    
     db.init();
     auditLog.init();
-    loadDashboard();
+    
+    // Initialize UI components
     loadProjectSelects();
     initApiKeyManagement();
     setupViewToggle();
-    loadDataSummary();
-    
-    // Initialize features
-    formBuilder.init();
     setupHealthScorePreview();
-    
-    // Add this line
     setupHealthChartControls();
-    
-    // Weather initialization
     setupWeatherLocationSelector();
     
-    // IMPORTANT: Load weather data on startup
-    setTimeout(() => {
-        loadWeatherData();
-    }, 500);
+    // FIXED: Load charts after a small delay to ensure DOM is ready
+    setTimeout(function() {
+        console.log("Loading dashboard data...");
+        loadDashboard();
+        loadDataSummary();
+        
+        // FIXED: Initialize charts with proper timing
+        setTimeout(function() {
+            console.log("Loading charts...");
+            loadCharts();
+            // Force health chart to load
+            loadHealthChart();
+            
+            // Force weather data to load
+            loadWeatherData();
+        }, 200);
+    }, 100);
     
     // User onboarding
     userOnboarding.showTooltips();
@@ -7437,9 +7680,10 @@ function initApp() {
     });
 
     // Fix table scrolling on initial load
-    setTimeout(fixTableScrolling, 100);
+    setTimeout(fixTableScrolling, 300);
+    
+    console.log("EcoManager Pro initialized successfully!");
 }
-
     // Force layout recalculation on window load
     window.addEventListener('load', function() {
         const mainContent = document.querySelector('.main-content');
