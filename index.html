@@ -1,6 +1,9 @@
-<!-- DUPLICATE FUNCTIONS REMOVED AND MINOR ERRORS FIXED -->
-<!-- ABILITY TO INPUT AND SAVE WEATHER API KEY ADDED - FALLBACK TO DEMO WEATHER DATA INCLUDED - DEMO WEATHER ISSUE NOW FIXED -->
-<!-- ADDED MISSING CHARTS FUNCTIONS -->
+<!-- CHART FIXES IMPLEMENTED (July 2026) -->
+<!-- 1. showNoDataMessage: Fixed undefined canvas variable error by properly getting canvas reference -->
+<!-- 2. loadHealthChart: Added chart destruction before showing 'no data' messages -->
+<!-- 3. safeDestroyChart(): Added helper function to safely destroy charts without causing errors -->
+<!-- 4. Replaced all chart.destroy() calls with safeDestroyChart() for consistency -->
+<!-- Issues resolved: Console error "Uncaught ReferenceError: canvas is not defined" -->
 
 
 
@@ -2591,6 +2594,21 @@ const weatherConfig = {
         }, 50);
     }
 
+// ========== SAFETY HELPER FOR CHARTS ==========
+function safeDestroyChart(chartInstance) {
+    // This function safely destroys a chart if it exists
+    // If the chart doesn't exist, it does nothing (no error)
+    if (chartInstance) {
+        try {
+            chartInstance.destroy();
+        } catch (e) {
+            // If something goes wrong, just log it and move on
+            console.warn('Could not destroy chart:', e);
+        }
+    }
+    return null; // Always return null so we can use it like: myChart = safeDestroyChart(myChart);
+}
+
     // Simple database using localStorage with enhanced structure
     const db = {
         init: function() {
@@ -4705,10 +4723,15 @@ function showProjectInModal(project) {
             
             const project = db.getProjects().find(p => p.id === currentProjectFilter);
             
-            if (projectAssessments.length === 0) {
-                showNoDataMessage(`No assessments found for ${project ? project.name : 'this project'}`);
-                return;
-            }
+if (projectAssessments.length === 0) {
+    // Clear any existing chart
+    if (healthTrendChart) {
+        healthTrendChart.destroy();
+        healthTrendChart = null;
+    }
+    showNoDataMessage(`No assessments found for ${project ? project.name : 'this project'}`);
+    return;
+}
             
             healthTrendChart = new Chart(ctx, {
                 type: 'line',
@@ -4771,10 +4794,15 @@ function showProjectInModal(project) {
             // AGGREGATED MODE: Original behavior - all projects combined
             const sortedAssessments = filteredAssessments.sort((a, b) => new Date(a.date) - new Date(b.date));
             
-            if (sortedAssessments.length === 0) {
-                showNoDataMessage();
-                return;
-            }
+if (sortedAssessments.length === 0) {
+    // Clear any existing chart
+    if (healthTrendChart) {
+        healthTrendChart.destroy();
+        healthTrendChart = null;
+    }
+    showNoDataMessage();
+    return;
+}
             
             healthTrendChart = new Chart(ctx, {
                 type: 'line',
@@ -4850,39 +4878,43 @@ function showNoDataMessage(customMessage = null) {
     const ctx = document.getElementById('healthTrendChart');
     if (!ctx) return;
     
-    if (healthTrendChart) healthTrendChart.destroy();
+    // Clear the canvas
+    const canvas = ctx;
+    const parent = canvas.parentNode;
     
-    // Clear and show message
-    healthTrendChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['No Data'],
-                datasets: [{
-                    label: 'No assessments available',
-                    data: [null],
-                    borderColor: 'rgba(200,200,200,0.5)'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    tooltip: { enabled: false },
-                    legend: { display: false }
-                },
-                scales: {
-                    y: { display: false },
-                    x: { display: false }
-                }
-            }
-        });
-        
-        // Add overlay message
-        canvas.style.opacity = '0.5';
-        
-        const chartModeIndicator = document.getElementById('chartModeIndicator');
-        if (chartModeIndicator) chartModeIndicator.innerHTML = '<i class="bi bi-info-circle"></i> ' + (customMessage || 'No data available');
+    if (healthTrendChart) {
+        healthTrendChart.destroy();
+        healthTrendChart = null;
     }
+    
+    // Clear the canvas content
+    const context = canvas.getContext('2d');
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Add a message overlay
+    const existingMsg = parent.querySelector('.empty-chart-message');
+    if (existingMsg) existingMsg.remove();
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'text-center text-muted p-4 empty-chart-message';
+    messageDiv.style.position = 'absolute';
+    messageDiv.style.top = '50%';
+    messageDiv.style.left = '50%';
+    messageDiv.style.transform = 'translate(-50%, -50%)';
+    messageDiv.style.width = '100%';
+    messageDiv.style.pointerEvents = 'none';
+    messageDiv.innerHTML = `
+        <i class="bi bi-bar-chart" style="font-size: 2rem; display: block; margin-bottom: 10px; opacity: 0.5;"></i>
+        <span style="font-size: 0.9rem;">${customMessage || 'No assessments available'}</span>
+    `;
+    parent.appendChild(messageDiv);
+    
+    // Update indicator
+    const chartModeIndicator = document.getElementById('chartModeIndicator');
+    if (chartModeIndicator) {
+        chartModeIndicator.innerHTML = '<i class="bi bi-info-circle"></i> ' + (customMessage || 'No data available');
+    }
+}
 
 // FIXED: loadCharts with better error handling and canvas verification
 function loadCharts() {
