@@ -1435,6 +1435,83 @@ body {
         color: #e0e0e0;
     }
 }
+
+/* ===== CONTENT SECTIONS - ENSURE PROPER HIDING ===== */
+.content-section {
+    display: none !important;
+    width: 100%;
+    max-width: 100%;
+}
+
+.content-section.active {
+    display: block !important;
+}
+
+/* Force hide all child elements when section is not active */
+.content-section:not(.active),
+.content-section:not(.active) > *,
+.content-section:not(.active) .card,
+.content-section:not(.active) .row,
+.content-section:not(.active) .col-*,
+.content-section:not(.active) .table-responsive,
+.content-section:not(.active) #recent-activities,
+.content-section:not(.active) #upcoming-maintenance {
+    display: none !important;
+}
+
+/* Override for active section */
+.content-section.active,
+.content-section.active > *,
+.content-section.active .card,
+.content-section.active .row,
+.content-section.active .col-*,
+.content-section.active .table-responsive,
+.content-section.active #recent-activities,
+.content-section.active #upcoming-maintenance {
+    display: block !important;
+}
+
+/* Special fix for Recent Activities and Upcoming Maintenance cards */
+#dashboard.active #recent-activities,
+#dashboard.active #upcoming-maintenance,
+#dashboard.active .row.mt-4 .card {
+    display: block !important;
+}
+
+#dashboard:not(.active) #recent-activities,
+#dashboard:not(.active) #upcoming-maintenance,
+#dashboard:not(.active) .row.mt-4 .card {
+    display: none !important;
+}
+
+/* User Guide section fix */
+#user-guide {
+    display: none !important;
+}
+
+#user-guide.active {
+    display: block !important;
+}
+
+#user-guide:not(.active),
+#user-guide:not(.active) * {
+    display: none !important;
+}
+
+#user-guide.active,
+#user-guide.active * {
+    display: block !important;
+}
+
+/* But allow flex/grid display where needed */
+#user-guide.active .d-flex {
+    display: flex !important;
+}
+
+#user-guide.active .row {
+    display: flex !important;
+}
+
 </style>
 </head>
 <body>
@@ -2972,45 +3049,50 @@ const weatherConfig = {
         showUserGuideSection();
     });
 
-    function showUserGuideSection() {
-        // Check if User Guide section already exists
-        let userGuideSection = document.getElementById('user-guide');
+function showUserGuideSection() {
+    // Check if User Guide section already exists
+    let userGuideSection = document.getElementById('user-guide');
+    
+    if (!userGuideSection) {
+        // Create User Guide section
+        userGuideSection = document.createElement('div');
+        userGuideSection.id = 'user-guide';
+        userGuideSection.className = 'content-section';  // Make sure this class is added!
         
-        if (!userGuideSection) {
-            // Create User Guide section
-            userGuideSection = document.createElement('div');
-            userGuideSection.id = 'user-guide';
-            userGuideSection.className = 'content-section';
+        // Add User Guide content
+        userGuideSection.innerHTML = `
+            <div class="section-header">
+                <h2>User Guide</h2>
+                <p class="text-muted">Learn how to use EcoManager Pro effectively</p>
+            </div>
             
-            // Add User Guide content
-            userGuideSection.innerHTML = `
-                <div class="section-header">
-                    <h2>User Guide</h2>
-                    <p class="text-muted">Learn how to use EcoManager Pro effectively</p>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">EcoManager Pro Documentation</h5>
                 </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">EcoManager Pro Documentation</h5>
-                    </div>
-                    <div class="card-body">
-                        <iframe id="guideFrame" src="UserGuide.html" style="width: 100%; height: 700px; border: none; border-radius: 8px;"></iframe>
-                    </div>
+                <div class="card-body">
+                    <iframe id="guideFrame" src="UserGuide.html" style="width: 100%; height: 700px; border: none; border-radius: 8px;"></iframe>
                 </div>
-            `;
-            
-            // Add to main content
-            document.querySelector('.main-content').appendChild(userGuideSection);
-        }
+            </div>
+        `;
         
-        // Show the User Guide section
-        setTimeout(() => {
-            userGuideSection.classList.add('active');
-            
-            // Update page title
-            document.title = 'User Guide | EcoManager Pro';
-        }, 50);
+        // Add to main content
+        document.querySelector('.main-content').appendChild(userGuideSection);
     }
+    
+    // Show the User Guide section
+    setTimeout(() => {
+        // First hide all sections
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
+        });
+        // Then show the user guide
+        userGuideSection.classList.add('active');
+        
+        // Update page title
+        document.title = 'User Guide | EcoManager Pro';
+    }, 50);
+}
 
 // ========== SAFETY HELPER FOR CHARTS ==========
 function safeDestroyChart(chartInstance) {
@@ -7804,47 +7886,31 @@ document.querySelectorAll('.sidebar .nav-link').forEach(link => {
         document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
         this.classList.add('active');
         
-        // Show the corresponding section
         const target = this.getAttribute('data-target');
+        
+        // Special handling for User Guide
+        if (target === 'user-guide') {
+            // Hide all sections first
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            // Show the user guide
+            showUserGuideSection();
+            return;
+        }
+        
+        // Regular section handling
         document.querySelectorAll('.content-section').forEach(section => {
             section.classList.remove('active');
         });
         
         setTimeout(() => {
             const targetSection = document.getElementById(target);
-            if (targetSection) targetSection.classList.add('active');
-            
-            // Load data for the section
-            if (target === 'dashboard') loadDashboard();
-            if (target === 'projects') {
-                loadProjects();
-                setTimeout(() => {
-                    initProjectMap();
-                }, 100);
+            if (targetSection) {
+                targetSection.classList.add('active');
+                // ... rest of your code
             }
-            if (target === 'assessments') loadAssessments();
-            if (target === 'species') loadSpecies();
-            if (target === 'maintenance') {
-                loadMaintenance();
-                const listViewBtn = document.querySelector('[data-view="list-view"]');
-                if (listViewBtn) listViewBtn.click();
-            }
-            if (target === 'charts') loadCharts();
-            if (target === 'data') {
-                loadDataSummary();
-                loadProjectSelects();
-            }
-            if (target === 'weather') loadWeatherData();
-            
-            // ADD THIS LINE - Fix layout after navigation
-            ensureProperLayout();
         }, 50);
-        
-        // Update page title
-        const spanText = this.querySelector('span');
-        if (spanText) {
-            document.title = `${spanText.textContent} | EcoManager Pro`;
-        }
     });
 });
 
