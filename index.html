@@ -1224,6 +1224,18 @@
         body.user-guide-active #user-guide {
             display: block !important;
         }
+
+/* ===== SIMPLE MOBILE FIX - Just hide dashboard cards when not on dashboard ===== */
+@media (max-width: 768px) {
+    /* This is the ONLY fix needed - hide dashboard content when not on dashboard */
+    #dashboard:not(.active) .card,
+    #dashboard:not(.active) .quick-actions,
+    #dashboard:not(.active) .row,
+    #dashboard:not(.active) .section-header,
+    #dashboard:not(.active) .chart-container {
+        display: none !important;
+    }
+}
     </style>
 </head>
 <body>
@@ -7588,11 +7600,11 @@ function setupHealthScorePreview() {
         }
     };
 
-// ==================== NAVIGATION - COMPLETELY FIXED ====================
+// ==================== NAVIGATION - CLEAN VERSION ====================
 
 // Show User Guide function
 function showUserGuide() {
-    // FIRST: HIDE ALL content sections with both class and display
+    // HIDE ALL content sections
     document.querySelectorAll('.content-section').forEach(section => {
         section.classList.remove('active');
         section.style.display = 'none';
@@ -7602,18 +7614,14 @@ function showUserGuide() {
     let userGuideSection = document.getElementById('user-guide');
     
     if (!userGuideSection) {
-        // Create User Guide section
         userGuideSection = document.createElement('div');
         userGuideSection.id = 'user-guide';
         userGuideSection.className = 'content-section';
-        
-        // Add User Guide content
         userGuideSection.innerHTML = `
             <div class="section-header">
                 <h2><i class="bi bi-question-circle"></i> User Guide</h2>
                 <p class="text-muted">Learn how to use EcoManager Pro effectively</p>
             </div>
-            
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">EcoManager Pro Documentation</h5>
@@ -7623,8 +7631,6 @@ function showUserGuide() {
                 </div>
             </div>
         `;
-        
-        // Add to main content
         const mainContent = document.querySelector('.main-content');
         mainContent.appendChild(userGuideSection);
     }
@@ -7632,65 +7638,47 @@ function showUserGuide() {
     // SHOW ONLY the User Guide section
     userGuideSection.style.display = 'block';
     userGuideSection.classList.add('active');
-    
-    // Add class to body for CSS hiding
     document.body.classList.add('user-guide-active');
-    
-    // Update page title
     document.title = 'User Guide | EcoManager Pro';
     
-    // Ensure the iframe loads
     const guideFrame = document.getElementById('guideFrame');
     if (guideFrame) {
         guideFrame.src = guideFrame.src || 'UserGuide.html';
     }
 }
 
-// Main navigation handler - UPDATED with better mobile handling
+// Main navigation handler - CLEAN VERSION
 document.querySelectorAll('.sidebar .nav-link').forEach(link => {
     link.addEventListener('click', function(e) {
         e.preventDefault();
         
-        // Update active state
+        // Update active state on sidebar
         document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
         this.classList.add('active');
         
         const target = this.getAttribute('data-target');
         
-        // Check if this is the User Guide button (special handling)
+        // Handle User Guide
         if (this.id === 'userGuideBtn' || target === 'user-guide') {
             showUserGuide();
-            ensureProperLayout();
             return;
         }
         
-        // CRITICAL FIX: First, hide ALL content sections completely
+        // HIDE ALL content sections
         document.querySelectorAll('.content-section').forEach(section => {
             section.classList.remove('active');
             section.style.display = 'none';
-            // Ensure any child cards are also hidden
-            section.querySelectorAll('.card').forEach(card => {
-                card.style.display = 'none';
-            });
         });
         
-        // REMOVE user-guide-active class from body
+        // Remove user-guide class
         document.body.classList.remove('user-guide-active');
-        
-        // Reset document title
         document.title = 'EcoManager Pro | Ecosystem Management';
         
         // SHOW the target section
         const targetSection = document.getElementById(target);
         if (targetSection) {
-            // Show the section
             targetSection.style.display = 'block';
             targetSection.classList.add('active');
-            
-            // Show all cards within the section
-            targetSection.querySelectorAll('.card').forEach(card => {
-                card.style.display = 'block';
-            });
         }
         
         // Load data for the section
@@ -7698,9 +7686,7 @@ document.querySelectorAll('.sidebar .nav-link').forEach(link => {
             loadDashboard();
         } else if (target === 'projects') {
             loadProjects();
-            setTimeout(function() {
-                initProjectMap();
-            }, 100);
+            setTimeout(function() { initProjectMap(); }, 100);
         } else if (target === 'assessments') {
             loadAssessments();
         } else if (target === 'species') {
@@ -7719,275 +7705,11 @@ document.querySelectorAll('.sidebar .nav-link').forEach(link => {
             if (weatherSection) {
                 weatherSection.style.display = 'block';
                 weatherSection.classList.add('active');
-                weatherSection.querySelectorAll('.card').forEach(card => {
-                    card.style.display = 'block';
-                });
             }
             loadWeatherData();
         }
-        
-        // Fix layout after navigation
-        ensureProperLayout();
     });
 });
-
-// Fix User Guide button separately - ensure it works
-const userGuideBtn = document.getElementById('userGuideBtn');
-if (userGuideBtn) {
-    // Remove existing listeners by cloning
-    const newBtn = userGuideBtn.cloneNode(true);
-    userGuideBtn.parentNode.replaceChild(newBtn, userGuideBtn);
-    
-    newBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        
-        // Update active state
-        document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
-        this.classList.add('active');
-        
-        showUserGuide();
-        ensureProperLayout();
-    });
-}
-
-function ensureProperLayout() {
-    setTimeout(function() {
-        const mainContent = document.querySelector('.main-content');
-        const sidebar = document.querySelector('.sidebar');
-        const flexContainer = document.querySelector('.d-flex');
-        
-        if (mainContent) {
-            mainContent.style.opacity = '0.99';
-            mainContent.style.padding = '0';
-            mainContent.style.margin = '0';
-            setTimeout(function() {
-                mainContent.style.opacity = '1';
-            }, 10);
-        }
-        
-        if (flexContainer) {
-            flexContainer.style.gap = '0';
-        }
-        
-        if (sidebar) {
-            sidebar.style.margin = '0';
-            sidebar.style.padding = '0';
-        }
-        
-        // Trigger window resize event to force any responsive adjustments
-        window.dispatchEvent(new Event('resize'));
-        
-        // Scroll to top of page when changing sections
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        // Fix table scrolling
-        fixTableScrolling();
-        
-        // Force layout recalculation
-        fixLayout();
-        
-        // Clean up dashboard elements if User Guide is active
-        cleanupDashboardElements();
-    }, 50);
-}
-
-// Fix for table horizontal scrolling - ensure tables are scrollable
-function fixTableScrolling() {
-    // Make sure all table-responsive divs have proper styling
-    document.querySelectorAll('.table-responsive').forEach(container => {
-        container.style.overflowX = 'auto';
-        container.style.width = '100%';
-        container.style.display = 'block';
-    });
-    
-    // Set minimum widths on tables to ensure horizontal scroll appears
-    const projectsTable = document.getElementById('projects-table');
-    if (projectsTable && projectsTable.closest('.table-responsive')) {
-        projectsTable.style.minWidth = '1000px';
-    }
-    
-    const maintenanceTable = document.getElementById('maintenance-table');
-    if (maintenanceTable && maintenanceTable.closest('.table-responsive')) {
-        maintenanceTable.style.minWidth = '900px';
-    }
-    
-    const speciesTable = document.getElementById('species-table');
-    if (speciesTable && speciesTable.closest('.table-responsive')) {
-        speciesTable.style.minWidth = '700px';
-    }
-    
-    const assessmentsTable = document.getElementById('assessments-table');
-    if (assessmentsTable && assessmentsTable.closest('.table-responsive')) {
-        assessmentsTable.style.minWidth = '600px';
-    }
-}
-
-// Force layout recalculation
-function fixLayout() {
-    // Force reflow
-    document.body.style.display = 'none';
-    document.body.offsetHeight; // Force reflow
-    document.body.style.display = '';
-    
-    // Ensure main content has correct width and no gaps
-    const mainContent = document.querySelector('.main-content');
-    const sidebar = document.querySelector('.sidebar');
-    const flexContainer = document.querySelector('.d-flex');
-    
-    if (mainContent && sidebar && flexContainer) {
-        const sidebarWidth = parseInt(getComputedStyle(document.documentElement)
-            .getPropertyValue('--sidebar-width'));
-        
-        // Ensure no gap between sidebar and content
-        flexContainer.style.gap = '0';
-        mainContent.style.marginLeft = '0';
-        mainContent.style.paddingLeft = '0';
-        sidebar.style.marginRight = '0';
-        sidebar.style.paddingRight = '0';
-        
-        // Set widths correctly
-        mainContent.style.width = `calc(100% - ${sidebarWidth}px)`;
-        mainContent.style.maxWidth = `calc(100% - ${sidebarWidth}px)`;
-    }
-}
-
-// Clean up dashboard elements when User Guide is active
-function cleanupDashboardElements() {
-    const userGuide = document.getElementById('user-guide');
-    if (userGuide && userGuide.classList.contains('active')) {
-        document.body.classList.add('user-guide-active');
-        // Also hide all other content sections directly
-        document.querySelectorAll('.content-section').forEach(section => {
-            if (section.id !== 'user-guide') {
-                section.classList.remove('active');
-                section.style.display = 'none';
-            }
-        });
-    } else {
-        document.body.classList.remove('user-guide-active');
-    }
-}
-
-// Call this after any navigation or window resize
-window.addEventListener('resize', fixLayout);
-window.addEventListener('load', fixLayout);
-// Call this after any navigation or window resize
-window.addEventListener('resize', fixLayout);
-window.addEventListener('load', fixLayout);
-// FIXED initApiKeyManagement
-function initApiKeyManagement() {
-    console.log("Initializing API key management");
-    
-    const savedKey = localStorage.getItem('weatherApiKey');
-    // Default to demo mode if no preference is set
-    let useDemo = localStorage.getItem('useDemoData');
-    if (useDemo === null) {
-        useDemo = 'true';
-        localStorage.setItem('useDemoData', 'true');
-        console.log("Defaulting to demo mode");
-    }
-    
-    // Update the checkbox state
-    const useDemoCheckbox = document.getElementById('useDemoData');
-    if (useDemoCheckbox) {
-        useDemoCheckbox.checked = useDemo === 'true';
-        console.log("Demo checkbox set to:", useDemoCheckbox.checked);
-    }
-    
-    const apiKeyInput = document.getElementById('apiKeyInput');
-    if (apiKeyInput) {
-        if (savedKey && useDemo !== 'true') {
-            apiKeyInput.value = '••••••••••••••••';
-            apiKeyInput.disabled = false;
-            // FIXED: Set placeholder to show a key is stored
-            apiKeyInput.placeholder = 'API key stored (••••••••)';
-        } else {
-            apiKeyInput.value = '';
-            apiKeyInput.disabled = useDemo === 'true';
-            apiKeyInput.placeholder = 'Enter your API key from weatherapi.com';
-        }
-    }
-    
-    const saveBtn = document.getElementById('saveApiKeyBtn');
-    if (saveBtn) {
-        // Remove any existing listeners to avoid duplicates
-        const newSaveBtn = saveBtn.cloneNode(true);
-        saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
-        
-        newSaveBtn.addEventListener('click', function() {
-            const apiKey = document.getElementById('apiKeyInput').value;
-            const useDemoData = document.getElementById('useDemoData').checked;
-            
-            console.log("Save clicked - useDemoData:", useDemoData, "apiKey length:", apiKey.length);
-            
-            if (!useDemoData && (!apiKey || apiKey === '••••••••••••••••')) {
-                showToast('API Key Required', 'Please enter a valid API key from weatherapi.com', 'warning');
-                return;
-            }
-            
-            if (!useDemoData) {
-                localStorage.setItem('weatherApiKey', apiKey);
-                localStorage.setItem('useDemoData', 'false');
-                showToast('API Key Saved', 'Your API key has been saved. Click Refresh to see live conditions.', 'success');
-            } else {
-                localStorage.setItem('weatherApiKey', '');
-                localStorage.setItem('useDemoData', 'true');
-                showToast('Demo Mode', 'Using demo weather data', 'info');
-            }
-            
-            // Reload weather data
-            loadWeatherData();
-        });
-    }
-    
-    const useDemoCheckboxElem = document.getElementById('useDemoData');
-    if (useDemoCheckboxElem) {
-        // Remove any existing listeners
-        const newCheckbox = useDemoCheckboxElem.cloneNode(true);
-        useDemoCheckboxElem.parentNode.replaceChild(newCheckbox, useDemoCheckboxElem);
-        
-        newCheckbox.addEventListener('change', function() {
-            const apiKeyInputElem = document.getElementById('apiKeyInput');
-            if (apiKeyInputElem) {
-                apiKeyInputElem.disabled = this.checked;
-                if (this.checked) {
-                    apiKeyInputElem.value = '';
-                    apiKeyInputElem.placeholder = 'Enter your API key from weatherapi.com';
-                } else if (apiKeyInputElem.value === '' || apiKeyInputElem.value === '••••••••••••••••') {
-                    apiKeyInputElem.value = '';
-                    apiKeyInputElem.placeholder = 'Enter your API key from weatherapi.com';
-                }
-            }
-        });
-        
-        // Initial state
-        const apiKeyInputElem = document.getElementById('apiKeyInput');
-        if (apiKeyInputElem) {
-            apiKeyInputElem.disabled = newCheckbox.checked;
-        }
-    }
-}
-
-// Make sure loadWeatherData is called on weather section show
-// Add this to your navigation handler for the weather section
-function showWeatherSection() {
-    console.log("Showing weather section");
-    setTimeout(function() {
-        loadWeatherData();
-    }, 100);
-}
-
-// Also add a manual refresh button handler
-document.addEventListener('DOMContentLoaded', function() {
-    const refreshBtn = document.getElementById('refreshWeather');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', function() {
-            console.log("Manual refresh clicked");
-            loadWeatherData();
-        });
-    }
-});
-
 // ==================== INITIALIZATION ====================
 
 // FIXED: Initialize the application with proper chart loading
@@ -8052,6 +7774,56 @@ function initApp() {
 
     // Start the app when the DOM is loaded
     document.addEventListener('DOMContentLoaded', initApp);
+
+// ===== SIMPLE ORIENTATION FIX =====
+// Just re-apply the active state after orientation change
+window.addEventListener('orientationchange', function() {
+    // Wait for the rotation to complete
+    setTimeout(function() {
+        // Get the currently active section
+        const activeSection = document.querySelector('.content-section.active');
+        if (!activeSection) return;
+        
+        // Temporarily remove and re-add the active class to force a re-render
+        const sectionId = activeSection.id;
+        activeSection.classList.remove('active');
+        
+        // Force a reflow
+        void activeSection.offsetHeight;
+        
+        // Re-add the active class
+        activeSection.classList.add('active');
+        
+        // Also ensure the sidebar link is active
+        document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-target') === sectionId) {
+                link.classList.add('active');
+            }
+        });
+    }, 300);
+});
+
+// Also handle resize events (covers all device rotations)
+let resizeTimer;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        // Only on mobile portrait mode
+        if (width < height && width <= 768) {
+            const activeSection = document.querySelector('.content-section.active');
+            if (activeSection) {
+                // Just ensure the active class is still applied
+                if (!activeSection.classList.contains('active')) {
+                    activeSection.classList.add('active');
+                }
+            }
+        }
+    }, 250);
+});
 </script>
 </body>
 </html>
