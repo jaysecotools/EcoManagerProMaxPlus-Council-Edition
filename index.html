@@ -629,379 +629,428 @@
             }
         }
 
-        /* ===== MOBILE RESPONSIVENESS FIXES - COMPLETE ===== */
-        @media (max-width: 768px) {
-            /* Main container - ensure proper stacking */
-            .container-fluid > .d-flex {
-                flex-direction: column;
-                height: 100vh;
-            }
-            
-            /* Sidebar as bottom tab bar */
-            .sidebar {
-                width: 100% !important;
-                height: auto !important;
-                min-height: 65px !important;
-                max-height: 65px !important;
-                position: fixed !important;
-                bottom: 0 !important;
-                top: auto !important;
-                left: 0 !important;
-                right: 0 !important;
-                z-index: 1000 !important;
-                background: linear-gradient(to bottom, var(--primary), var(--secondary)) !important;
-                box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.2) !important;
-                overflow: hidden !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                border-radius: 0 !important;
-                flex-shrink: 0 !important;
-            }
-            
-            /* Hide logo on mobile */
-            .sidebar .logo {
-                display: none !important;
-            }
-            
-            /* Navigation as scrollable tab bar */
-            .sidebar .nav {
-                display: flex !important;
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                overflow-x: auto !important;
-                overflow-y: hidden !important;
-                padding: 4px 6px !important;
-                margin: 0 !important;
-                gap: 2px !important;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: thin;
-                scrollbar-color: rgba(255,255,255,0.3) transparent;
-                height: 100% !important;
-                align-items: center !important;
-                justify-content: flex-start !important;
-            }
-            
-            .sidebar .nav::-webkit-scrollbar {
-                height: 3px;
-            }
-            
-            .sidebar .nav::-webkit-scrollbar-track {
-                background: transparent;
-            }
-            
-            .sidebar .nav::-webkit-scrollbar-thumb {
-                background: rgba(255, 255, 255, 0.3);
-                border-radius: 10px;
-            }
-            
-            /* Tab items */
-            .sidebar .nav-item {
-                flex: 0 0 auto !important;
-                min-width: 55px !important;
-                max-width: 75px !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-            
-            .sidebar .nav-link {
-                display: flex !important;
-                flex-direction: column !important;
-                align-items: center !important;
-                justify-content: center !important;
-                padding: 4px 6px !important;
-                margin: 0 !important;
-                border-radius: 6px !important;
-                font-size: 0.6rem !important;
-                text-align: center !important;
-                min-height: 48px !important;
-                white-space: nowrap !important;
-                color: rgba(255, 255, 255, 0.85) !important;
-                transition: all 0.2s ease !important;
-                width: 100% !important;
-                transform: none !important;
-            }
-            
-            .sidebar .nav-link i {
-                display: block !important;
-                margin: 0 0 2px 0 !important;
-                font-size: 1.1rem !important;
-                width: auto !important;
-            }
-            
-            .sidebar .nav-link span {
-                display: block !important;
-                font-size: 0.5rem !important;
-                line-height: 1.1 !important;
-                max-width: 55px !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-                white-space: nowrap !important;
-            }
-            
-            .sidebar .nav-link:hover,
-            .sidebar .nav-link.active {
-                background-color: rgba(255, 255, 255, 0.15) !important;
-                transform: none !important;
-                color: white !important;
-            }
-            
-            /* Hide logout and user info on mobile tab bar */
-            .sidebar .nav-item:last-child,
-            .sidebar .nav-item:has(.text-danger),
-            .sidebar .nav-item:has(.text-white-50),
-            .sidebar .nav-item:has(#currentUserRole),
-            .sidebar .nav-item:has(.badge) {
-                display: none !important;
-            }
-            
-            /* MAIN CONTENT - Fix for bottom bar */
-            .main-content {
-                margin-left: 0 !important;
-                margin-bottom: 65px !important;
-                padding: 12px !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                min-height: calc(100vh - 65px) !important;
-                overflow-x: hidden !important;
-                flex: 1 !important;
-            }
-            
-            /* CRITICAL FIX: Hide ALL content sections by default */
-            .main-content .content-section {
-                display: none !important;
-                width: 100% !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                min-height: auto !important;
-            }
-            
-            /* Show only the active section */
-            .main-content .content-section.active {
-                display: block !important;
-                width: 100% !important;
-                min-height: calc(100vh - 65px) !important;
-            }
-            
-            /* CRITICAL FIX: Hide ALL cards in inactive sections */
-            .main-content .content-section:not(.active) .card {
-                display: none !important;
-                visibility: hidden !important;
-                opacity: 0 !important;
-                height: 0 !important;
-                overflow: hidden !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-            
-            /* Show cards only in active section */
-            .main-content .content-section.active .card {
-                display: block !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                height: auto !important;
-                overflow: visible !important;
-                margin-bottom: 15px !important;
-            }
-            
-            /* Fix for cards on mobile */
-            .main-content .card {
-                margin-bottom: 15px !important;
-                width: 100% !important;
-                overflow: hidden !important;
-            }
-            
-            .main-content .row {
-                margin: 0 !important;
-                width: 100% !important;
-                display: flex !important;
-                flex-wrap: wrap !important;
-            }
-            
-            .main-content [class*="col-"] {
-                padding-left: 8px !important;
-                padding-right: 8px !important;
-                margin-bottom: 12px !important;
-                flex: 0 0 100% !important;
-                max-width: 100% !important;
-                width: 100% !important;
-            }
-            
-            /* Stat cards on mobile - 2 column layout */
-            .main-content .row .col-md-3,
-            .main-content .row .col-sm-6 {
-                flex: 0 0 50% !important;
-                max-width: 50% !important;
-                padding: 0 6px !important;
-            }
-            
-            .stat-card {
-                padding: 12px !important;
-            }
-            
-            .stat-card h3 {
-                font-size: 1.4rem !important;
-            }
-            
-            .stat-card .card-title {
-                font-size: 0.8rem !important;
-            }
-            
-            /* Quick actions on mobile */
-            .quick-actions {
-                flex-direction: row !important;
-                flex-wrap: wrap !important;
-                gap: 6px !important;
-            }
-            
-            .quick-action-btn {
-                flex: 1 1 calc(50% - 6px) !important;
-                min-width: 80px !important;
-                padding: 10px !important;
-            }
-            
-            .quick-action-btn h6 {
-                font-size: 0.7rem !important;
-            }
-            
-            .quick-action-btn i {
-                font-size: 1.2rem !important;
-                margin-bottom: 4px !important;
-            }
-            
-            /* Fix chart containers on mobile */
-            .chart-container {
-                height: 180px !important;
-            }
-            
-            /* Section headers on mobile */
-            .section-header {
-                padding: 0.75rem 1rem !important;
-            }
-            
-            .section-header h2 {
-                font-size: 1.1rem !important;
-            }
-            
-            .section-header p {
-                font-size: 0.8rem !important;
-                padding-left: 0 !important;
-            }
-            
-            /* Fix User Guide on mobile */
-            #user-guide .card-body {
-                padding: 0 !important;
-            }
-            
-            #guideFrame {
-                height: calc(100vh - 180px) !important;
-            }
-            
-            /* Ensure tables scroll horizontally on mobile */
-            .table-responsive {
-                overflow-x: auto !important;
-                -webkit-overflow-scrolling: touch;
-            }
-            
-            .table {
-                min-width: 600px !important;
-            }
-            
-            /* Weather widget on mobile */
-            .weather-widget {
-                padding: 12px !important;
-            }
-            
-            .weather-widget .d-flex {
-                flex-wrap: wrap !important;
-                gap: 8px !important;
-            }
-            
-            .weather-widget .d-flex > div {
-                flex: 1 1 30% !important;
-                min-width: 60px !important;
-            }
-            
-            /* Health chart filter on mobile */
-            .main-content .d-flex.gap-3 {
-                flex-wrap: wrap !important;
-                gap: 0.5rem !important;
-            }
-            
-            .main-content .vr {
-                display: none !important;
-            }
-            
-            #dashboardHealthFilter {
-                min-width: 150px !important;
-                font-size: 0.8rem !important;
-            }
-            
-            .btn-group.btn-group-sm {
-                width: 100% !important;
-            }
-            
-            .btn-group.btn-group-sm .btn {
-                flex: 1 !important;
-                font-size: 0.7rem !important;
-                padding: 4px 8px !important;
-            }
-            
-            /* Fix modal on mobile */
-            .modal-dialog {
-                margin: 10px !important;
-            }
-            
-            /* Fix forms on mobile */
-            form .row [class*="col-"] {
-                padding-left: 6px !important;
-                padding-right: 6px !important;
-            }
-            
-            form .mb-3 {
-                margin-bottom: 10px !important;
-            }
-            
-            /* Fix project cards */
-            .main-content .col-md-8,
-            .main-content .col-md-4 {
-                flex: 0 0 100% !important;
-                max-width: 100% !important;
-                padding: 0 8px !important;
-            }
-        }
+ /* ===== COMPLETE MOBILE RESPONSIVENESS FIXES ===== */
+@media (max-width: 768px) {
+    /* Main container - ensure proper stacking */
+    .container-fluid > .d-flex {
+        flex-direction: column;
+        height: 100vh;
+    }
+    
+    /* Sidebar as bottom tab bar */
+    .sidebar {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 65px !important;
+        max-height: 65px !important;
+        position: fixed !important;
+        bottom: 0 !important;
+        top: auto !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1000 !important;
+        background: linear-gradient(to bottom, var(--primary), var(--secondary)) !important;
+        box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.2) !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        flex-shrink: 0 !important;
+    }
+    
+    /* Hide logo on mobile */
+    .sidebar .logo {
+        display: none !important;
+    }
+    
+    /* Navigation as scrollable tab bar */
+    .sidebar .nav {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        padding: 4px 6px !important;
+        margin: 0 !important;
+        gap: 2px !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.3) transparent;
+        height: 100% !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+    }
+    
+    .sidebar .nav::-webkit-scrollbar {
+        height: 3px;
+    }
+    
+    .sidebar .nav::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .sidebar .nav::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+    }
+    
+    /* Tab items */
+    .sidebar .nav-item {
+        flex: 0 0 auto !important;
+        min-width: 55px !important;
+        max-width: 75px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .sidebar .nav-link {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 4px 6px !important;
+        margin: 0 !important;
+        border-radius: 6px !important;
+        font-size: 0.6rem !important;
+        text-align: center !important;
+        min-height: 48px !important;
+        white-space: nowrap !important;
+        color: rgba(255, 255, 255, 0.85) !important;
+        transition: all 0.2s ease !important;
+        width: 100% !important;
+        transform: none !important;
+    }
+    
+    .sidebar .nav-link i {
+        display: block !important;
+        margin: 0 0 2px 0 !important;
+        font-size: 1.1rem !important;
+        width: auto !important;
+    }
+    
+    .sidebar .nav-link span {
+        display: block !important;
+        font-size: 0.5rem !important;
+        line-height: 1.1 !important;
+        max-width: 55px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+    
+    .sidebar .nav-link:hover,
+    .sidebar .nav-link.active {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        transform: none !important;
+        color: white !important;
+    }
+    
+    /* Hide logout and user info on mobile tab bar */
+    .sidebar .nav-item:last-child,
+    .sidebar .nav-item:has(.text-danger),
+    .sidebar .nav-item:has(.text-white-50),
+    .sidebar .nav-item:has(#currentUserRole),
+    .sidebar .nav-item:has(.badge) {
+        display: none !important;
+    }
+    
+    /* MAIN CONTENT - Fix for bottom bar */
+    .main-content {
+        margin-left: 0 !important;
+        margin-bottom: 65px !important;
+        padding: 12px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: calc(100vh - 65px) !important;
+        overflow-x: hidden !important;
+        flex: 1 !important;
+    }
+    
+    /* ===== CRITICAL FIX: Hide ALL content sections by default ===== */
+    .content-section {
+        display: none !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        min-height: auto !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        position: absolute !important;
+        left: -9999px !important;
+        top: 0 !important;
+    }
+    
+    /* Show only the active section */
+    .content-section.active {
+        display: block !important;
+        width: 100% !important;
+        min-height: calc(100vh - 65px) !important;
+        visibility: visible !important;
+        height: auto !important;
+        overflow: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        position: relative !important;
+        left: 0 !important;
+        top: 0 !important;
+        padding: 0 0 20px 0 !important;
+    }
+    
+    /* ===== CRITICAL FIX: Hide ALL children of inactive sections ===== */
+    .content-section:not(.active) * {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    
+    /* Show cards only in active section */
+    .content-section.active .card {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        height: auto !important;
+        overflow: visible !important;
+        margin-bottom: 15px !important;
+    }
+    
+    /* Specifically target the dashboard bottom cards container */
+    #dashboard-bottom-cards {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    
+    /* Hide dashboard bottom cards when dashboard is not active */
+    #dashboard:not(.active) #dashboard-bottom-cards,
+    #dashboard:not(.active) #dashboard-bottom-cards .card,
+    #dashboard:not(.active) #dashboard-bottom-cards .col-md-6,
+    #dashboard:not(.active) #dashboard-bottom-cards .row {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        min-height: 0 !important;
+        max-height: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        position: absolute !important;
+        left: -9999px !important;
+    }
+    
+    /* Fix for cards on mobile */
+    .main-content .card {
+        margin-bottom: 15px !important;
+        width: 100% !important;
+        overflow: hidden !important;
+    }
+    
+    .main-content .row {
+        margin: 0 !important;
+        width: 100% !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+    }
+    
+    .main-content [class*="col-"] {
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+        margin-bottom: 12px !important;
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    
+    /* Stat cards on mobile - 2 column layout */
+    .main-content .row .col-md-3,
+    .main-content .row .col-sm-6 {
+        flex: 0 0 50% !important;
+        max-width: 50% !important;
+        padding: 0 6px !important;
+    }
+    
+    .stat-card {
+        padding: 12px !important;
+    }
+    
+    .stat-card h3 {
+        font-size: 1.4rem !important;
+    }
+    
+    .stat-card .card-title {
+        font-size: 0.8rem !important;
+    }
+    
+    /* Quick actions on mobile */
+    .quick-actions {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+    }
+    
+    .quick-action-btn {
+        flex: 1 1 calc(50% - 6px) !important;
+        min-width: 80px !important;
+        padding: 10px !important;
+    }
+    
+    .quick-action-btn h6 {
+        font-size: 0.7rem !important;
+    }
+    
+    .quick-action-btn i {
+        font-size: 1.2rem !important;
+        margin-bottom: 4px !important;
+    }
+    
+    /* Fix chart containers on mobile */
+    .chart-container {
+        height: 180px !important;
+    }
+    
+    /* Section headers on mobile */
+    .section-header {
+        padding: 0.75rem 1rem !important;
+    }
+    
+    .section-header h2 {
+        font-size: 1.1rem !important;
+    }
+    
+    .section-header p {
+        font-size: 0.8rem !important;
+        padding-left: 0 !important;
+    }
+    
+    /* Fix User Guide on mobile */
+    #user-guide .card-body {
+        padding: 0 !important;
+    }
+    
+    #guideFrame {
+        height: calc(100vh - 180px) !important;
+    }
+    
+    /* Ensure tables scroll horizontally on mobile */
+    .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .table {
+        min-width: 600px !important;
+    }
+    
+    /* Weather widget on mobile */
+    .weather-widget {
+        padding: 12px !important;
+    }
+    
+    .weather-widget .d-flex {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+    
+    .weather-widget .d-flex > div {
+        flex: 1 1 30% !important;
+        min-width: 60px !important;
+    }
+    
+    /* Health chart filter on mobile */
+    .main-content .d-flex.gap-3 {
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+    }
+    
+    .main-content .vr {
+        display: none !important;
+    }
+    
+    #dashboardHealthFilter {
+        min-width: 150px !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .btn-group.btn-group-sm {
+        width: 100% !important;
+    }
+    
+    .btn-group.btn-group-sm .btn {
+        flex: 1 !important;
+        font-size: 0.7rem !important;
+        padding: 4px 8px !important;
+    }
+    
+    /* Fix modal on mobile */
+    .modal-dialog {
+        margin: 10px !important;
+    }
+    
+    /* Fix forms on mobile */
+    form .row [class*="col-"] {
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+    }
+    
+    form .mb-3 {
+        margin-bottom: 10px !important;
+    }
+    
+    /* Fix project cards */
+    .main-content .col-md-8,
+    .main-content .col-md-4 {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        padding: 0 8px !important;
+    }
+}
 
-        /* Extra small devices */
-        @media (max-width: 480px) {
-            .sidebar .nav-item {
-                min-width: 50px !important;
-                max-width: 65px !important;
-            }
-            
-            .sidebar .nav-link {
-                font-size: 0.55rem !important;
-                padding: 4px 6px !important;
-                min-height: 42px !important;
-            }
-            
-            .sidebar .nav-link i {
-                font-size: 1rem !important;
-            }
-            
-            .sidebar .nav-link span {
-                font-size: 0.5rem !important;
-                max-width: 45px !important;
-            }
-            
-            .main-content {
-                padding: 8px !important;
-                margin-bottom: 60px !important;
-            }
-            
-            .quick-action-btn {
-                flex: 1 1 100% !important;
-                min-width: auto !important;
-            }
-        }
+/* Extra small devices */
+@media (max-width: 480px) {
+    .sidebar .nav-item {
+        min-width: 50px !important;
+        max-width: 65px !important;
+    }
+    
+    .sidebar .nav-link {
+        font-size: 0.55rem !important;
+        padding: 4px 6px !important;
+        min-height: 42px !important;
+    }
+    
+    .sidebar .nav-link i {
+        font-size: 1rem !important;
+    }
+    
+    .sidebar .nav-link span {
+        font-size: 0.5rem !important;
+        max-width: 45px !important;
+    }
+    
+    .main-content {
+        padding: 8px !important;
+        margin-bottom: 60px !important;
+    }
+    
+    .quick-action-btn {
+        flex: 1 1 100% !important;
+        min-width: auto !important;
+    }
+}
 
         /* Accessibility Improvements */
         .btn:focus, .form-control:focus, .form-select:focus {
@@ -1387,204 +1436,205 @@
             <!-- Main Content -->
             <div class="main-content">
                 <!-- Dashboard Section -->
-                <div id="dashboard" class="content-section active">
-                    <div class="section-header">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h2>Dashboard</h2>
-                                <p class="text-muted">Overview of your ecosystem management activities</p>
-                            </div>
-                            <div>
-                                <button class="btn btn-outline-primary btn-sm" onclick="userOnboarding.showTour()">
-                                    <i class="bi bi-info-circle"></i> Take Tour
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Quick Actions -->
-                    <div class="quick-actions">
-                        <div class="quick-action-btn" data-target="projects">
-                            <i class="bi bi-plus-circle"></i>
-                            <h6>New Project</h6>
-                        </div>
-                        <div class="quick-action-btn" data-target="assessments">
-                            <i class="bi bi-clipboard-plus"></i>
-                            <h6>New Assessment</h6>
-                        </div>
-                        <div class="quick-action-btn" data-target="species">
-                            <i class="bi bi-plus-square"></i>
-                            <h6>Add Species</h6>
-                        </div>
-                        <div class="quick-action-btn" data-target="maintenance">
-                            <i class="bi bi-tools"></i>
-                            <h6>Schedule Maintenance</h6>
-                        </div>
-                    </div>
-                    
-<!-- Add this right after the quick-actions div and before the row with stat cards -->
-<div class="row mb-3">
-    <div class="col-md-12">
-        <div class="card bg-light border-0 shadow-sm">
-            <div class="card-body py-3">
-                <div class="d-flex flex-wrap align-items-center gap-3">
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-funnel-fill text-primary me-2"></i>
-                        <label class="form-label fw-semibold mb-0 me-2">Health Chart Filter:</label>
-                    </div>
-                    
-                    <select class="form-select form-select-sm w-auto" id="dashboardHealthFilter" style="min-width: 200px;">
-                        <option value="all">📊 All Projects (Aggregated)</option>
-                        <!-- Projects will be loaded dynamically -->
-                    </select>
-                    
-                    <div class="vr"></div>
-                    
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-secondary active" id="viewAggregatedBtn">
-                            <i class="bi bi-bar-chart"></i> Aggregated
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" id="viewComparisonBtn">
-                            <i class="bi bi-graph-up"></i> Compare
-                        </button>
-                    </div>
-                    
-                    <div class="vr"></div>
-                    
-                    <div class="flex-grow-1">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-info-circle-fill text-info me-2"></i>
-                            <small class="text-muted" id="chartModeIndicator">
-                                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
-                                    <i class="bi bi-bar-chart me-1"></i> Showing all projects combined
-                                </span>
-                            </small>
-                        </div>
-                    </div>
-                </div>
+<div id="dashboard" class="content-section active">
+    <div class="section-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2>Dashboard</h2>
+                <p class="text-muted">Overview of your ecosystem management activities</p>
             </div>
-        </div>
-    </div>
-</div>
-
-                    <div class="row">
-                        <div class="col-md-3 col-sm-6">
-                            <div class="card stat-card" data-aos="fade-up" data-aos-delay="0">
-                                <div class="card-body">
-                                    <h5 class="card-title">Projects</h5>
-                                    <h3 id="projects-count" class="text-primary">0</h3>
-                                    <p class="text-muted mb-0">Active initiatives</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-6">
-                            <div class="card stat-card" data-aos="fade-up" data-aos-delay="100">
-                                <div class="card-body">
-                                    <h5 class="card-title">Assessments</h5>
-                                    <h3 id="assessments-count" class="text-info">0</h3>
-                                    <p class="text-muted mb-0">Surveys completed</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-6">
-                            <div class="card stat-card" data-aos="fade-up" data-aos-delay="200">
-                                <div class="card-body">
-                                    <h5 class="card-title">Species</h5>
-                                    <h3 id="species-count" class="text-success">0</h3>
-                                    <p class="text-muted mb-0">Tracked species</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-6">
-                            <div class="card stat-card" data-aos="fade-up" data-aos-delay="300">
-                                <div class="card-body">
-                                    <h5 class="card-title">Maintenance</h5>
-                                    <h3 id="maintenance-count" class="text-warning">0</h3>
-                                    <p class="text-muted mb-0">Scheduled tasks</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
- <div class="col-md-8">
-    <div class="card" data-aos="fade-right">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">Ecosystem Health Overview</h5>
-            <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    Last 6 Months
+            <div>
+                <button class="btn btn-outline-primary btn-sm" onclick="userOnboarding.showTour()">
+                    <i class="bi bi-info-circle"></i> Take Tour
                 </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" data-range="3">Last 3 Months</a></li>
-                    <li><a class="dropdown-item" href="#" data-range="6">Last 6 Months</a></li>
-                    <li><a class="dropdown-item" href="#" data-range="12">Last Year</a></li>
-                </ul>
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="chart-container">
-                <canvas id="healthTrendChart"></canvas>
-            </div>
-            <div class="mt-2 text-center" id="chartLegend">
-                <!-- Dynamic legend will appear here for comparison mode -->
             </div>
         </div>
     </div>
-</div>
-                        <div class="col-md-4">
-                            <div class="card" data-aos="fade-left">
-                                <div class="card-header">
-                                    <h5 class="card-title mb-0">Project Status</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="chart-container">
-                                        <canvas id="projectStatusChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
+    
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <div class="quick-action-btn" data-target="projects">
+            <i class="bi bi-plus-circle"></i>
+            <h6>New Project</h6>
+        </div>
+        <div class="quick-action-btn" data-target="assessments">
+            <i class="bi bi-clipboard-plus"></i>
+            <h6>New Assessment</h6>
+        </div>
+        <div class="quick-action-btn" data-target="species">
+            <i class="bi bi-plus-square"></i>
+            <h6>Add Species</h6>
+        </div>
+        <div class="quick-action-btn" data-target="maintenance">
+            <i class="bi bi-tools"></i>
+            <h6>Schedule Maintenance</h6>
+        </div>
+    </div>
+    
+    <!-- Health Chart Filter -->
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card bg-light border-0 shadow-sm">
+                <div class="card-body py-3">
+                    <div class="d-flex flex-wrap align-items-center gap-3">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-funnel-fill text-primary me-2"></i>
+                            <label class="form-label fw-semibold mb-0 me-2">Health Chart Filter:</label>
                         </div>
-                    </div>
-                    
-                    <div class="row mt-4">
-                        <div class="col-md-6">
-                            <div class="card" data-aos="fade-up">
-                                <div class="card-header">
-                                    <h5 class="card-title mb-0">Recent Activities</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover">
-                                            <thead>
-                                                <tr>
-                                                    <th>Date</th>
-                                                    <th>Type</th>
-                                                    <th>Description</th>
-                                                    <th>Project</th>
-                                                    <th>Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="recent-activities">
-                                                <!-- Activities will be loaded here -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+                        
+                        <select class="form-select form-select-sm w-auto" id="dashboardHealthFilter" style="min-width: 200px;">
+                            <option value="all">📊 All Projects (Aggregated)</option>
+                        </select>
+                        
+                        <div class="vr"></div>
+                        
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary active" id="viewAggregatedBtn">
+                                <i class="bi bi-bar-chart"></i> Aggregated
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="viewComparisonBtn">
+                                <i class="bi bi-graph-up"></i> Compare
+                            </button>
                         </div>
-                        <div class="col-md-6">
-                            <div class="card" data-aos="fade-up">
-                                <div class="card-header">
-                                    <h5 class="card-title mb-0">Upcoming Maintenance</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div id="upcoming-maintenance">
-                                        <!-- Upcoming maintenance will be loaded here -->
-                                    </div>
-                                </div>
+                        
+                        <div class="vr"></div>
+                        
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-info-circle-fill text-info me-2"></i>
+                                <small class="text-muted" id="chartModeIndicator">
+                                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
+                                        <i class="bi bi-bar-chart me-1"></i> Showing all projects combined
+                                    </span>
+                                </small>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats Row -->
+    <div class="row">
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card" data-aos="fade-up" data-aos-delay="0">
+                <div class="card-body">
+                    <h5 class="card-title">Projects</h5>
+                    <h3 id="projects-count" class="text-primary">0</h3>
+                    <p class="text-muted mb-0">Active initiatives</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card" data-aos="fade-up" data-aos-delay="100">
+                <div class="card-body">
+                    <h5 class="card-title">Assessments</h5>
+                    <h3 id="assessments-count" class="text-info">0</h3>
+                    <p class="text-muted mb-0">Surveys completed</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card" data-aos="fade-up" data-aos-delay="200">
+                <div class="card-body">
+                    <h5 class="card-title">Species</h5>
+                    <h3 id="species-count" class="text-success">0</h3>
+                    <p class="text-muted mb-0">Tracked species</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card" data-aos="fade-up" data-aos-delay="300">
+                <div class="card-body">
+                    <h5 class="card-title">Maintenance</h5>
+                    <h3 id="maintenance-count" class="text-warning">0</h3>
+                    <p class="text-muted mb-0">Scheduled tasks</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card" data-aos="fade-right">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Ecosystem Health Overview</h5>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Last 6 Months
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" data-range="3">Last 3 Months</a></li>
+                            <li><a class="dropdown-item" href="#" data-range="6">Last 6 Months</a></li>
+                            <li><a class="dropdown-item" href="#" data-range="12">Last Year</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="healthTrendChart"></canvas>
+                    </div>
+                    <div class="mt-2 text-center" id="chartLegend"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card" data-aos="fade-left">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Project Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="projectStatusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- RECENT ACTIVITIES AND MAINTENANCE CARDS - NOW WRAPPED IN A CONTAINER -->
+    <div id="dashboard-bottom-cards" class="row mt-4">
+        <div class="col-md-6">
+            <div class="card" data-aos="fade-up">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Activities</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Project</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-activities">
+                                <!-- Activities will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card" data-aos="fade-up">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Upcoming Maintenance</h5>
+                </div>
+                <div class="card-body">
+                    <div id="upcoming-maintenance">
+                        <!-- Upcoming maintenance will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
                 <!-- Projects Section -->
                 <div id="projects" class="content-section">
@@ -2782,36 +2832,26 @@ const weatherConfig = {
         }
     };
 
-// User Guide button functionality - COMPLETELY FIXED
+// User Guide button functionality - SIMPLIFIED
 document.getElementById('userGuideBtn').addEventListener('click', function(e) {
     e.preventDefault();
     
-    // FIRST: Remove active class from all nav links
+    // Remove active class from all nav links
     document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
     this.classList.add('active');
     
-    // SECOND: IMMEDIATELY hide ALL content sections
-    document.querySelectorAll('.content-section').forEach(section => {
-        section.classList.remove('active');
-        section.style.display = 'none';
-    });
-    
-    // THIRD: Get or create the User Guide section
+    // Get or create the User Guide section
     let userGuideSection = document.getElementById('user-guide');
     
     if (!userGuideSection) {
-        // Create User Guide section
         userGuideSection = document.createElement('div');
         userGuideSection.id = 'user-guide';
         userGuideSection.className = 'content-section';
-        
-        // Add User Guide content
         userGuideSection.innerHTML = `
             <div class="section-header">
                 <h2><i class="bi bi-question-circle"></i> User Guide</h2>
                 <p class="text-muted">Learn how to use EcoManager Pro effectively</p>
             </div>
-            
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">EcoManager Pro Documentation</h5>
@@ -2821,27 +2861,12 @@ document.getElementById('userGuideBtn').addEventListener('click', function(e) {
                 </div>
             </div>
         `;
-        
-        // Add to main content
         const mainContent = document.querySelector('.main-content');
         mainContent.appendChild(userGuideSection);
     }
     
-    // FOURTH: Show ONLY the User Guide section
-    userGuideSection.style.display = 'block';
-    userGuideSection.classList.add('active');
-    
-    // FIFTH: Add class to body to hide dashboard elements via CSS
-    document.body.classList.add('user-guide-active');
-    
-    // Update page title
-    document.title = 'User Guide | EcoManager Pro';
-    
-    // Ensure the iframe loads
-    const guideFrame = document.getElementById('guideFrame');
-    if (guideFrame) {
-        guideFrame.src = guideFrame.src || 'UserGuide.html';
-    }
+    // Use the main navigation function
+    switchToSection('user-guide');
 });
 
 // ========== SAFETY HELPER FOR CHARTS ==========
@@ -6861,48 +6886,13 @@ function showEmptyChartMessage(canvas, message) {
         });
     }
 
-// Quick action handlers - FIXED to prevent flashing
+// Quick action handlers - Use the unified navigation
 document.querySelectorAll('.quick-action-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         const target = this.dataset.target;
-        
-        // Update sidebar
-        document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
-        const targetLink = document.querySelector(`[data-target="${target}"]`);
-        if (targetLink) targetLink.classList.add('active');
-        
-        // Hide all sections immediately
-        document.querySelectorAll('.content-section').forEach(section => {
-            section.classList.remove('active');
-        });
-        
-        // Show target section
-        const targetSection = document.getElementById(target);
-        if (targetSection) targetSection.classList.add('active');
-        
-        // Load data for the section
-        if (target === 'dashboard') loadDashboard();
-        if (target === 'projects') {
-            loadProjects();
-            setTimeout(() => {
-                initProjectMap();
-            }, 100);
+        if (target) {
+            switchToSection(target);
         }
-        if (target === 'assessments') loadAssessments();
-        if (target === 'species') loadSpecies();
-        if (target === 'maintenance') {
-            loadMaintenance();
-            const listViewBtn = document.querySelector('[data-view="list-view"]');
-            if (listViewBtn) listViewBtn.click();
-        }
-        if (target === 'charts') loadCharts();
-        if (target === 'data') {
-            loadDataSummary();
-            loadProjectSelects();
-        }
-        if (target === 'weather') loadWeatherData();
-        
-        ensureProperLayout();
     });
 });
 
@@ -7626,116 +7616,153 @@ function setupHealthScorePreview() {
         }
     };
 
-// ==================== NAVIGATION - CLEAN VERSION ====================
+// ==================== NAVIGATION - COMPLETE FIX ====================
 
-// Show User Guide function
-function showUserGuide() {
-    // HIDE ALL content sections
-    document.querySelectorAll('.content-section').forEach(section => {
+function switchToSection(sectionId) {
+    // Get all sections
+    const sections = document.querySelectorAll('.content-section');
+    const targetSection = document.getElementById(sectionId);
+    
+    if (!targetSection) {
+        console.warn('Target section not found:', sectionId);
+        return;
+    }
+    
+    // Check if on mobile
+    const isMobile = window.innerWidth <= 768;
+    
+    // FIRST: Remove user-guide-active class from body
+    document.body.classList.remove('user-guide-active');
+    
+    // SECOND: Completely hide ALL sections
+    sections.forEach(section => {
         section.classList.remove('active');
         section.style.display = 'none';
+        section.style.visibility = 'hidden';
+        section.style.height = '0';
+        section.style.overflow = 'hidden';
+        section.style.padding = '0';
+        section.style.margin = '0';
+        section.style.minHeight = '0';
+        section.style.maxHeight = '0';
+        section.style.opacity = '0';
+        section.style.pointerEvents = 'none';
+        section.style.position = 'absolute';
+        section.style.left = '-9999px';
+        section.style.top = '0';
     });
     
-    // Get or create the User Guide section
-    let userGuideSection = document.getElementById('user-guide');
+    // THIRD: Show the target section
+    targetSection.classList.add('active');
+    targetSection.style.display = 'block';
+    targetSection.style.visibility = 'visible';
+    targetSection.style.height = 'auto';
+    targetSection.style.overflow = 'visible';
+    targetSection.style.padding = isMobile ? '0 0 20px 0' : '0';
+    targetSection.style.margin = '0';
+    targetSection.style.minHeight = isMobile ? 'calc(100vh - 65px)' : 'auto';
+    targetSection.style.maxHeight = 'none';
+    targetSection.style.opacity = '1';
+    targetSection.style.pointerEvents = 'auto';
+    targetSection.style.position = 'relative';
+    targetSection.style.left = '0';
+    targetSection.style.top = '0';
     
-    if (!userGuideSection) {
-        userGuideSection = document.createElement('div');
-        userGuideSection.id = 'user-guide';
-        userGuideSection.className = 'content-section';
-        userGuideSection.innerHTML = `
-            <div class="section-header">
-                <h2><i class="bi bi-question-circle"></i> User Guide</h2>
-                <p class="text-muted">Learn how to use EcoManager Pro effectively</p>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">EcoManager Pro Documentation</h5>
-                </div>
-                <div class="card-body p-0">
-                    <iframe id="guideFrame" src="UserGuide.html" style="width: 100%; height: calc(100vh - 200px); border: none; border-radius: 0;"></iframe>
-                </div>
-            </div>
-        `;
-        const mainContent = document.querySelector('.main-content');
-        mainContent.appendChild(userGuideSection);
+    // FOURTH: Update sidebar active state
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+    const activeLink = document.querySelector(`[data-target="${sectionId}"]`);
+    if (activeLink) {
+        activeLink.classList.add('active');
     }
     
-    // SHOW ONLY the User Guide section
-    userGuideSection.style.display = 'block';
-    userGuideSection.classList.add('active');
-    document.body.classList.add('user-guide-active');
-    document.title = 'User Guide | EcoManager Pro';
-    
-    const guideFrame = document.getElementById('guideFrame');
-    if (guideFrame) {
-        guideFrame.src = guideFrame.src || 'UserGuide.html';
+    // FIFTH: Update page title
+    if (sectionId === 'user-guide') {
+        document.title = 'User Guide | EcoManager Pro';
+    } else {
+        document.title = 'EcoManager Pro | Ecosystem Management';
     }
+    
+    // SIXTH: Load data for the section (skip user-guide)
+    if (sectionId === 'dashboard') {
+        loadDashboard();
+    } else if (sectionId === 'projects') {
+        loadProjects();
+        setTimeout(() => initProjectMap(), 100);
+    } else if (sectionId === 'assessments') {
+        loadAssessments();
+    } else if (sectionId === 'species') {
+        loadSpecies();
+    } else if (sectionId === 'maintenance') {
+        loadMaintenance();
+        const listViewBtn = document.querySelector('[data-view="list-view"]');
+        if (listViewBtn) listViewBtn.click();
+    } else if (sectionId === 'charts') {
+        loadCharts();
+    } else if (sectionId === 'data') {
+        loadDataSummary();
+        loadProjectSelects();
+    } else if (sectionId === 'weather') {
+        loadWeatherData();
+    }
+    // user-guide doesn't need data loading
+    
+    // Force a reflow to ensure styles apply
+    void targetSection.offsetHeight;
 }
 
-// Main navigation handler - CLEAN VERSION
+// Hook up sidebar navigation
 document.querySelectorAll('.sidebar .nav-link').forEach(link => {
     link.addEventListener('click', function(e) {
         e.preventDefault();
-        
-        // Update active state on sidebar
-        document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
-        this.classList.add('active');
-        
         const target = this.getAttribute('data-target');
-        
-        // Handle User Guide
-        if (this.id === 'userGuideBtn' || target === 'user-guide') {
-            showUserGuide();
-            return;
-        }
-        
-        // HIDE ALL content sections
-        document.querySelectorAll('.content-section').forEach(section => {
-            section.classList.remove('active');
-            section.style.display = 'none';
-        });
-        
-        // Remove user-guide class
-        document.body.classList.remove('user-guide-active');
-        document.title = 'EcoManager Pro | Ecosystem Management';
-        
-        // SHOW the target section
-        const targetSection = document.getElementById(target);
-        if (targetSection) {
-            targetSection.style.display = 'block';
-            targetSection.classList.add('active');
-        }
-        
-        // Load data for the section
-        if (target === 'dashboard') {
-            loadDashboard();
-        } else if (target === 'projects') {
-            loadProjects();
-            setTimeout(function() { initProjectMap(); }, 100);
-        } else if (target === 'assessments') {
-            loadAssessments();
-        } else if (target === 'species') {
-            loadSpecies();
-        } else if (target === 'maintenance') {
-            loadMaintenance();
-            const listViewBtn = document.querySelector('[data-view="list-view"]');
-            if (listViewBtn) listViewBtn.click();
-        } else if (target === 'charts') {
-            loadCharts();
-        } else if (target === 'data') {
-            loadDataSummary();
-            loadProjectSelects();
-        } else if (target === 'weather') {
-            const weatherSection = document.getElementById('weather');
-            if (weatherSection) {
-                weatherSection.style.display = 'block';
-                weatherSection.classList.add('active');
-            }
-            loadWeatherData();
+        if (target) {
+            switchToSection(target);
         }
     });
 });
+
+// Hook up quick action buttons
+document.querySelectorAll('.quick-action-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const target = this.dataset.target;
+        if (target) {
+            switchToSection(target);
+        }
+    });
+});
+
+// Handle User Guide button
+document.getElementById('userGuideBtn').addEventListener('click', function(e) {
+    e.preventDefault();
+    switchToSection('user-guide');
+});
+
+// Handle window resize for proper mobile/desktop switching
+let resizeTimeout;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        const activeSection = document.querySelector('.content-section.active');
+        if (activeSection) {
+            const sectionId = activeSection.id;
+            switchToSection(sectionId);
+        }
+    }, 200);
+});
+
+// Handle orientation change
+window.addEventListener('orientationchange', function() {
+    setTimeout(() => {
+        const activeSection = document.querySelector('.content-section.active');
+        if (activeSection) {
+            const sectionId = activeSection.id;
+            switchToSection(sectionId);
+        }
+    }, 400);
+});
+
 // ==================== INITIALIZATION ====================
 
 // FIXED: Initialize the application with proper chart loading
