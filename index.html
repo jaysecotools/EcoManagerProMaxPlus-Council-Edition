@@ -243,32 +243,33 @@ body {
     }
 }
 
-/* ===== MOBILE RESPONSIVENESS FIXES ===== */
+/* ===== MOBILE RESPONSIVENESS FIXES - COMPLETE REWRITE ===== */
 @media (max-width: 768px) {
-    /* Main container */
+    /* Main container - ensure proper stacking */
     .container-fluid > .d-flex {
         flex-direction: column;
         height: 100vh;
     }
     
-    /* Sidebar as bottom tab bar - FIXED */
+    /* Sidebar as bottom tab bar */
     .sidebar {
-        width: 100%;
-        height: auto;
-        min-height: 70px;
-        max-height: 70px;
-        bottom: 0;
-        top: auto;
-        position: fixed;
-        z-index: 1000;
-        background: linear-gradient(to bottom, var(--primary), var(--secondary));
-        box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.2);
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 65px !important;
+        max-height: 65px !important;
+        position: fixed !important;
+        bottom: 0 !important;
+        top: auto !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1000 !important;
+        background: linear-gradient(to bottom, var(--primary), var(--secondary)) !important;
+        box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.2) !important;
+        overflow: hidden !important;
         padding: 0 !important;
         margin: 0 !important;
-        border-radius: 0;
+        border-radius: 0 !important;
+        flex-shrink: 0 !important;
     }
     
     /* Hide logo on mobile */
@@ -276,24 +277,24 @@ body {
         display: none !important;
     }
     
-    /* Navigation as scrollable tab bar - FIXED */
+    /* Navigation as scrollable tab bar */
     .sidebar .nav {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         overflow-x: auto !important;
         overflow-y: hidden !important;
-        padding: 5px 8px !important;
+        padding: 4px 6px !important;
         margin: 0 !important;
         gap: 2px !important;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: thin;
         scrollbar-color: rgba(255,255,255,0.3) transparent;
-        height: 100%;
-        align-items: center;
+        height: 100% !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
     }
     
-    /* Custom scrollbar for better visibility */
     .sidebar .nav::-webkit-scrollbar {
         height: 3px;
     }
@@ -307,11 +308,11 @@ body {
         border-radius: 10px;
     }
     
-    /* Tab items - FIXED to fit properly */
+    /* Tab items */
     .sidebar .nav-item {
         flex: 0 0 auto !important;
-        min-width: 60px !important;
-        max-width: 80px !important;
+        min-width: 55px !important;
+        max-width: 75px !important;
         margin: 0 !important;
         padding: 0 !important;
     }
@@ -321,30 +322,31 @@ body {
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
-        padding: 6px 8px !important;
+        padding: 4px 6px !important;
         margin: 0 !important;
-        border-radius: 8px !important;
-        font-size: 0.65rem !important;
+        border-radius: 6px !important;
+        font-size: 0.6rem !important;
         text-align: center !important;
-        min-height: 50px !important;
+        min-height: 48px !important;
         white-space: nowrap !important;
         color: rgba(255, 255, 255, 0.85) !important;
         transition: all 0.2s ease !important;
         width: 100% !important;
+        transform: none !important;
     }
     
     .sidebar .nav-link i {
         display: block !important;
         margin: 0 0 2px 0 !important;
-        font-size: 1.2rem !important;
+        font-size: 1.1rem !important;
         width: auto !important;
     }
     
     .sidebar .nav-link span {
         display: block !important;
-        font-size: 0.55rem !important;
-        line-height: 1.2 !important;
-        max-width: 60px !important;
+        font-size: 0.5rem !important;
+        line-height: 1.1 !important;
+        max-width: 55px !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         white-space: nowrap !important;
@@ -366,58 +368,100 @@ body {
         display: none !important;
     }
     
-    /* MAIN CONTENT - FIXED padding for bottom bar */
+    /* MAIN CONTENT - Fix for bottom bar */
     .main-content {
         margin-left: 0 !important;
-        margin-bottom: 70px !important;
+        margin-bottom: 65px !important;
         padding: 12px !important;
         width: 100% !important;
-        min-height: calc(100vh - 70px) !important;
+        max-width: 100% !important;
+        min-height: calc(100vh - 65px) !important;
         overflow-x: hidden !important;
+        flex: 1 !important;
     }
     
-    /* Fix for cards on mobile - ensure they don't overflow */
+    /* Ensure ALL content sections are visible when active */
+    .main-content .content-section {
+        display: none !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    .main-content .content-section.active {
+        display: block !important;
+        width: 100% !important;
+    }
+    
+    /* Fix for cards on mobile */
     .main-content .card {
         margin-bottom: 15px !important;
         width: 100% !important;
         overflow: hidden !important;
+        display: block !important;
     }
     
     .main-content .row {
         margin: 0 !important;
         width: 100% !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
     }
     
     .main-content [class*="col-"] {
         padding-left: 8px !important;
         padding-right: 8px !important;
         margin-bottom: 12px !important;
-        width: 100% !important;
         flex: 0 0 100% !important;
         max-width: 100% !important;
+        width: 100% !important;
     }
     
-    /* Stat cards on mobile */
+    /* Stat cards on mobile - 2 column layout */
+    .main-content .row .col-md-3,
+    .main-content .row .col-sm-6 {
+        flex: 0 0 50% !important;
+        max-width: 50% !important;
+        padding: 0 6px !important;
+    }
+    
+    .stat-card {
+        padding: 12px !important;
+    }
+    
     .stat-card h3 {
-        font-size: 1.5rem !important;
+        font-size: 1.4rem !important;
+    }
+    
+    .stat-card .card-title {
+        font-size: 0.8rem !important;
     }
     
     /* Quick actions on mobile */
     .quick-actions {
         flex-direction: row !important;
         flex-wrap: wrap !important;
-        gap: 8px !important;
+        gap: 6px !important;
     }
     
     .quick-action-btn {
-        flex: 1 1 calc(50% - 8px) !important;
-        min-width: 100px !important;
-        padding: 12px !important;
+        flex: 1 1 calc(50% - 6px) !important;
+        min-width: 80px !important;
+        padding: 10px !important;
+    }
+    
+    .quick-action-btn h6 {
+        font-size: 0.7rem !important;
+    }
+    
+    .quick-action-btn i {
+        font-size: 1.2rem !important;
+        margin-bottom: 4px !important;
     }
     
     /* Fix chart containers on mobile */
     .chart-container {
-        height: 200px !important;
+        height: 180px !important;
     }
     
     /* Section headers on mobile */
@@ -426,7 +470,12 @@ body {
     }
     
     .section-header h2 {
-        font-size: 1.2rem !important;
+        font-size: 1.1rem !important;
+    }
+    
+    .section-header p {
+        font-size: 0.8rem !important;
+        padding-left: 0 !important;
     }
     
     /* Fix User Guide on mobile */
@@ -462,9 +511,57 @@ body {
         flex: 1 1 30% !important;
         min-width: 60px !important;
     }
+    
+    /* Health chart filter on mobile */
+    .main-content .d-flex.gap-3 {
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+    }
+    
+    .main-content .vr {
+        display: none !important;
+    }
+    
+    #dashboardHealthFilter {
+        min-width: 150px !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .btn-group.btn-group-sm {
+        width: 100% !important;
+    }
+    
+    .btn-group.btn-group-sm .btn {
+        flex: 1 !important;
+        font-size: 0.7rem !important;
+        padding: 4px 8px !important;
+    }
+    
+    /* Fix modal on mobile */
+    .modal-dialog {
+        margin: 10px !important;
+    }
+    
+    /* Fix forms on mobile */
+    form .row [class*="col-"] {
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+    }
+    
+    form .mb-3 {
+        margin-bottom: 10px !important;
+    }
+    
+    /* Fix project cards */
+    .main-content .col-md-8,
+    .main-content .col-md-4 {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        padding: 0 8px !important;
+    }
 }
 
-/* Extra small devices (phones under 480px) */
+/* Extra small devices */
 @media (max-width: 480px) {
     .sidebar .nav-item {
         min-width: 50px !important;
@@ -7975,7 +8072,7 @@ document.querySelectorAll('.sidebar .nav-link').forEach(link => {
         // Reset document title
         document.title = 'EcoManager Pro | Ecosystem Management';
         
-        // SHOW the target section
+        // SHOW the target section - FORCE display block
         const targetSection = document.getElementById(target);
         if (targetSection) {
             targetSection.style.display = 'block';
@@ -7983,26 +8080,27 @@ document.querySelectorAll('.sidebar .nav-link').forEach(link => {
         }
         
         // Load data for the section
-        if (target === 'dashboard') loadDashboard();
-        if (target === 'projects') {
+        if (target === 'dashboard') {
+            loadDashboard();
+        } else if (target === 'projects') {
             loadProjects();
-            setTimeout(() => {
+            setTimeout(function() {
                 initProjectMap();
             }, 100);
-        }
-        if (target === 'assessments') loadAssessments();
-        if (target === 'species') loadSpecies();
-        if (target === 'maintenance') {
+        } else if (target === 'assessments') {
+            loadAssessments();
+        } else if (target === 'species') {
+            loadSpecies();
+        } else if (target === 'maintenance') {
             loadMaintenance();
             const listViewBtn = document.querySelector('[data-view="list-view"]');
             if (listViewBtn) listViewBtn.click();
-        }
-        if (target === 'charts') loadCharts();
-        if (target === 'data') {
+        } else if (target === 'charts') {
+            loadCharts();
+        } else if (target === 'data') {
             loadDataSummary();
             loadProjectSelects();
-        }
-        if (target === 'weather') {
+        } else if (target === 'weather') {
             // Make sure weather section is visible
             const weatherSection = document.getElementById('weather');
             if (weatherSection) {
@@ -8012,7 +8110,7 @@ document.querySelectorAll('.sidebar .nav-link').forEach(link => {
             loadWeatherData();
         }
         
-        // Fix layout
+        // Fix layout after navigation
         ensureProperLayout();
     });
 });
@@ -8154,6 +8252,9 @@ function cleanupDashboardElements() {
     }
 }
 
+// Call this after any navigation or window resize
+window.addEventListener('resize', fixLayout);
+window.addEventListener('load', fixLayout);
 // Call this after any navigation or window resize
 window.addEventListener('resize', fixLayout);
 window.addEventListener('load', fixLayout);
