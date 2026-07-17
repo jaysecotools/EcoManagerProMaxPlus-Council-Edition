@@ -7880,7 +7880,7 @@ function setupHealthScorePreview() {
 
     // ==================== NAVIGATION ====================
 
-// Navigation - UPDATED with layout fix
+// Navigation - FIXED to prevent dashboard content flashing
 document.querySelectorAll('.sidebar .nav-link').forEach(link => {
     link.addEventListener('click', function(e) {
         e.preventDefault();
@@ -7889,47 +7889,43 @@ document.querySelectorAll('.sidebar .nav-link').forEach(link => {
         document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
         this.classList.add('active');
         
-        // Show the corresponding section
         const target = this.getAttribute('data-target');
+        
+        // FIRST: Hide ALL content sections immediately
         document.querySelectorAll('.content-section').forEach(section => {
             section.classList.remove('active');
         });
         
-        setTimeout(() => {
-            const targetSection = document.getElementById(target);
-            if (targetSection) targetSection.classList.add('active');
-            
-            // Load data for the section
-            if (target === 'dashboard') loadDashboard();
-            if (target === 'projects') {
-                loadProjects();
-                setTimeout(() => {
-                    initProjectMap();
-                }, 100);
-            }
-            if (target === 'assessments') loadAssessments();
-            if (target === 'species') loadSpecies();
-            if (target === 'maintenance') {
-                loadMaintenance();
-                const listViewBtn = document.querySelector('[data-view="list-view"]');
-                if (listViewBtn) listViewBtn.click();
-            }
-            if (target === 'charts') loadCharts();
-            if (target === 'data') {
-                loadDataSummary();
-                loadProjectSelects();
-            }
-            if (target === 'weather') loadWeatherData();
-            
-            // ADD THIS LINE - Fix layout after navigation
-            ensureProperLayout();
-        }, 50);
-        
-        // Update page title
-        const spanText = this.querySelector('span');
-        if (spanText) {
-            document.title = `${spanText.textContent} | EcoManager Pro`;
+        // SECOND: Show the target section
+        const targetSection = document.getElementById(target);
+        if (targetSection) {
+            targetSection.classList.add('active');
         }
+        
+        // THIRD: Load data for the section (without setTimeout)
+        if (target === 'dashboard') loadDashboard();
+        if (target === 'projects') {
+            loadProjects();
+            setTimeout(() => {
+                initProjectMap();
+            }, 100);
+        }
+        if (target === 'assessments') loadAssessments();
+        if (target === 'species') loadSpecies();
+        if (target === 'maintenance') {
+            loadMaintenance();
+            const listViewBtn = document.querySelector('[data-view="list-view"]');
+            if (listViewBtn) listViewBtn.click();
+        }
+        if (target === 'charts') loadCharts();
+        if (target === 'data') {
+            loadDataSummary();
+            loadProjectSelects();
+        }
+        if (target === 'weather') loadWeatherData();
+        
+        // Fix layout
+        ensureProperLayout();
     });
 });
 
