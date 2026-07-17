@@ -713,9 +713,9 @@ body {
     /* BOTTOM TAB BAR - FIXED SCROLLING */
     .sidebar {
         width: 100% !important;
-        height: 60px !important;
-        min-height: 60px !important;
-        max-height: 60px !important;
+        height: 56px !important;
+        min-height: 56px !important;
+        max-height: 56px !important;
         position: fixed !important;
         bottom: 0 !important;
         top: auto !important;
@@ -736,7 +736,6 @@ body {
         display: none !important;
     }
 
-    /* Enable horizontal scrolling on the nav */
     .sidebar .nav {
         flex-direction: row !important;
         display: flex !important;
@@ -761,11 +760,10 @@ body {
         display: none !important;
     }
 
-    /* Each nav item - fixed size so they fit consistently */
     .sidebar .nav-item {
         flex: 0 0 auto !important;
-        min-width: 52px !important;
-        max-width: 72px !important;
+        min-width: 48px !important;
+        max-width: 64px !important;
         height: 100% !important;
         display: flex !important;
         align-items: center !important;
@@ -774,10 +772,10 @@ body {
     }
 
     .sidebar .nav-link {
-        padding: 4px 6px !important;
-        font-size: 0.5rem !important;
+        padding: 2px 4px !important;
+        font-size: 0.45rem !important;
         text-align: center !important;
-        border-radius: 6px !important;
+        border-radius: 4px !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
@@ -789,7 +787,7 @@ body {
         border: none !important;
         transition: none !important;
         gap: 1px !important;
-        min-height: 44px !important;
+        min-height: 40px !important;
         touch-action: manipulation !important;
         margin: 0 !important;
         transform: none !important;
@@ -804,7 +802,7 @@ body {
     }
 
     .sidebar .nav-link i {
-        font-size: 1.2rem !important;
+        font-size: 1.1rem !important;
         margin: 0 !important;
         display: block !important;
         line-height: 1.2 !important;
@@ -812,12 +810,12 @@ body {
     }
 
     .sidebar .nav-link span {
-        font-size: 0.45rem !important;
+        font-size: 0.4rem !important;
         display: block !important;
-        max-width: 60px !important;
+        max-width: 52px !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
-        line-height: 1.1 !important;
+        line-height: 1 !important;
         font-weight: 400 !important;
         white-space: nowrap !important;
         width: 100% !important;
@@ -825,7 +823,7 @@ body {
         flex-shrink: 0 !important;
     }
 
-    /* Gradient fade on right to indicate more items */
+    /* Fade gradient on right */
     .sidebar::after {
         content: '' !important;
         position: absolute !important;
@@ -839,10 +837,10 @@ body {
         display: block !important;
     }
 
-    /* MAIN CONTENT - ensure bottom padding for the tab bar */
+    /* MAIN CONTENT */
     .main-content {
         margin-left: 0 !important;
-        margin-bottom: 65px !important;
+        margin-bottom: 60px !important;
         padding: 10px 12px 20px 12px !important;
         width: 100% !important;
         max-width: 100% !important;
@@ -850,9 +848,33 @@ body {
         min-height: auto !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
+        /* Fix for landscape */
+        height: auto !important;
+        min-height: calc(100vh - 60px) !important;
     }
 
-    /* CARDS */
+    /* Fix for charts on mobile */
+    .chart-container {
+        height: 200px !important;
+        min-height: 180px !important;
+        max-height: 250px !important;
+        width: 100% !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+    
+    .chart-container canvas {
+        max-width: 100% !important;
+        height: 100% !important;
+        width: 100% !important;
+    }
+
+    /* Fix for the health trend chart container */
+    #healthTrendChart {
+        max-height: 200px !important;
+    }
+
+    /* Fix cards */
     .card {
         margin-bottom: 12px !important;
         border-radius: 10px !important;
@@ -861,13 +883,13 @@ body {
     }
     
     .card-body {
-        padding: 12px 14px !important;
+        padding: 10px 12px !important;
         overflow-x: auto !important;
     }
 
-    /* STAT CARDS */
+    /* Fix stat cards */
     .stat-card {
-        padding: 10px 6px !important;
+        padding: 8px 4px !important;
         text-align: center !important;
         border-left: none !important;
         border-top: 3px solid var(--accent) !important;
@@ -875,37 +897,37 @@ body {
     }
     
     .stat-card h3 {
-        font-size: 1.4rem !important;
+        font-size: 1.2rem !important;
         margin: 4px 0 !important;
     }
     
     .stat-card .card-title {
-        font-size: 0.7rem !important;
+        font-size: 0.65rem !important;
     }
 
     .col-6 {
-        padding-left: 6px !important;
-        padding-right: 6px !important;
+        padding-left: 4px !important;
+        padding-right: 4px !important;
     }
 
-    /* QUICK ACTIONS */
+    /* Fix quick actions */
     .quick-actions {
         display: grid !important;
         grid-template-columns: 1fr 1fr !important;
-        gap: 8px !important;
-        margin-bottom: 12px !important;
+        gap: 6px !important;
+        margin-bottom: 10px !important;
     }
 
     .quick-action-btn {
         min-width: unset !important;
-        padding: 10px 6px !important;
+        padding: 8px 4px !important;
         border-radius: 8px !important;
         flex: unset !important;
         text-align: center !important;
         background: white !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
         border: 1px solid #f0f0f0 !important;
-        min-height: 56px !important;
+        min-height: 48px !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
@@ -914,89 +936,199 @@ body {
     }
 
     .quick-action-btn i {
-        font-size: 1.2rem !important;
+        font-size: 1rem !important;
         margin-bottom: 0 !important;
         display: block !important;
     }
 
     .quick-action-btn h6 {
-        font-size: 0.65rem !important;
+        font-size: 0.6rem !important;
         margin-bottom: 0 !important;
         font-weight: 500 !important;
         line-height: 1.2 !important;
     }
 
-    /* TABLES with horizontal scroll */
+    /* Fix tables */
     .table-responsive {
-        margin: 0 -12px !important;
-        padding: 0 12px !important;
+        margin: 0 -10px !important;
+        padding: 0 10px !important;
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch !important;
     }
 
     .table {
-        min-width: 600px !important;
-        font-size: 0.75rem !important;
+        min-width: 500px !important;
+        font-size: 0.7rem !important;
     }
 
     .table td,
     .table th {
-        padding: 6px 8px !important;
+        padding: 4px 6px !important;
         white-space: nowrap !important;
     }
 
     .scroll-indicator {
         display: block !important;
         text-align: center !important;
-        padding: 3px 0 !important;
-        font-size: 0.6rem !important;
+        padding: 2px 0 !important;
+        font-size: 0.55rem !important;
         color: #999 !important;
         background: #f8f9fa !important;
         border-radius: 4px !important;
         margin-top: 4px !important;
+    }
+
+    /* Fix section headers */
+    .section-header {
+        padding: 0.75rem 1rem !important;
+        margin-bottom: 1rem !important;
+    }
+
+    .section-header h2 {
+        font-size: 1.2rem !important;
+    }
+
+    .section-header p {
+        font-size: 0.75rem !important;
+        padding-left: 1.8rem !important;
+    }
+
+    /* Fix forms on mobile */
+    .form-control,
+    .form-select {
+        padding: 8px 12px !important;
+        font-size: 0.85rem !important;
+        min-height: 38px !important;
+    }
+
+    .btn {
+        padding: 8px 14px !important;
+        font-size: 0.85rem !important;
+        min-height: 38px !important;
+    }
+
+    /* Fix the health chart filter bar */
+    .d-flex.flex-wrap.align-items-center.gap-3 {
+        gap: 6px !important;
+        flex-wrap: wrap !important;
+    }
+    
+    .d-flex.flex-wrap.align-items-center.gap-3 .form-select {
+        min-width: 140px !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .d-flex.flex-wrap.align-items-center.gap-3 .btn-group {
+        flex-wrap: wrap !important;
+    }
+    
+    .d-flex.flex-wrap.align-items-center.gap-3 .btn-group .btn {
+        font-size: 0.7rem !important;
+        padding: 4px 8px !important;
+        min-height: 30px !important;
+    }
+}
+
+/* ===== LANDSCAPE MODE FIXES FOR MOBILE ===== */
+@media (max-width: 768px) and (orientation: landscape) {
+    .sidebar {
+        height: 48px !important;
+        min-height: 48px !important;
+        max-height: 48px !important;
+    }
+
+    .main-content {
+        margin-bottom: 52px !important;
+        min-height: calc(100vh - 52px) !important;
+        padding: 8px 10px 16px 10px !important;
+    }
+
+    .sidebar .nav-link i {
+        font-size: 0.9rem !important;
+    }
+
+    .sidebar .nav-link span {
+        font-size: 0.35rem !important;
+    }
+
+    .sidebar .nav-item {
+        min-width: 40px !important;
+        max-width: 52px !important;
+    }
+
+    .chart-container {
+        height: 150px !important;
+        min-height: 120px !important;
+        max-height: 180px !important;
+    }
+
+    .stat-card h3 {
+        font-size: 1rem !important;
+    }
+
+    .quick-action-btn {
+        min-height: 36px !important;
+        padding: 4px 6px !important;
+    }
+
+    .quick-action-btn i {
+        font-size: 0.8rem !important;
+    }
+
+    .quick-action-btn h6 {
+        font-size: 0.5rem !important;
+    }
+
+    .card-body {
+        padding: 6px 8px !important;
     }
 }
 
 /* ===== VERY SMALL PHONES (<400px) ===== */
 @media (max-width: 400px) {
     .sidebar .nav-item {
-        min-width: 44px !important;
-        max-width: 58px !important;
+        min-width: 40px !important;
+        max-width: 52px !important;
     }
     
     .sidebar .nav-link i {
-        font-size: 1rem !important;
+        font-size: 0.9rem !important;
     }
     
     .sidebar .nav-link span {
-        font-size: 0.4rem !important;
-        max-width: 44px !important;
+        font-size: 0.35rem !important;
+        max-width: 40px !important;
     }
     
     .quick-actions {
-        grid-template-columns: 1fr 1fr 1fr !important;
-        gap: 5px !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 4px !important;
     }
     
     .quick-action-btn {
-        padding: 8px 4px !important;
-        min-height: 48px !important;
+        padding: 6px 3px !important;
+        min-height: 40px !important;
     }
     
     .quick-action-btn i {
-        font-size: 1rem !important;
+        font-size: 0.8rem !important;
     }
     
     .quick-action-btn h6 {
-        font-size: 0.55rem !important;
+        font-size: 0.5rem !important;
     }
     
     .stat-card h3 {
-        font-size: 1.2rem !important;
+        font-size: 1rem !important;
     }
     
     .stat-card .card-title {
-        font-size: 0.6rem !important;
+        font-size: 0.55rem !important;
+    }
+
+    .chart-container {
+        height: 150px !important;
+        min-height: 130px !important;
     }
 }
 
