@@ -3350,23 +3350,32 @@ function safeDestroyChart(chartInstance) {
 
     // ==================== WEATHER API FUNCTIONS ====================
 
-    // Enhanced weather functions with backend proxy pattern - FIXED with better error handling
+// Enhanced weather functions with backend proxy pattern - FIXED with better error handling
 async function getWeatherByCoords(lat, lon) {
     // Check if we should use demo data
     const useDemoData = localStorage.getItem('useDemoData') !== 'false';
-    const savedApiKey = localStorage.getItem('weatherApiKey');
-    const hasValidApiKey = savedApiKey && savedApiKey !== '' && savedApiKey !== 'YOUR_API_KEY_HERE';
+    
+    // Get API key from localStorage or input field
+    let apiKey = localStorage.getItem('weatherApiKey');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    if (apiKeyInput && apiKeyInput.value && apiKeyInput.value.trim() !== '' && apiKeyInput.value.trim() !== 'YOUR_API_KEY_HERE') {
+        apiKey = apiKeyInput.value.trim();
+    }
+    
+    const hasValidApiKey = apiKey && apiKey !== '' && apiKey !== 'YOUR_API_KEY_HERE';
     
     if (!useDemoData && hasValidApiKey) {
         try {
-            // Use the saved API key from localStorage
-            const url = `https://api.weatherapi.com/v1/current.json?key=${savedApiKey}&q=${lat},${lon}&aqi=yes`;
+            // Use the API key
+            const url = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${lat},${lon}&aqi=yes`;
             const response = await fetch(url);
             
             // FIXED: Handle 401/403 specifically for invalid keys
             if (!response.ok) {
                 if (response.status === 401 || response.status === 403) {
                     localStorage.setItem('useDemoData', 'true');
+                    const useDemoCheckbox = document.getElementById('useDemoData');
+                    if (useDemoCheckbox) useDemoCheckbox.checked = true;
                     showToast('API Key Error', 'Your API key appears to be invalid. Please check it or use demo mode.', 'error');
                     return getDemoWeatherData(lat, lon);
                 }
@@ -3376,7 +3385,7 @@ async function getWeatherByCoords(lat, lon) {
             const data = await response.json();
             
             // Also fetch forecast
-            const forecastUrl = `https://api.weatherapi.com/v1/forecast.json?key=${savedApiKey}&q=${lat},${lon}&days=7&aqi=no`;
+            const forecastUrl = `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${lat},${lon}&days=7&aqi=no`;
             const forecastResponse = await fetch(forecastUrl);
             
             if (forecastResponse.ok) {
@@ -3392,6 +3401,8 @@ async function getWeatherByCoords(lat, lon) {
             console.error('Weather API error:', error);
             // FIXED: Automatically fall back to demo data on error
             localStorage.setItem('useDemoData', 'true');
+            const useDemoCheckbox = document.getElementById('useDemoData');
+            if (useDemoCheckbox) useDemoCheckbox.checked = true;
             showToast('Weather API Error', 'API call failed. Using demo data.', 'warning');
             return getDemoWeatherData(lat, lon);
         }
@@ -3409,6 +3420,8 @@ function getDemoWeatherData(lat, lon) {
     
     // Get location name from coordinates or use default
     let locationName = getLocationNameFromCoords(lat, lon);
+    
+    const forecastData = generateDemoForecast();
     
     // Return properly structured weather data
     return {
@@ -3434,9 +3447,7 @@ function getDemoWeatherData(lat, lon) {
             lat: lat,
             lon: lon
         },
-        forecast: {
-            forecastday: generateDemoForecast()
-        }
+        forecast: forecastData  // This already has { forecastday: [...] }
     };
 }
 
@@ -3475,7 +3486,11 @@ function generateDemoForecast() {
             }
         });
     }
-    return { forecastday: days };
+    
+    // Return as an object with forecastday array
+    return {
+        forecastday: days
+    };
 }
 
     // Icon mapping for WeatherAPI.com
@@ -3739,22 +3754,34 @@ async function loadWeatherData() {
         // Check if we should use demo data
         const useDemoData = localStorage.getItem('useDemoData') !== 'false';
         const savedApiKey = localStorage.getItem('weatherApiKey');
-        const hasValidApiKey = savedApiKey && savedApiKey !== '' && savedApiKey !== 'YOUR_API_KEY_HERE';
+        
+        // Get the API key - either from localStorage or from the input field
+        let apiKey = savedApiKey;
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        if (apiKeyInput && apiKeyInput.value && apiKeyInput.value.trim() !== '' && apiKeyInput.value.trim() !== 'YOUR_API_KEY_HERE') {
+            apiKey = apiKeyInput.value.trim();
+        }
+        
+        const hasValidApiKey = apiKey && apiKey !== '' && apiKey !== 'YOUR_API_KEY_HERE';
         
         console.log("useDemoData:", useDemoData);
         console.log("hasValidApiKey:", hasValidApiKey);
+        console.log("API Key length:", apiKey ? apiKey.length : 0);
         
         let weatherData;
         
         if (!useDemoData && hasValidApiKey) {
             // Try to fetch real data
             console.log("Fetching real weather data with key");
-            const url = `https://api.weatherapi.com/v1/current.json?key=${savedApiKey}&q=${lat},${lon}&aqi=yes`;
+            const url = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${lat},${lon}&aqi=yes`;
             const response = await fetch(url);
             
             if (!response.ok) {
                 if (response.status === 401 || response.status === 403) {
                     localStorage.setItem('useDemoData', 'true');
+                    // Also update the checkbox
+                    const useDemoCheckbox = document.getElementById('useDemoData');
+                    if (useDemoCheckbox) useDemoCheckbox.checked = true;
                     showToast('API Key Error', 'Your API key appears to be invalid. Using demo data.', 'error');
                     weatherData = getDemoWeatherData(lat, lon);
                 } else {
@@ -3765,7 +3792,7 @@ async function loadWeatherData() {
                 console.log("Real weather data received");
                 
                 // Also fetch forecast
-                const forecastUrl = `https://api.weatherapi.com/v1/forecast.json?key=${savedApiKey}&q=${lat},${lon}&days=7&aqi=no`;
+                const forecastUrl = `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${lat},${lon}&days=7&aqi=no`;
                 const forecastResponse = await fetch(forecastUrl);
                 
                 if (forecastResponse.ok) {
@@ -3776,6 +3803,9 @@ async function loadWeatherData() {
         } else {
             // Use demo data
             console.log("Using demo weather data");
+            if (!useDemoData && !hasValidApiKey) {
+                showToast('Weather API', 'Please enter a valid API key in Weather API Settings to see live data.', 'info');
+            }
             weatherData = getDemoWeatherData(lat, lon);
         }
         
@@ -3957,21 +3987,49 @@ function updateForecastChart(weatherData) {
     const tempChartCanvas = document.getElementById('temperatureChart');
     if (!tempChartCanvas) return;
     
-    if (temperatureChart) temperatureChart.destroy();
+    if (temperatureChart) {
+        temperatureChart.destroy();
+        temperatureChart = null;
+    }
     
     // Try to use real forecast data
     let labels = [];
     let temperatures = [];
     
-    if (weatherData && weatherData.forecast && weatherData.forecast.forecastday) {
-        // Use real forecast data
-        labels = weatherData.forecast.forecastday.map(day => {
-            const date = new Date(day.date);
-            return date.toLocaleDateString('en-AU', { weekday: 'short' });
-        });
-        temperatures = weatherData.forecast.forecastday.map(day => day.day.avgtemp_c || day.day.maxtemp_c);
-    } else {
-        // Fallback to demo data
+    // Check if we have valid forecast data
+    if (weatherData && weatherData.forecast) {
+        // Get forecastday - could be an array or an object with forecastday property
+        let forecastDays = weatherData.forecast.forecastday;
+        
+        // If forecastDays is not an array, try to get it from the forecast object
+        if (!Array.isArray(forecastDays) && weatherData.forecast.forecastday) {
+            forecastDays = weatherData.forecast.forecastday;
+        }
+        
+        // If we still don't have an array, try to use the forecast directly if it's an array
+        if (!Array.isArray(forecastDays) && Array.isArray(weatherData.forecast)) {
+            forecastDays = weatherData.forecast;
+        }
+        
+        // If we have an array with data, use it
+        if (Array.isArray(forecastDays) && forecastDays.length > 0) {
+            labels = forecastDays.map(day => {
+                const date = new Date(day.date);
+                return date.toLocaleDateString('en-AU', { weekday: 'short' });
+            });
+            temperatures = forecastDays.map(day => {
+                // Try different ways to get temperature
+                if (day.day && day.day.avgtemp_c) return day.day.avgtemp_c;
+                if (day.day && day.day.maxtemp_c) return day.day.maxtemp_c;
+                if (day.avgtemp_c) return day.avgtemp_c;
+                if (day.temp_c) return day.temp_c;
+                return 18; // fallback
+            });
+        }
+    }
+    
+    // If we couldn't get forecast data, use fallback
+    if (labels.length === 0) {
         labels = ['Today', '+1 day', '+2 days', '+3 days', '+4 days', '+5 days'];
         temperatures = [18, 19, 20, 19, 17, 16];
     }
@@ -3992,6 +4050,12 @@ function updateForecastChart(weatherData) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
             scales: {
                 y: {
                     beginAtZero: false,
@@ -7762,6 +7826,96 @@ window.addEventListener('orientationchange', function() {
         }
     }, 400);
 });
+
+// ==================== WEATHER API KEY MANAGEMENT ====================
+
+function initApiKeyManagement() {
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+    const useDemoCheckbox = document.getElementById('useDemoData');
+    
+    if (!apiKeyInput || !saveApiKeyBtn || !useDemoCheckbox) {
+        console.warn('Weather API key management elements not found');
+        return;
+    }
+    
+    // Load saved API key from localStorage
+    const savedApiKey = localStorage.getItem('weatherApiKey');
+    if (savedApiKey && savedApiKey !== '' && savedApiKey !== 'YOUR_API_KEY_HERE') {
+        apiKeyInput.value = savedApiKey;
+    }
+    
+    // Load saved demo mode preference
+    const useDemoData = localStorage.getItem('useDemoData');
+    if (useDemoData !== null) {
+        useDemoCheckbox.checked = useDemoData !== 'false';
+    } else {
+        // Default to true if not set
+        useDemoCheckbox.checked = true;
+        localStorage.setItem('useDemoData', 'true');
+    }
+    
+    // Save API key button handler
+    saveApiKeyBtn.addEventListener('click', function() {
+        const apiKey = apiKeyInput.value.trim();
+        
+        if (!apiKey || apiKey === '') {
+            showToast('API Key Required', 'Please enter a valid API key from weatherapi.com', 'warning');
+            return;
+        }
+        
+        if (apiKey === 'YOUR_API_KEY_HERE') {
+            showToast('Invalid API Key', 'Please replace the placeholder with your actual API key', 'error');
+            return;
+        }
+        
+        // Save the API key
+        localStorage.setItem('weatherApiKey', apiKey);
+        
+        // If user is saving a key, auto-disable demo mode
+        useDemoCheckbox.checked = false;
+        localStorage.setItem('useDemoData', 'false');
+        
+        showToast('API Key Saved', 'Your WeatherAPI key has been saved. Refreshing weather data...', 'success');
+        
+        // Refresh weather data with the new key
+        loadWeatherData();
+    });
+    
+    // Demo mode checkbox handler
+    useDemoCheckbox.addEventListener('change', function() {
+        const useDemo = this.checked;
+        localStorage.setItem('useDemoData', useDemo ? 'true' : 'false');
+        
+        if (!useDemo) {
+            // If turning off demo mode, check if we have an API key
+            const savedApiKey = localStorage.getItem('weatherApiKey');
+            if (!savedApiKey || savedApiKey === '' || savedApiKey === 'YOUR_API_KEY_HERE') {
+                showToast('API Key Required', 'Please enter your WeatherAPI key before disabling demo mode', 'warning');
+                // Re-check the checkbox
+                this.checked = true;
+                localStorage.setItem('useDemoData', 'true');
+                return;
+            }
+        }
+        
+        showToast(
+            useDemo ? 'Demo Mode Enabled' : 'Live Mode Enabled', 
+            useDemo ? 'Using demo weather data' : 'Using live weather data from WeatherAPI',
+            useDemo ? 'info' : 'success'
+        );
+        
+        // Refresh weather data
+        loadWeatherData();
+    });
+    
+    // Also handle Enter key on the input
+    apiKeyInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            saveApiKeyBtn.click();
+        }
+    });
+}
 
 // ==================== INITIALIZATION ====================
 
