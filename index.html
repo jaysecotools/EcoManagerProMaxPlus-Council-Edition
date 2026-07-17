@@ -3032,66 +3032,81 @@ const weatherConfig = {
         }
     };
 
-    // User Guide button functionality - Load in main content area
-    document.getElementById('userGuideBtn').addEventListener('click', function(e) {
-        e.preventDefault();
-        
-        // Navigate to the User Guide section like other menu items
-        document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
-        this.classList.add('active');
-        
-        // Hide all content sections
-        document.querySelectorAll('.content-section').forEach(section => {
-            section.classList.remove('active');
-        });
-        
-        // Create or show User Guide section
-        showUserGuideSection();
-    });
+// User Guide button functionality
+document.getElementById('userGuideBtn').addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
+    
+    // Update active state
+    document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+    this.classList.add('active');
+    
+    // Show the User Guide section
+    showUserGuideSection();
+});
 
 function showUserGuideSection() {
-    // Check if User Guide section already exists
     let userGuideSection = document.getElementById('user-guide');
     
     if (!userGuideSection) {
-        // Create User Guide section
         userGuideSection = document.createElement('div');
         userGuideSection.id = 'user-guide';
-        userGuideSection.className = 'content-section';  // Make sure this class is added!
+        userGuideSection.className = 'content-section';
         
-        // Add User Guide content
         userGuideSection.innerHTML = `
             <div class="section-header">
                 <h2>User Guide</h2>
-                <p class="text-muted">Learn how to use EcoManager Pro effectively</p>
+                <p class="text-muted">Complete documentation for EcoManager Pro</p>
             </div>
             
             <div class="card">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">EcoManager Pro Documentation</h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="openUserGuideInNewTab()">
+                        <i class="bi bi-box-arrow-up-right"></i> Open in New Tab
+                    </button>
                 </div>
-                <div class="card-body">
-                    <iframe id="guideFrame" src="UserGuide.html" style="width: 100%; height: 700px; border: none; border-radius: 8px;"></iframe>
+                <div class="card-body p-0">
+                    <div style="position: relative; width: 100%; height: 700px;">
+                        <div id="guideLoadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 1; color: #6c757d;">
+                            <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem;">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 mb-0">Loading User Guide...</p>
+                        </div>
+                        <iframe 
+                            id="guideFrame" 
+                            src="UserGuide.html" 
+                            style="width: 100%; height: 100%; border: none; background: white; position: relative; z-index: 2;"
+                            onload="document.getElementById('guideLoadingMessage').style.display='none'">
+                        </iframe>
+                    </div>
                 </div>
             </div>
         `;
         
-        // Add to main content
         document.querySelector('.main-content').appendChild(userGuideSection);
     }
     
-    // Show the User Guide section
-    setTimeout(() => {
-        // First hide all sections
-        document.querySelectorAll('.content-section').forEach(section => {
-            section.classList.remove('active');
-        });
-        // Then show the user guide
-        userGuideSection.classList.add('active');
-        
-        // Update page title
-        document.title = 'User Guide | EcoManager Pro';
-    }, 50);
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    userGuideSection.classList.add('active');
+    document.title = 'User Guide | EcoManager Pro';
+    
+    // Reset loading message and reload iframe
+    const loadingMsg = document.getElementById('guideLoadingMessage');
+    if (loadingMsg) loadingMsg.style.display = 'flex';
+    
+    const iframe = document.getElementById('guideFrame');
+    if (iframe) {
+        iframe.src = 'UserGuide.html';
+    }
+}
+
+function openUserGuideInNewTab() {
+    window.open('UserGuide.html', '_blank');
 }
 
 // ========== SAFETY HELPER FOR CHARTS ==========
@@ -7111,14 +7126,17 @@ function showEmptyChartMessage(canvas, message) {
         });
     }
 
-// Quick action handlers - ADD ensureProperLayout()
+// Quick action handlers - FIXED
 document.querySelectorAll('.quick-action-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         const target = this.dataset.target;
+        
+        // Update sidebar nav
         document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
         const targetLink = document.querySelector(`[data-target="${target}"]`);
         if (targetLink) targetLink.classList.add('active');
         
+        // CRITICAL: Hide ALL sections first
         document.querySelectorAll('.content-section').forEach(section => {
             section.classList.remove('active');
         });
@@ -7149,7 +7167,6 @@ document.querySelectorAll('.quick-action-btn').forEach(btn => {
             }
             if (target === 'weather') loadWeatherData();
             
-            // ADD THIS LINE
             ensureProperLayout();
         }, 50);
     });
@@ -7877,9 +7894,14 @@ function setupHealthScorePreview() {
 
     // ==================== NAVIGATION ====================
 
-// Navigation - UPDATED with layout fix
+// Navigation - FIXED to properly hide all sections
 document.querySelectorAll('.sidebar .nav-link').forEach(link => {
     link.addEventListener('click', function(e) {
+        // Skip if this is the User Guide button (it has its own handler)
+        if (this.id === 'userGuideBtn') {
+            return; // Let the other handler take care of it
+        }
+        
         e.preventDefault();
         
         // Update active state
@@ -7888,28 +7910,45 @@ document.querySelectorAll('.sidebar .nav-link').forEach(link => {
         
         const target = this.getAttribute('data-target');
         
-        // Special handling for User Guide
-        if (target === 'user-guide') {
-            // Hide all sections first
-            document.querySelectorAll('.content-section').forEach(section => {
-                section.classList.remove('active');
-            });
-            // Show the user guide
-            showUserGuideSection();
-            return;
-        }
-        
-        // Regular section handling
+        // CRITICAL: First hide ALL content sections
         document.querySelectorAll('.content-section').forEach(section => {
             section.classList.remove('active');
         });
         
+        // Show the target section
         setTimeout(() => {
             const targetSection = document.getElementById(target);
             if (targetSection) {
                 targetSection.classList.add('active');
-                // ... rest of your code
             }
+            
+            // Load data for the section
+            if (target === 'dashboard') loadDashboard();
+            if (target === 'projects') {
+                loadProjects();
+                setTimeout(() => {
+                    initProjectMap();
+                }, 100);
+            }
+            if (target === 'assessments') loadAssessments();
+            if (target === 'species') loadSpecies();
+            if (target === 'maintenance') {
+                loadMaintenance();
+                const listViewBtn = document.querySelector('[data-view="list-view"]');
+                if (listViewBtn) listViewBtn.click();
+            }
+            if (target === 'charts') loadCharts();
+            if (target === 'data') {
+                loadDataSummary();
+                loadProjectSelects();
+            }
+            if (target === 'weather') {
+                loadWeatherData();
+                const weatherSection = document.getElementById('weather');
+                if (weatherSection) weatherSection.classList.add('active');
+            }
+            
+            ensureProperLayout();
         }, 50);
     });
 });
