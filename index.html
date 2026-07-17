@@ -1,18 +1,8 @@
-<!-- CHART FIXES IMPLEMENTED (July 2026) -->
-<!-- 1. showNoDataMessage: Fixed undefined canvas variable error by properly getting canvas reference -->
-<!-- 2. loadHealthChart: Added chart destruction before showing 'no data' messages -->
-<!-- 3. safeDestroyChart(): Added helper function to safely destroy charts without causing errors -->
-<!-- 4. Replaced all chart.destroy() calls with safeDestroyChart() for consistency -->
-<!-- Issues resolved: Console error "Uncaught ReferenceError: canvas is not defined" -->
-<!-- Mobile adaptations implemented for better field use -->
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EcoManager Pro | Ecosystem Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
@@ -32,80 +22,76 @@
     <!-- Intro.js for user onboarding -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js@4.3.0/minified/introjs.min.css">
     <script src="https://cdn.jsdelivr.net/npm/intro.js@4.3.0/minified/intro.min.js"></script>
-<style>
-:root {
-    --primary: #2c5530;
-    --secondary: #4a7c59;
-    --accent: #3a8a5f;
-    --accent-light: #4da675;
-    --success: #28a745;
-    --warning: #ffc107;
-    --danger: #dc3545;
-    --light: #f8f9fa;
-    --dark: #1e2b1e;
-    --sidebar-width: 280px;
-    --transition: all 0.3s ease;
-    --info: #17a2b8;
-}
+ <style>
+        :root {
+            --primary: #2c5530;
+            --secondary: #4a7c59;
+            --accent: #3a8a5f;
+            --accent-light: #4da675;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --light: #f8f9fa;
+            --dark: #1e2b1e;
+            --sidebar-width: 280px;
+            --transition: all 0.3s ease;
+            --info: #17a2b8;
+        }
 
-* {
-    box-sizing: border-box;
-}
+        * {
+            box-sizing: border-box;
+        }
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f8f9fa;
-    color: #2c3e50;
-    line-height: 1.6;
-    overflow-x: hidden;
-    margin: 0;
-    padding: 0;
-}
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #2c3e50;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
 
-/* ===== SIDEBAR STYLES ===== */
-.sidebar .nav-link {
-    color: rgba(255, 255, 255, 0.85);
-    margin-bottom: 5px;
-    border-radius: 8px;
-    padding: 12px 15px;
-    transition: var(--transition);
-    font-weight: 500;
-}
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 5px;
+            border-radius: 8px;
+            padding: 12px 15px;
+            transition: var(--transition);
+            font-weight: 500;
+        }
 
-.sidebar .nav-link:hover,
-.sidebar .nav-link.active {
-    color: white;
-    background-color: rgba(255, 255, 255, 0.1);
-    transform: translateX(5px);
-}
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
 
-.sidebar .nav-link i {
-    margin-right: 12px;
-    font-size: 1.2rem;
-    width: 24px;
-    text-align: center;
-}
+        .sidebar .nav-link i {
+            margin-right: 12px;
+            font-size: 1.2rem;
+            width: 24px;
+            text-align: center;
+        }
 
-.logo {
-    font-weight: 700;
-    padding: 20px 25px;
-    font-size: 1.4rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    background-color: rgba(0, 0, 0, 0.1);
-}
+        .logo {
+            font-weight: 700;
+            padding: 20px 25px;
+            font-size: 1.4rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.1);
+        }
 
-.logo i {
-    margin-right: 10px;
-    color: var(--accent-light);
-}
+        .logo i {
+            margin-right: 10px;
+            color: var(--accent-light);
+        }
 
-/* ===== MAIN CONTENT & LAYOUT ===== */
+/* Main Content - CRITICAL FIX */
 .main-content {
     flex: 1;
-    padding: 0 !important;
-    margin: 0 !important;
+    padding: 0 !important; /* Force remove all padding */
+    margin: 0 !important; /* Force remove all margins */
     transition: var(--transition);
     min-height: 100vh;
     min-width: 0;
@@ -114,13 +100,61 @@ body {
     z-index: 1;
 }
 
+/* Remove gap between sidebar and content */
 .d-flex {
     display: flex !important;
-    align-items: flex-start !important;
+    align-items: flex-start;
     width: 100%;
-    gap: 0 !important;
+    gap: 0 !important; /* Force remove any gap */
 }
 
+/* Ensure no margin or padding creates space */
+.sidebar {
+    margin-right: 0;
+    padding-right: 0;
+}
+
+.main-content {
+    margin-left: 0;
+    padding-left: 0;
+}
+
+/* But keep internal card spacing */
+.main-content .card:first-child {
+    margin-top: 0;
+}
+
+/* Adjust column padding inside main-content */
+.main-content [class*="col-"] {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* First column in a row shouldn't have left padding */
+.main-content .row [class*="col-"]:first-child {
+    padding-left: 15px; /* Keep this for visual balance inside content */
+}
+
+/* Remove any default body margin that might affect layout */
+body {
+    margin: 0;
+    padding: 0;
+}
+
+/* Ensure container-fluid doesn't cause overflow */
+.container-fluid {
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Fix for flex layout */
+.d-flex {
+    display: flex !important;
+    align-items: flex-start;
+    width: 100%;
+}
+
+/* Sidebar fix for flex layout */
 .sidebar {
     flex-shrink: 0;
     width: var(--sidebar-width);
@@ -130,27 +164,30 @@ body {
     background: linear-gradient(to bottom, var(--primary), var(--secondary));
     color: white;
     box-shadow: 3px 0 15px rgba(0, 0, 0, 0.1);
-    margin: 0 !important;
-    padding: 0 !important;
+    margin: 0 !important; /* Remove any margin */
+    padding: 0 !important; /* Remove any padding */
 }
 
+/* Ensure container-fluid has no padding */
 .container-fluid {
     padding: 0 !important;
     margin: 0 !important;
-    overflow-x: hidden;
 }
 
-.container-fluid>.d-flex {
+/* Remove any margin/padding from the main container */
+.container-fluid > .d-flex {
     margin: 0;
     padding: 0;
 }
 
+/* Fix for row within main-content - ENSURE NO MARGINS */
 .main-content .row {
     margin-left: 0 !important;
     margin-right: 0 !important;
     width: 100%;
 }
 
+/* Ensure all cards and content stay within bounds */
 .main-content .card,
 .main-content .col-md-*,
 .main-content .col-* {
@@ -158,63 +195,309 @@ body {
     max-width: 100%;
 }
 
+/* Fix for the specific chart container that might be causing issues */
 .main-content .col-md-8,
 .main-content .col-md-4 {
     padding-left: 15px;
     padding-right: 15px;
 }
 
-.main-content [class*="col-"] {
-    padding-left: 15px;
-    padding-right: 15px;
+/* Mobile responsiveness fix */
+@media (max-width: 992px) {
+    .sidebar {
+        width: 70px;
+        overflow: hidden;
+    }
+    
+    .sidebar .logo span {
+        display: none;
+    }
+    
+    .sidebar .nav-link span {
+        display: none;
+    }
+    
+    .sidebar .nav-link i {
+        margin-right: 0;
+        font-size: 1.4rem;
+    }
+    
+    .sidebar:hover {
+        width: var(--sidebar-width);
+    }
+    
+    .sidebar:hover .logo span {
+        display: inline;
+    }
+    
+    .sidebar:hover .nav-link span {
+        display: inline;
+    }
+    
+    .sidebar:hover .nav-link i {
+        margin-right: 12px;
+    }
+    
+    .main-content {
+        padding: 20px;
+    }
 }
 
-/* ===== CARD STYLES ===== */
-.card {
-    margin-bottom: 25px;
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-    transition: var(--transition);
-    width: 100%;
+/* ===== MOBILE RESPONSIVENESS FIXES ===== */
+@media (max-width: 768px) {
+    /* Main container */
+    .container-fluid > .d-flex {
+        flex-direction: column;
+        height: 100vh;
+    }
+    
+    /* Sidebar as bottom tab bar - FIXED */
+    .sidebar {
+        width: 100%;
+        height: auto;
+        min-height: 70px;
+        max-height: 70px;
+        bottom: 0;
+        top: auto;
+        position: fixed;
+        z-index: 1000;
+        background: linear-gradient(to bottom, var(--primary), var(--secondary));
+        box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 0;
+    }
+    
+    /* Hide logo on mobile */
+    .sidebar .logo {
+        display: none !important;
+    }
+    
+    /* Navigation as scrollable tab bar - FIXED */
+    .sidebar .nav {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        padding: 5px 8px !important;
+        margin: 0 !important;
+        gap: 2px !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.3) transparent;
+        height: 100%;
+        align-items: center;
+    }
+    
+    /* Custom scrollbar for better visibility */
+    .sidebar .nav::-webkit-scrollbar {
+        height: 3px;
+    }
+    
+    .sidebar .nav::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .sidebar .nav::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+    }
+    
+    /* Tab items - FIXED to fit properly */
+    .sidebar .nav-item {
+        flex: 0 0 auto !important;
+        min-width: 60px !important;
+        max-width: 80px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .sidebar .nav-link {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 6px 8px !important;
+        margin: 0 !important;
+        border-radius: 8px !important;
+        font-size: 0.65rem !important;
+        text-align: center !important;
+        min-height: 50px !important;
+        white-space: nowrap !important;
+        color: rgba(255, 255, 255, 0.85) !important;
+        transition: all 0.2s ease !important;
+        width: 100% !important;
+    }
+    
+    .sidebar .nav-link i {
+        display: block !important;
+        margin: 0 0 2px 0 !important;
+        font-size: 1.2rem !important;
+        width: auto !important;
+    }
+    
+    .sidebar .nav-link span {
+        display: block !important;
+        font-size: 0.55rem !important;
+        line-height: 1.2 !important;
+        max-width: 60px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+    
+    .sidebar .nav-link:hover,
+    .sidebar .nav-link.active {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        transform: none !important;
+        color: white !important;
+    }
+    
+    /* Hide logout and user info on mobile tab bar */
+    .sidebar .nav-item:last-child,
+    .sidebar .nav-item:has(.text-danger),
+    .sidebar .nav-item:has(.text-white-50),
+    .sidebar .nav-item:has(#currentUserRole),
+    .sidebar .nav-item:has(.badge) {
+        display: none !important;
+    }
+    
+    /* MAIN CONTENT - FIXED padding for bottom bar */
+    .main-content {
+        margin-left: 0 !important;
+        margin-bottom: 70px !important;
+        padding: 12px !important;
+        width: 100% !important;
+        min-height: calc(100vh - 70px) !important;
+        overflow-x: hidden !important;
+    }
+    
+    /* Fix for cards on mobile - ensure they don't overflow */
+    .main-content .card {
+        margin-bottom: 15px !important;
+        width: 100% !important;
+        overflow: hidden !important;
+    }
+    
+    .main-content .row {
+        margin: 0 !important;
+        width: 100% !important;
+    }
+    
+    .main-content [class*="col-"] {
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+        margin-bottom: 12px !important;
+        width: 100% !important;
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+    
+    /* Stat cards on mobile */
+    .stat-card h3 {
+        font-size: 1.5rem !important;
+    }
+    
+    /* Quick actions on mobile */
+    .quick-actions {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+    
+    .quick-action-btn {
+        flex: 1 1 calc(50% - 8px) !important;
+        min-width: 100px !important;
+        padding: 12px !important;
+    }
+    
+    /* Fix chart containers on mobile */
+    .chart-container {
+        height: 200px !important;
+    }
+    
+    /* Section headers on mobile */
+    .section-header {
+        padding: 0.75rem 1rem !important;
+    }
+    
+    .section-header h2 {
+        font-size: 1.2rem !important;
+    }
+    
+    /* Fix User Guide on mobile */
+    #user-guide .card-body {
+        padding: 0 !important;
+    }
+    
+    #guideFrame {
+        height: calc(100vh - 180px) !important;
+    }
+    
+    /* Ensure tables scroll horizontally on mobile */
+    .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .table {
+        min-width: 600px !important;
+    }
+    
+    /* Weather widget on mobile */
+    .weather-widget {
+        padding: 12px !important;
+    }
+    
+    .weather-widget .d-flex {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+    
+    .weather-widget .d-flex > div {
+        flex: 1 1 30% !important;
+        min-width: 60px !important;
+    }
 }
 
-.card:hover {
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-    transform: translateY(-5px);
+/* Extra small devices (phones under 480px) */
+@media (max-width: 480px) {
+    .sidebar .nav-item {
+        min-width: 50px !important;
+        max-width: 65px !important;
+    }
+    
+    .sidebar .nav-link {
+        font-size: 0.55rem !important;
+        padding: 4px 6px !important;
+        min-height: 42px !important;
+    }
+    
+    .sidebar .nav-link i {
+        font-size: 1rem !important;
+    }
+    
+    .sidebar .nav-link span {
+        font-size: 0.5rem !important;
+        max-width: 45px !important;
+    }
+    
+    .main-content {
+        padding: 8px !important;
+        margin-bottom: 60px !important;
+    }
+    
+    .quick-action-btn {
+        flex: 1 1 100% !important;
+        min-width: auto !important;
+    }
 }
 
-.card-header {
-    background-color: white;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    padding: 15px 20px;
-    font-weight: 600;
-    color: var(--primary);
-    border-radius: 12px 12px 0 0 !important;
-}
-
-.card-body {
-    overflow-x: auto;
-}
-
-.stat-card {
-    text-align: center;
-    padding: 20px;
-    border-left: 4px solid var(--accent);
-}
-
-.stat-card h3 {
-    font-size: 2.2rem;
-    font-weight: 700;
-    margin: 10px 0;
-}
-
-.stat-card .card-title {
-    color: var(--secondary);
-    font-weight: 600;
-}
-
-/* ===== TABLE STYLES ===== */
+/* Better table handling */
 .table-responsive {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
@@ -229,344 +512,627 @@ body {
     margin-bottom: 0;
 }
 
-.table th {
-    font-weight: 600;
-    color: var(--primary);
-    border-top: none;
-    white-space: nowrap;
+/* Ensure no background creates visible gap */
+.container-fluid {
+    background-color: #f8f9fa; /* Match your body background */
 }
 
-.table td {
-    white-space: nowrap;
+.sidebar {
+    background: linear-gradient(to bottom, var(--primary), var(--secondary));
 }
 
-.table-hover tbody tr:hover {
-    background-color: rgba(58, 138, 95, 0.05);
+/* Specific table minimum widths */
+#projects-table { min-width: 1000px; }
+#maintenance-table { min-width: 900px; }
+#species-table { min-width: 700px; }
+#assessments-table { min-width: 600px; }
+
+        /* Card Styles */
+        .card {
+            margin-bottom: 25px;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: var(--transition);
+            width: 100%;
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 15px 20px;
+            font-weight: 600;
+            color: var(--primary);
+            border-radius: 12px 12px 0 0 !important;
+        }
+
+        .card-body {
+            overflow-x: auto;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .stat-card h3 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+
+        .stat-card .card-title {
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        /* Progress bar colors for health scores */
+        .progress-bar.bg-success { background-color: var(--success) !important; }
+        .progress-bar.bg-info { background-color: var(--info) !important; }
+        .progress-bar.bg-warning { background-color: var(--warning) !important; }
+        .progress-bar.bg-danger { background-color: var(--danger) !important; }
+        .progress-bar.bg-dark { background-color: var(--dark) !important; }
+
+        /* Table Styles - FIXED for horizontal scroll */
+        .table-responsive {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+        }
+
+        .table {
+            min-width: 800px;
+            width: 100%;
+            margin-bottom: 0;
+        }
+
+        .table th {
+            font-weight: 600;
+            color: var(--primary);
+            border-top: none;
+            white-space: nowrap;
+        }
+
+        .table td {
+            white-space: nowrap;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(58, 138, 95, 0.05);
+        }
+
+        /* Specific table minimum widths */
+        #projects-table { min-width: 1000px; }
+        #maintenance-table { min-width: 900px; }
+        #species-table { min-width: 700px; }
+        #assessments-table { min-width: 600px; }
+
+        /* Form Styles */
+        .form-control, .form-select {
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            transition: var(--transition);
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 0.25rem rgba(58, 138, 95, 0.25);
+        }
+
+        .btn {
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-light);
+            border-color: var(--accent-light);
+            transform: translateY(-2px);
+        }
+
+        /* Badge Styles */
+        .badge {
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        /* Chart Containers */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        /* Maintenance Items */
+        .maintenance-item {
+            border-left: 4px solid #6c757d;
+            padding-left: 15px;
+            margin-bottom: 15px;
+            transition: var(--transition);
+        }
+
+        .maintenance-item:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+        .maintenance-pending {
+            border-left-color: var(--warning);
+        }
+
+        .maintenance-completed {
+            border-left-color: var(--success);
+        }
+
+        .maintenance-overdue {
+            border-left-color: var(--danger);
+        }
+
+        .list-view, .calendar-view {
+            display: none;
+        }
+
+        .list-view.active, .calendar-view.active {
+            display: block;
+        }
+
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1100;
+        }
+
+        /* View Toggle */
+        .view-toggle {
+            margin-bottom: 20px;
+        }
+
+        /* Content Sections */
+        .content-section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+            width: 100%;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Risk Indicators */
+        .risk-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .risk-low {
+            background-color: var(--success);
+        }
+
+        .risk-medium {
+            background-color: var(--warning);
+        }
+
+        .risk-high {
+            background-color: var(--danger);
+        }
+
+        /* Map Styles */
+        .map-container {
+            height: 300px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        .location-coordinates {
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .map-preview {
+            height: 150px;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        /* For the modal map */
+        #projectMapModal .modal-dialog {
+            max-width: 900px;
+        }
+
+        #projectMapModal .map-container {
+            height: 500px;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        /* Ensure the map takes full container */
+        #modalProjectMap {
+            height: 100%;
+            width: 100%;
+            min-height: 500px;
+        }
+
+        /* New Features */
+        .progress-container {
+            margin: 20px 0;
+        }
+
+        .progress {
+            height: 10px;
+            border-radius: 5px;
+        }
+
+        .project-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .project-card:hover {
+            transform: scale(1.02);
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .quick-action-btn {
+            flex: 1;
+            min-width: 150px;
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            background: white;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .quick-action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .quick-action-btn i {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+
+        .weather-widget {
+            background: linear-gradient(135deg, #67b26f, #4ca2cd);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .weather-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .ecosystem-health-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .health-meter {
+            width: 100px;
+            height: 100px;
+            position: relative;
+        }
+
+        .health-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* Login Screen */
+        #login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s ease;
+        }
+
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-role-badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            margin-left: 8px;
+        }
+
+        /* Risk Matrix */
+        .risk-matrix {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2px;
+            margin: 15px 0;
+        }
+
+        .risk-cell {
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .risk-low { background-color: #d4edda; }
+        .risk-medium { background-color: #fff3cd; }
+        .risk-high { background-color: #f8d7da; }
+
+        /* Document List */
+        .document-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+
+        .document-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .document-icon {
+            font-size: 1.5rem;
+            margin-right: 15px;
+            color: var(--primary);
+        }
+
+        /* Forms */
+        form {
+            width: 100%;
+        }
+
+        /* Row fixes */
+        .row {
+            margin-left: 0;
+            margin-right: 0;
+            width: 100%;
+        }
+
+        [class*="col-"] {
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 992px) {
+            .sidebar {
+                width: 70px;
+                overflow: hidden;
+            }
+            
+            .sidebar .logo span {
+                display: none;
+            }
+            
+            .sidebar .nav-link span {
+                display: none;
+            }
+            
+            .sidebar .nav-link i {
+                margin-right: 0;
+                font-size: 1.4rem;
+            }
+            
+            .main-content {
+                margin-left: 70px;
+                width: calc(100% - 70px);
+            }
+            
+            .sidebar:hover {
+                width: var(--sidebar-width);
+            }
+            
+            .sidebar:hover .logo span {
+                display: inline;
+            }
+            
+            .sidebar:hover .nav-link span {
+                display: inline;
+            }
+            
+            .sidebar:hover .nav-link i {
+                margin-right: 12px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: 70px;
+                min-height: 70px;
+                bottom: 0;
+                top: auto;
+                padding: 0;
+            }
+            
+            .sidebar .logo {
+                display: none;
+            }
+            
+            .sidebar .nav {
+                flex-direction: row;
+                overflow-x: auto;
+                padding: 0.5rem;
+            }
+            
+            .sidebar .nav-item {
+                flex-shrink: 0;
+            }
+            
+            .sidebar .nav-link {
+                padding: 0.5rem;
+                margin-bottom: 0;
+                margin-right: 5px;
+                border-radius: 5px;
+                text-align: center;
+                font-size: 0.8rem;
+            }
+            
+            .sidebar .nav-link i {
+                margin-right: 0;
+                display: block;
+                margin-bottom: 0.25rem;
+                font-size: 1.2rem;
+            }
+            
+            .main-content {
+                margin-left: 0;
+                margin-bottom: 70px;
+                padding: 15px;
+                width: 100%;
+            }
+            
+            .stat-card h3 {
+                font-size: 1.8rem;
+            }
+            
+            .quick-actions {
+                flex-direction: column;
+            }
+        }
+
+        /* Accessibility Improvements */
+        .btn:focus, .form-control:focus, .form-select:focus {
+            box-shadow: 0 0 0 3px rgba(58, 138, 95, 0.5);
+        }
+        
+        .nav-link:focus {
+            outline: 2px solid var(--accent-light);
+            outline-offset: -2px;
+        }
+        
+        /* High contrast support */
+        @media (prefers-contrast: high) {
+            .sidebar {
+                background: var(--primary);
+            }
+            
+            .card {
+                border: 1px solid #ddd;
+            }
+        }
+        
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+                animation: none !important;
+            }
+        }
+
+        /* Dark Mode Support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #121212;
+                color: #e0e0e0;
+            }
+            
+            .card {
+                background-color: #1e1e1e;
+                color: #e0e0e0;
+            }
+            
+            .card-header {
+                background-color: #252525;
+                color: #e0e0e0;
+            }
+            
+            .table {
+                color: #e0e0e0;
+            }
+            
+            .form-control, .form-select {
+                background-color: #2d2d2d;
+                border-color: #444;
+                color: #e0e0e0;
+            }
+        }
+
+/* Fix for health chart filter gaps */
+.main-content .d-flex.gap-3 {
+    gap: 1rem !important;
 }
 
-#projects-table {
-    min-width: 1000px;
-}
-#maintenance-table {
-    min-width: 900px;
-}
-#species-table {
-    min-width: 700px;
-}
-#assessments-table {
-    min-width: 600px;
-}
-
-/* ===== FORM STYLES ===== */
-.form-control,
-.form-select {
-    padding: 12px 15px;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    transition: var(--transition);
-}
-
-.form-control:focus,
-.form-select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 0.25rem rgba(58, 138, 95, 0.25);
-}
-
-.btn {
-    border-radius: 8px;
-    padding: 10px 20px;
-    font-weight: 500;
-    transition: var(--transition);
-}
-
-.btn-primary {
-    background-color: var(--accent);
-    border-color: var(--accent);
-}
-
-.btn-primary:hover {
-    background-color: var(--accent-light);
-    border-color: var(--accent-light);
-    transform: translateY(-2px);
-}
-
-/* ===== BADGE STYLES ===== */
-.badge {
-    padding: 8px 12px;
-    border-radius: 20px;
-    font-weight: 500;
-}
-
-.progress-bar.bg-success {
-    background-color: var(--success) !important;
-}
-.progress-bar.bg-info {
-    background-color: var(--info) !important;
-}
-.progress-bar.bg-warning {
-    background-color: var(--warning) !important;
-}
-.progress-bar.bg-danger {
-    background-color: var(--danger) !important;
-}
-.progress-bar.bg-dark {
-    background-color: var(--dark) !important;
-}
-
-/* ===== CHART STYLES ===== */
-.chart-container {
-    position: relative;
-    height: 300px;
-    margin-bottom: 20px;
-    width: 100%;
-}
-
-/* ===== MAINTENANCE ITEMS ===== */
-.maintenance-item {
-    border-left: 4px solid #6c757d;
-    padding-left: 15px;
-    margin-bottom: 15px;
-    transition: var(--transition);
-}
-
-.maintenance-item:hover {
-    background-color: rgba(0, 0, 0, 0.02);
-}
-
-.maintenance-pending {
-    border-left-color: var(--warning);
-}
-.maintenance-completed {
-    border-left-color: var(--success);
-}
-.maintenance-overdue {
-    border-left-color: var(--danger);
-}
-
-/* ===== VIEW TOGGLES ===== */
-.list-view,
-.calendar-view {
-    display: none;
-}
-.list-view.active,
-.calendar-view.active {
-    display: block;
-}
-.view-toggle {
-    margin-bottom: 20px;
-}
-
-/* ===== TOAST ===== */
-.toast-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 1100;
-}
-
-/* ===== CONTENT SECTIONS ===== */
-.content-section {
-    display: none;
-    animation: fadeIn 0.5s ease;
-    width: 100%;
-}
-.content-section.active {
-    display: block;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* ===== RISK INDICATORS ===== */
-.risk-indicator {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
+.main-content .vr {
     display: inline-block;
-    margin-right: 5px;
-}
-.risk-low {
-    background-color: var(--success);
-}
-.risk-medium {
-    background-color: var(--warning);
-}
-.risk-high {
-    background-color: var(--danger);
+    align-self: stretch;
+    width: 1px;
+    min-height: 1em;
+    background-color: currentColor;
+    opacity: 0.25;
+    margin: 0 0.25rem;
 }
 
-/* ===== MAP STYLES ===== */
-.map-container {
-    height: 300px;
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 15px;
-    width: 100%;
-    max-width: 100%;
-}
-
-.location-coordinates {
-    background-color: #f8f9fa;
-    border-radius: 4px;
-    padding: 8px 12px;
-    font-family: monospace;
-    font-size: 0.9rem;
-}
-
-.map-preview {
-    height: 150px;
-    border-radius: 6px;
-    overflow: hidden;
-    cursor: pointer;
-}
-
-#projectMapModal .modal-dialog {
-    max-width: 900px;
-}
-#projectMapModal .map-container {
-    height: 500px;
-    width: 100%;
-    border-radius: 8px;
-    overflow: hidden;
-    margin: 0;
-}
-#modalProjectMap {
-    height: 100%;
-    width: 100%;
-    min-height: 500px;
-}
-
-/* ===== QUICK ACTIONS ===== */
-.quick-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.quick-action-btn {
-    flex: 1;
-    min-width: 150px;
-    text-align: center;
-    padding: 15px;
-    border-radius: 10px;
-    background: white;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-}
-
-.quick-action-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.quick-action-btn i {
-    font-size: 1.5rem;
-    margin-bottom: 10px;
-    color: var(--accent);
-}
-
-/* ===== WEATHER WIDGET ===== */
-.weather-widget {
-    background: linear-gradient(135deg, #67b26f, #4ca2cd);
-    color: white;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 20px;
-}
-
-.weather-icon {
-    font-size: 2rem;
-    margin-bottom: 10px;
-}
-
-/* ===== LOGIN SCREEN ===== */
-#login-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.3s ease;
-}
-
-.login-container {
-    background: white;
-    padding: 40px;
-    border-radius: 15px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-    width: 100%;
-    max-width: 400px;
-    animation: fadeInUp 0.5s ease;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* ===== RISK MATRIX ===== */
-.risk-matrix {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 2px;
-    margin: 15px 0;
-}
-.risk-cell {
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: bold;
-}
-
-/* ===== DOCUMENTS ===== */
-.document-item {
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-    transition: background-color 0.2s;
-}
-.document-item:hover {
-    background-color: #f8f9fa;
-}
-.document-icon {
-    font-size: 1.5rem;
-    margin-right: 15px;
-    color: var(--primary);
-}
-
-/* ===== PROGRESS ===== */
-.progress {
-    height: 10px;
-    border-radius: 5px;
-}
-.progress-container {
-    margin: 20px 0;
-}
-
-/* ===== SECTION HEADERS ===== */
+/* Modern Card-style Page Headers */
 .section-header {
     background: linear-gradient(135deg, rgba(44, 85, 48, 0.03), rgba(74, 124, 89, 0.05));
     padding: 1.25rem 1.5rem;
@@ -604,915 +1170,112 @@ body {
     font-size: 0.9rem;
 }
 
-/* ===== MISC FIXES ===== */
-.main-content .d-flex.gap-3 {
-    gap: 1rem !important;
-}
-
-.main-content .vr {
-    display: inline-block;
-    align-self: stretch;
-    width: 1px;
-    min-height: 1em;
-    background-color: currentColor;
-    opacity: 0.25;
-    margin: 0 0.25rem;
-}
-
+/* Force weather widget visibility */
 #weather .weather-widget {
     display: block !important;
     visibility: visible !important;
     min-height: 200px;
 }
+
 #weather .card {
     display: block !important;
     overflow: visible !important;
 }
+
 #weather .card-body {
     overflow: visible !important;
 }
+
+/* Ensure weather section is visible */
 #weather.content-section {
     display: none;
 }
+
 #weather.content-section.active {
     display: block !important;
     min-height: 500px;
 }
+
+/* Fix for weather chart containers */
 #weather .chart-container {
     height: 300px;
     width: 100%;
     position: relative;
 }
+
+/* Ensure temperature chart is visible */
 #temperatureChart {
     display: block !important;
     width: 100% !important;
     height: 100% !important;
 }
 
-/* ===== TOUCH IMPROVEMENTS ===== */
-.btn,
-.nav-link,
-.quick-action-btn,
-.form-control,
-.form-select {
-    min-height: 44px;
-    touch-action: manipulation;
-}
-
-.content-section {
-    -webkit-overflow-scrolling: touch;
-    overflow-y: auto;
-    max-height: calc(100vh - 70px);
-}
-
-/* ===== RESPONSIVE: TABLETS (769-992px) ===== */
-@media (min-width: 769px) and (max-width: 992px) {
-    .sidebar {
-        width: 70px;
-        min-height: 100vh;
-    }
-
-    .sidebar .logo span {
-        display: none;
-    }
-
-    .sidebar .nav-link span {
-        display: none;
-    }
-
-    .sidebar .nav-link i {
-        margin-right: 0;
-        font-size: 1.4rem;
-    }
-
-    .sidebar:hover {
-        width: var(--sidebar-width);
-    }
-
-    .sidebar:hover .logo span {
-        display: inline;
-    }
-
-    .sidebar:hover .nav-link span {
-        display: inline;
-    }
-
-    .sidebar:hover .nav-link i {
-        margin-right: 12px;
-    }
-
-    .main-content {
-        margin-left: 70px;
-        padding: 15px !important;
-        width: calc(100% - 70px) !important;
-    }
-}
-
-/* ===== RESPONSIVE: MOBILE (<768px) ===== */
-@media (max-width: 768px) {
-    /* BOTTOM TAB BAR - FIXED SCROLLING */
-    .sidebar {
-        width: 100% !important;
-        height: 56px !important;
-        min-height: 56px !important;
-        max-height: 56px !important;
-        position: fixed !important;
-        bottom: 0 !important;
-        top: auto !important;
-        left: 0 !important;
-        right: 0 !important;
-        z-index: 1050 !important;
-        background: var(--primary) !important;
-        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2) !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        overflow: visible !important;
-        flex-direction: row !important;
-        border: none !important;
-        /* Prevent sidebar from being collapsible on mobile */
-        transform: none !important;
-        width: 100% !important;
-    }
-
-    .sidebar .logo {
-        display: none !important;
-    }
-
-    .sidebar .nav {
-        flex-direction: row !important;
-        display: flex !important;
-        padding: 0 8px !important;
-        width: 100% !important;
-        height: 100% !important;
-        gap: 2px !important;
-        overflow-x: auto !important;
-        overflow-y: hidden !important;
-        flex-wrap: nowrap !important;
-        -webkit-overflow-scrolling: touch !important;
-        margin: 0 !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        scrollbar-width: none !important;
-        -ms-overflow-style: none !important;
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-    }
-
-    .sidebar .nav::-webkit-scrollbar {
-        display: none !important;
-    }
-
-    .sidebar .nav-item {
-        flex: 0 0 auto !important;
-        min-width: 48px !important;
-        max-width: 64px !important;
-        height: 100% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 0 2px !important;
-    }
-
-    .sidebar .nav-link {
-        padding: 2px 4px !important;
-        font-size: 0.45rem !important;
-        text-align: center !important;
-        border-radius: 4px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        height: 100% !important;
-        width: 100% !important;
-        white-space: nowrap !important;
-        color: rgba(255, 255, 255, 0.7) !important;
-        border: none !important;
-        transition: none !important;
-        gap: 1px !important;
-        min-height: 40px !important;
-        touch-action: manipulation !important;
-        margin: 0 !important;
-        transform: none !important;
-        background: transparent !important;
-        overflow: hidden !important;
-    }
-
-    .sidebar .nav-link.active {
-        color: white !important;
-        background-color: rgba(255, 255, 255, 0.15) !important;
-        transform: none !important;
-    }
-
-    .sidebar .nav-link i {
-        font-size: 1.1rem !important;
-        margin: 0 !important;
-        display: block !important;
-        line-height: 1.2 !important;
-        flex-shrink: 0 !important;
-    }
-
-    .sidebar .nav-link span {
-        font-size: 0.4rem !important;
-        display: block !important;
-        max-width: 52px !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        line-height: 1 !important;
-        font-weight: 400 !important;
-        white-space: nowrap !important;
-        width: 100% !important;
-        text-align: center !important;
-        flex-shrink: 0 !important;
-    }
-
-    /* Fade gradient on right */
-    .sidebar::after {
-        content: '' !important;
-        position: absolute !important;
-        right: 0 !important;
-        top: 0 !important;
-        height: 100% !important;
-        width: 20px !important;
-        background: linear-gradient(to right, transparent, var(--primary)) !important;
-        pointer-events: none !important;
-        z-index: 1 !important;
-        display: block !important;
-    }
-
-    /* MAIN CONTENT */
-    .main-content {
-        margin-left: 0 !important;
-        margin-bottom: 60px !important;
-        padding: 10px 12px 20px 12px !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        flex: 1 !important;
-        min-height: auto !important;
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-        height: auto !important;
-        min-height: calc(100vh - 60px) !important;
-        /* Prevent the narrow panel issue */
-        transition: none !important;
-    }
-
-    /* Fix for the container-fluid and d-flex layout on mobile */
-    .container-fluid {
-        padding: 0 !important;
-        margin: 0 !important;
-        overflow-x: hidden !important;
-    }
-
-    .container-fluid > .d-flex {
-        display: flex !important;
-        flex-direction: column !important;
-        width: 100% !important;
-        min-height: 100vh !important;
-    }
-
-    .d-flex {
-        display: flex !important;
-        flex-direction: column !important;
-        width: 100% !important;
-    }
-
-    /* Fix for the sidebar toggle issue - ensure sidebar doesn't collapse */
-    .sidebar.collapse,
-    .sidebar.collapsing {
-        display: flex !important;
-        height: 56px !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        transform: none !important;
-        width: 100% !important;
-    }
-
-    /* Fix for charts on mobile */
-    .chart-container {
-        height: 200px !important;
-        min-height: 180px !important;
-        max-height: 250px !important;
-        width: 100% !important;
-        position: relative !important;
-        overflow: hidden !important;
-    }
-    
-    .chart-container canvas {
-        max-width: 100% !important;
-        height: 100% !important;
-        width: 100% !important;
-    }
-
-    /* Fix for the health trend chart container */
-    #healthTrendChart {
-        max-height: 200px !important;
-    }
-
-    /* Fix cards */
-    .card {
-        margin-bottom: 12px !important;
-        border-radius: 10px !important;
-        max-width: 100% !important;
-        overflow: hidden !important;
-        width: 100% !important;
-    }
-    
-    .card-body {
-        padding: 10px 12px !important;
-        overflow-x: auto !important;
-        width: 100% !important;
-    }
-
-    /* Fix rows on mobile */
-    .row {
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        width: 100% !important;
-        display: flex !important;
-        flex-wrap: wrap !important;
-    }
-
-    .row > [class*="col-"] {
-        padding-left: 4px !important;
-        padding-right: 4px !important;
-        width: 100% !important;
-        flex: 0 0 100% !important;
-        max-width: 100% !important;
-    }
-
-    /* Fix stat cards */
-    .stat-card {
-        padding: 8px 4px !important;
-        text-align: center !important;
-        border-left: none !important;
-        border-top: 3px solid var(--accent) !important;
-        margin-bottom: 8px !important;
-        width: 100% !important;
-    }
-    
-    .stat-card h3 {
-        font-size: 1.2rem !important;
-        margin: 4px 0 !important;
-    }
-    
-    .stat-card .card-title {
-        font-size: 0.65rem !important;
-    }
-
-    /* Force columns to be full width on mobile */
-    .col-md-3, .col-md-4, .col-md-6, .col-md-8, .col-md-12,
-    .col-sm-6, .col-6 {
-        flex: 0 0 100% !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        padding-left: 4px !important;
-        padding-right: 4px !important;
-    }
-
-    /* Fix quick actions */
-    .quick-actions {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 6px !important;
-        margin-bottom: 10px !important;
-        width: 100% !important;
-    }
-
-    .quick-action-btn {
-        min-width: unset !important;
-        padding: 8px 4px !important;
-        border-radius: 8px !important;
-        flex: unset !important;
-        text-align: center !important;
-        background: white !important;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
-        border: 1px solid #f0f0f0 !important;
-        min-height: 48px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 2px !important;
-        width: 100% !important;
-    }
-
-    .quick-action-btn i {
-        font-size: 1rem !important;
-        margin-bottom: 0 !important;
-        display: block !important;
-    }
-
-    .quick-action-btn h6 {
-        font-size: 0.6rem !important;
-        margin-bottom: 0 !important;
-        font-weight: 500 !important;
-        line-height: 1.2 !important;
-    }
-
-    /* Fix tables */
-    .table-responsive {
-        margin: 0 -10px !important;
-        padding: 0 10px !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-        width: 100% !important;
-    }
-
-    .table {
-        min-width: 500px !important;
-        font-size: 0.7rem !important;
-        width: 100% !important;
-    }
-
-    .table td,
-    .table th {
-        padding: 4px 6px !important;
-        white-space: nowrap !important;
-    }
-
-    .scroll-indicator {
-        display: block !important;
-        text-align: center !important;
-        padding: 2px 0 !important;
-        font-size: 0.55rem !important;
-        color: #999 !important;
-        background: #f8f9fa !important;
-        border-radius: 4px !important;
-        margin-top: 4px !important;
-        width: 100% !important;
-    }
-
-    /* Fix section headers */
-    .section-header {
-        padding: 0.75rem 1rem !important;
-        margin-bottom: 1rem !important;
-        width: 100% !important;
-    }
-
-    .section-header h2 {
-        font-size: 1.2rem !important;
-    }
-
-    .section-header p {
-        font-size: 0.75rem !important;
-        padding-left: 1.8rem !important;
-    }
-
-    /* Fix forms on mobile */
-    .form-control,
-    .form-select {
-        padding: 8px 12px !important;
-        font-size: 0.85rem !important;
-        min-height: 38px !important;
-        width: 100% !important;
-    }
-
-    .btn {
-        padding: 8px 14px !important;
-        font-size: 0.85rem !important;
-        min-height: 38px !important;
-    }
-
-    /* Fix the health chart filter bar */
-    .d-flex.flex-wrap.align-items-center.gap-3 {
-        gap: 6px !important;
-        flex-wrap: wrap !important;
-        flex-direction: column !important;
-        align-items: stretch !important;
-        width: 100% !important;
-    }
-    
-    .d-flex.flex-wrap.align-items-center.gap-3 .form-select {
-        min-width: 100% !important;
-        font-size: 0.75rem !important;
-        width: 100% !important;
-    }
-    
-    .d-flex.flex-wrap.align-items-center.gap-3 .btn-group {
-        flex-wrap: wrap !important;
-        width: 100% !important;
-    }
-    
-    .d-flex.flex-wrap.align-items-center.gap-3 .btn-group .btn {
-        font-size: 0.7rem !important;
-        padding: 4px 8px !important;
-        min-height: 30px !important;
-        flex: 1 !important;
-    }
-
-    .d-flex.flex-wrap.align-items-center.gap-3 .vr {
-        display: none !important;
-    }
-
-    /* Fix the Recent Activities and Upcoming Maintenance sections */
-    #recent-activities,
-    #upcoming-maintenance {
-        width: 100% !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-    }
-
-    #recent-activities .table,
-    #upcoming-maintenance .table {
-        min-width: 400px !important;
-        font-size: 0.65rem !important;
-    }
-
-    #recent-activities td,
-    #recent-activities th,
-    #upcoming-maintenance td,
-    #upcoming-maintenance th {
-        padding: 4px 6px !important;
-        font-size: 0.65rem !important;
-    }
-
-    /* Fix the User Guide tab - ensure it's visible and clickable */
-    .sidebar .nav-item:last-child .nav-link,
-    .sidebar .nav-item:nth-last-child(2) .nav-link {
-        min-width: 44px !important;
-        padding: 2px 3px !important;
-    }
-
-    .sidebar .nav-item:last-child .nav-link span,
-    .sidebar .nav-item:nth-last-child(2) .nav-link span {
-        font-size: 0.35rem !important;
-        max-width: 40px !important;
-    }
-
-    /* Ensure the User Guide iframe is responsive */
-    #guideFrame {
-        height: 400px !important;
-        width: 100% !important;
-    }
-
-    /* Fix weather section */
-    #weather .weather-widget {
-        padding: 10px !important;
-    }
-
-    #weather .row > [class*="col-"] {
-        flex: 0 0 100% !important;
-        max-width: 100% !important;
-        padding: 4px !important;
-    }
-
-    /* Fix content sections */
-    .content-section {
-        width: 100% !important;
-        max-width: 100% !important;
-        overflow-x: hidden !important;
-    }
-
-    .content-section.active {
-        display: block !important;
-        width: 100% !important;
-        max-width: 100% !important;
-    }
-}
-
-/* ===== LANDSCAPE MODE FIXES FOR MOBILE ===== */
-@media (max-width: 768px) and (orientation: landscape) {
-    .sidebar {
-        height: 48px !important;
-        min-height: 48px !important;
-        max-height: 48px !important;
-    }
-
-    .main-content {
-        margin-bottom: 52px !important;
-        min-height: calc(100vh - 52px) !important;
-        padding: 8px 10px 16px 10px !important;
-    }
-
-    .sidebar .nav-link i {
-        font-size: 0.9rem !important;
-    }
-
-    .sidebar .nav-link span {
-        font-size: 0.35rem !important;
-    }
-
-    .sidebar .nav-item {
-        min-width: 40px !important;
-        max-width: 52px !important;
-    }
-
-    .chart-container {
-        height: 150px !important;
-        min-height: 120px !important;
-        max-height: 180px !important;
-    }
-
-    /* Fix Recent Activities and Upcoming Maintenance in landscape */
-    #recent-activities,
-    #upcoming-maintenance {
-        max-height: 150px !important;
-        overflow-y: auto !important;
-    }
-
-    #recent-activities .table,
-    #upcoming-maintenance .table {
-        font-size: 0.6rem !important;
-        min-width: 350px !important;
-    }
-
-    #recent-activities td,
-    #recent-activities th,
-    #upcoming-maintenance td,
-    #upcoming-maintenance th {
-        padding: 2px 4px !important;
-        font-size: 0.6rem !important;
-    }
-
-    /* Fix stat cards in landscape */
-    .stat-card h3 {
-        font-size: 1rem !important;
-    }
-    
-    .stat-card .card-title {
-        font-size: 0.6rem !important;
-    }
-
-    /* Fix quick actions in landscape */
-    .quick-actions {
-        grid-template-columns: 1fr 1fr 1fr 1fr !important;
-        gap: 4px !important;
-    }
-
-    .quick-action-btn {
-        min-height: 36px !important;
-        padding: 4px 6px !important;
-    }
-
-    .quick-action-btn i {
-        font-size: 0.8rem !important;
-    }
-
-    .quick-action-btn h6 {
-        font-size: 0.5rem !important;
-    }
-
-    .card-body {
-        padding: 6px 8px !important;
-    }
-
-    /* Fix columns in landscape */
-    .row > [class*="col-"] {
-        flex: 0 0 50% !important;
-        max-width: 50% !important;
-        padding: 4px !important;
-    }
-
-    /* In landscape, the dashboard should show 2 columns */
-    .row .col-md-3 {
-        flex: 0 0 50% !important;
-        max-width: 50% !important;
-    }
-
-    /* Fix the health chart filter bar in landscape */
-    .d-flex.flex-wrap.align-items-center.gap-3 {
-        flex-direction: row !important;
-        flex-wrap: wrap !important;
-        align-items: center !important;
-    }
-
-    .d-flex.flex-wrap.align-items-center.gap-3 .form-select {
-        min-width: 150px !important;
-        width: auto !important;
-    }
-
-    .d-flex.flex-wrap.align-items-center.gap-3 .btn-group {
-        width: auto !important;
-    }
-}
-
-/* ===== VERY SMALL PHONES (<400px) ===== */
-@media (max-width: 400px) {
-    .sidebar .nav-item {
-        min-width: 38px !important;
-        max-width: 48px !important;
-    }
-    
-    .sidebar .nav-link i {
-        font-size: 0.85rem !important;
-    }
-    
-    .sidebar .nav-link span {
-        font-size: 0.32rem !important;
-        max-width: 36px !important;
-    }
-    
-    .quick-actions {
-        grid-template-columns: 1fr 1fr !important;
-        gap: 4px !important;
-    }
-    
-    .quick-action-btn {
-        padding: 4px 3px !important;
-        min-height: 36px !important;
-    }
-    
-    .quick-action-btn i {
-        font-size: 0.75rem !important;
-    }
-    
-    .quick-action-btn h6 {
-        font-size: 0.45rem !important;
-    }
-    
-    .stat-card h3 {
-        font-size: 0.9rem !important;
-    }
-    
-    .stat-card .card-title {
-        font-size: 0.5rem !important;
-    }
-
-    .chart-container {
-        height: 130px !important;
-        min-height: 110px !important;
-    }
-
-    .section-header h2 {
-        font-size: 1rem !important;
-    }
-
-    .section-header p {
-        font-size: 0.65rem !important;
-        padding-left: 1.5rem !important;
-    }
-
-    /* Ensure User Guide tab is visible on very small screens */
-    .sidebar .nav-item:last-child .nav-link span,
-    .sidebar .nav-item:nth-last-child(2) .nav-link span {
-        font-size: 0.3rem !important;
-        max-width: 32px !important;
-    }
-}
-
-/* ===== FIX FOR SIDEBAR TOGGLE ON TABLETS ===== */
-@media (min-width: 769px) {
-    /* Ensure the sidebar toggle button doesn't affect layout */
-    .sidebar.collapse {
-        display: flex !important;
-        visibility: visible !important;
-    }
-    
-    /* Fix the d-flex layout for desktop */
-    .d-flex {
-        flex-direction: row !important;
-    }
-
-    .container-fluid > .d-flex {
-        flex-direction: row !important;
-    }
-}
-/* ===== TOUCH FEEDBACK ===== */
-.btn:active,
-.nav-link:active,
-.quick-action-btn:active,
-.project-card:active {
-    transform: scale(0.95) !important;
-    transition: transform 0.1s ease !important;
-}
-
-.btn,
-.nav-link,
-.quick-action-btn {
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-}
-
-/* ===== ACCESSIBILITY ===== */
-.btn:focus,
-.form-control:focus,
-.form-select:focus {
-    box-shadow: 0 0 0 3px rgba(58, 138, 95, 0.5);
-}
-
-.nav-link:focus {
-    outline: 2px solid var(--accent-light);
-    outline-offset: -2px;
-}
-
-@media (prefers-contrast: high) {
-    .sidebar {
-        background: var(--primary);
-    }
-    .card {
-        border: 1px solid #ddd;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    * {
-        transition: none !important;
-        animation: none !important;
-    }
-}
-
-@media (prefers-color-scheme: dark) {
-    body {
-        background-color: #121212;
-        color: #e0e0e0;
-    }
-    .card {
-        background-color: #1e1e1e;
-        color: #e0e0e0;
-    }
-    .card-header {
-        background-color: #252525;
-        color: #e0e0e0;
-    }
-    .table {
-        color: #e0e0e0;
-    }
-    .form-control,
-    .form-select {
-        background-color: #2d2d2d;
-        border-color: #444;
-        color: #e0e0e0;
-    }
-}
-
-/* ===== CONTENT SECTIONS - ENSURE PROPER HIDING ===== */
-.content-section {
-    display: none !important;
-    width: 100%;
-    max-width: 100%;
-}
-
-.content-section.active {
-    display: block !important;
-}
-
-/* Force hide all child elements when section is not active */
-.content-section:not(.active),
-.content-section:not(.active) > *,
-.content-section:not(.active) .card,
-.content-section:not(.active) .row,
-.content-section:not(.active) .col-*,
-.content-section:not(.active) .table-responsive,
-.content-section:not(.active) #recent-activities,
-.content-section:not(.active) #upcoming-maintenance {
+/* ===== USER GUIDE FIX - Completely hide dashboard elements ===== */
+/* Force hide all dashboard-specific cards when User Guide is active */
+.content-section:not(.active) {
     display: none !important;
 }
 
-/* Override for active section */
-.content-section.active,
-.content-section.active > *,
-.content-section.active .card,
-.content-section.active .row,
-.content-section.active .col-*,
-.content-section.active .table-responsive,
-.content-section.active #recent-activities,
-.content-section.active #upcoming-maintenance {
-    display: block !important;
-}
-
-/* Special fix for Recent Activities and Upcoming Maintenance cards */
-#dashboard.active #recent-activities,
-#dashboard.active #upcoming-maintenance,
-#dashboard.active .row.mt-4 .card {
-    display: block !important;
-}
-
-#dashboard:not(.active) #recent-activities,
-#dashboard:not(.active) #upcoming-maintenance,
-#dashboard:not(.active) .row.mt-4 .card {
+/* When User Guide is active, ensure NO dashboard elements show */
+#user-guide.content-section.active ~ .content-section,
+#user-guide.content-section.active + .content-section {
     display: none !important;
 }
 
-/* User Guide section fix */
-#user-guide {
+/* Ensure User Guide takes full width and height */
+#user-guide.content-section.active {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    position: relative;
+    z-index: 10;
+    background: #f8f9fa;
+    min-height: 100vh;
+}
+
+/* Hide all dashboard cards when User Guide is active - more aggressive */
+body.user-guide-active .dashboard-card,
+body.user-guide-active .stat-card,
+body.user-guide-active .quick-actions,
+body.user-guide-active .row.mb-3 .card,
+body.user-guide-active .row .col-md-6 .card,
+body.user-guide-active .row .col-md-8 .card,
+body.user-guide-active .row .col-md-4 .card,
+body.user-guide-active #dashboard .card,
+body.user-guide-active .content-section:not(#user-guide) {
     display: none !important;
 }
 
-#user-guide.active {
+/* Ensure User Guide iframe uses full space */
+#user-guide .card {
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    min-height: calc(100vh - 80px);
+}
+
+#user-guide .card-body {
+    padding: 0 !important;
+    overflow: hidden;
+}
+
+#guideFrame {
+    width: 100% !important;
+    height: calc(100vh - 120px) !important;
+    border: none !important;
+    border-radius: 0 !important;
     display: block !important;
 }
 
-#user-guide:not(.active),
-#user-guide:not(.active) * {
-    display: none !important;
-}
-
-#user-guide.active,
-#user-guide.active * {
+/* Force User Guide to take full width and hide everything else */
+.main-content .content-section#user-guide.active {
     display: block !important;
+    position: relative;
+    z-index: 100;
 }
-
-/* But allow flex/grid display where needed */
-#user-guide.active .d-flex {
-    display: flex !important;
-}
-
-#user-guide.active .row {
-    display: flex !important;
-}
-
-</style>
+    </style>
 </head>
 <body>
     <!-- Login Screen - Formerly commented out -->
@@ -3032,81 +2795,74 @@ const weatherConfig = {
         }
     };
 
-// User Guide button functionality
+// User Guide button functionality - Updated with cleanup
 document.getElementById('userGuideBtn').addEventListener('click', function(e) {
     e.preventDefault();
-    e.stopPropagation(); // Prevent event bubbling
     
-    // Update active state
+    // Remove body class to clean up any previous state
+    document.body.classList.remove('user-guide-active');
+    
+    // Navigate to the User Guide section like other menu items
     document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
     this.classList.add('active');
     
-    // Show the User Guide section
+    // Show the User Guide
     showUserGuideSection();
 });
 
 function showUserGuideSection() {
+    // Add class to body to hide dashboard elements
+    document.body.classList.add('user-guide-active');
+    
+    // Check if User Guide section already exists
     let userGuideSection = document.getElementById('user-guide');
     
     if (!userGuideSection) {
+        // Create User Guide section
         userGuideSection = document.createElement('div');
         userGuideSection.id = 'user-guide';
         userGuideSection.className = 'content-section';
         
+        // Add User Guide content
         userGuideSection.innerHTML = `
             <div class="section-header">
-                <h2>User Guide</h2>
-                <p class="text-muted">Complete documentation for EcoManager Pro</p>
+                <h2><i class="bi bi-question-circle"></i> User Guide</h2>
+                <p class="text-muted">Learn how to use EcoManager Pro effectively</p>
             </div>
             
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="card-header">
                     <h5 class="card-title mb-0">EcoManager Pro Documentation</h5>
-                    <button class="btn btn-sm btn-outline-primary" onclick="openUserGuideInNewTab()">
-                        <i class="bi bi-box-arrow-up-right"></i> Open in New Tab
-                    </button>
                 </div>
                 <div class="card-body p-0">
-                    <div style="position: relative; width: 100%; height: 700px;">
-                        <div id="guideLoadingMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 1; color: #6c757d;">
-                            <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem;">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <p class="mt-2 mb-0">Loading User Guide...</p>
-                        </div>
-                        <iframe 
-                            id="guideFrame" 
-                            src="UserGuide.html" 
-                            style="width: 100%; height: 100%; border: none; background: white; position: relative; z-index: 2;"
-                            onload="document.getElementById('guideLoadingMessage').style.display='none'">
-                        </iframe>
-                    </div>
+                    <iframe id="guideFrame" src="UserGuide.html" style="width: 100%; height: calc(100vh - 200px); border: none; border-radius: 0;"></iframe>
                 </div>
             </div>
         `;
         
-        document.querySelector('.main-content').appendChild(userGuideSection);
+        // Add to main content
+        const mainContent = document.querySelector('.main-content');
+        mainContent.appendChild(userGuideSection);
     }
     
+    // Hide ALL other content sections
     document.querySelectorAll('.content-section').forEach(section => {
         section.classList.remove('active');
     });
     
-    userGuideSection.classList.add('active');
-    document.title = 'User Guide | EcoManager Pro';
-    
-    // Reset loading message and reload iframe
-    const loadingMsg = document.getElementById('guideLoadingMessage');
-    if (loadingMsg) loadingMsg.style.display = 'flex';
-    
-    const iframe = document.getElementById('guideFrame');
-    if (iframe) {
-        iframe.src = 'UserGuide.html';
-    }
-}
-
-function openUserGuideInNewTab() {
-    window.open('UserGuide.html', '_blank');
+    // Show the User Guide section
+    setTimeout(() => {
+        userGuideSection.classList.add('active');
+        
+        // Update page title
+        document.title = 'User Guide | EcoManager Pro';
+        
+        // Ensure the iframe loads
+        const guideFrame = document.getElementById('guideFrame');
+        if (guideFrame) {
+            guideFrame.src = guideFrame.src || 'UserGuide.html';
+        }
+    }, 50);
 }
 
 // ========== SAFETY HELPER FOR CHARTS ==========
@@ -7126,17 +6882,14 @@ function showEmptyChartMessage(canvas, message) {
         });
     }
 
-// Quick action handlers - FIXED
+// Quick action handlers - ADD ensureProperLayout()
 document.querySelectorAll('.quick-action-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         const target = this.dataset.target;
-        
-        // Update sidebar nav
         document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
         const targetLink = document.querySelector(`[data-target="${target}"]`);
         if (targetLink) targetLink.classList.add('active');
         
-        // CRITICAL: Hide ALL sections first
         document.querySelectorAll('.content-section').forEach(section => {
             section.classList.remove('active');
         });
@@ -7167,6 +6920,7 @@ document.querySelectorAll('.quick-action-btn').forEach(btn => {
             }
             if (target === 'weather') loadWeatherData();
             
+            // ADD THIS LINE
             ensureProperLayout();
         }, 50);
     });
@@ -7894,33 +7648,24 @@ function setupHealthScorePreview() {
 
     // ==================== NAVIGATION ====================
 
-// Navigation - FIXED to properly hide all sections
+// Navigation - UPDATED with layout fix
 document.querySelectorAll('.sidebar .nav-link').forEach(link => {
     link.addEventListener('click', function(e) {
-        // Skip if this is the User Guide button (it has its own handler)
-        if (this.id === 'userGuideBtn') {
-            return; // Let the other handler take care of it
-        }
-        
         e.preventDefault();
         
         // Update active state
         document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
         this.classList.add('active');
         
+        // Show the corresponding section
         const target = this.getAttribute('data-target');
-        
-        // CRITICAL: First hide ALL content sections
         document.querySelectorAll('.content-section').forEach(section => {
             section.classList.remove('active');
         });
         
-        // Show the target section
         setTimeout(() => {
             const targetSection = document.getElementById(target);
-            if (targetSection) {
-                targetSection.classList.add('active');
-            }
+            if (targetSection) targetSection.classList.add('active');
             
             // Load data for the section
             if (target === 'dashboard') loadDashboard();
@@ -7942,14 +7687,17 @@ document.querySelectorAll('.sidebar .nav-link').forEach(link => {
                 loadDataSummary();
                 loadProjectSelects();
             }
-            if (target === 'weather') {
-                loadWeatherData();
-                const weatherSection = document.getElementById('weather');
-                if (weatherSection) weatherSection.classList.add('active');
-            }
+            if (target === 'weather') loadWeatherData();
             
+            // ADD THIS LINE - Fix layout after navigation
             ensureProperLayout();
         }, 50);
+        
+        // Update page title
+        const spanText = this.querySelector('span');
+        if (spanText) {
+            document.title = `${spanText.textContent} | EcoManager Pro`;
+        }
     });
 });
 
@@ -7989,12 +7737,6 @@ function ensureProperLayout() {
         
         // Force layout recalculation
         fixLayout();
-
-        // Apply mobile fixes on navigation
-        if (window.innerWidth < 768) {
-            setTimeout(enhanceTableScrolling, 100);
-        }
-               
     }, 50);
 }
 
@@ -8058,6 +7800,17 @@ function fixLayout() {
     }
 }
 
+// Clean up dashboard elements when User Guide is active
+function cleanupDashboardElements() {
+    // If User Guide is active, hide all dashboard-specific elements
+    const userGuide = document.getElementById('user-guide');
+    if (userGuide && userGuide.classList.contains('active')) {
+        document.body.classList.add('user-guide-active');
+    } else {
+        document.body.classList.remove('user-guide-active');
+    }
+}
+
 // Call this after any navigation or window resize
 window.addEventListener('resize', fixLayout);
 window.addEventListener('load', fixLayout);
@@ -8070,14 +7823,17 @@ function ensureProperLayout() {
             mainContent.style.opacity = '0.99';
             setTimeout(function() {
                 mainContent.style.opacity = '1';
-                fixLayout(); // Add this line
+                fixLayout();
             }, 10);
         }
         
         window.dispatchEvent(new Event('resize'));
         window.scrollTo({ top: 0, behavior: 'smooth' });
         fixTableScrolling();
-        fixLayout(); // Add this line
+        fixLayout();
+        
+        // Clean up dashboard elements if User Guide is active
+        cleanupDashboardElements();
     }, 50);
 }
 
@@ -8195,271 +7951,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// ======================================================
-// ===== MOBILE IMPROVEMENTS - ADD THESE FUNCTIONS =====
-// ======================================================
-
-// Function 1: Improve forms for mobile
-function improveMobileForms() {
-    // Make form labels clickable - tapping label focuses the input
-    document.querySelectorAll('.form-label').forEach(label => {
-        const input = document.getElementById(label.getAttribute('for'));
-        if (input) {
-            label.addEventListener('click', function() {
-                input.focus();
-                // Smooth scroll to input on mobile
-                if (window.innerWidth < 768) {
-                    setTimeout(() => {
-                        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 300);
-                }
-            });
-        }
-    });
-    
-    // Auto-scroll to focused input on mobile
-    document.querySelectorAll('input, select, textarea').forEach(el => {
-        el.addEventListener('focus', function() {
-            if (window.innerWidth < 768) {
-                setTimeout(() => {
-                    this.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 300);
-            }
-        });
-    });
-    
-    // Add floating labels for better UX
-    document.querySelectorAll('.form-control, .form-select').forEach(el => {
-        const wrapper = el.closest('.mb-3');
-        if (wrapper) {
-            const label = wrapper.querySelector('.form-label');
-            if (label && !wrapper.querySelector('.floating-label-added')) {
-                // Mark as processed
-                const marker = document.createElement('span');
-                marker.className = 'floating-label-added';
-                marker.style.display = 'none';
-                wrapper.appendChild(marker);
-                
-                // Make label float above input
-                label.style.position = 'absolute';
-                label.style.top = '-10px';
-                label.style.left = '12px';
-                label.style.background = 'white';
-                label.style.padding = '0 6px';
-                label.style.fontSize = '0.75rem';
-                label.style.zIndex = '2';
-                wrapper.style.position = 'relative';
-                wrapper.style.paddingTop = '20px';
-            }
-        }
-    });
-}
-
-// Function 2: Make charts responsive
-function makeChartsResponsive() {
-    // Get all chart instances
-    const charts = [
-        healthTrendChart, 
-        projectStatusChart, 
-        analyticsHealthTrendChart, 
-        speciesTypeChart, 
-        maintenanceTypeChart, 
-        monthlyActivityChart
-    ];
-    
-    charts.forEach(chart => {
-        if (chart) {
-            // Store the original resize function
-            const originalResize = chart.resize;
-            
-            // Override resize to handle mobile
-            chart.resize = function() {
-                if (this.canvas) {
-                    const parent = this.canvas.parentElement;
-                    if (parent) {
-                        // Set responsive height based on screen size
-                        if (window.innerWidth < 576) {
-                            parent.style.height = '200px';
-                        } else if (window.innerWidth < 768) {
-                            parent.style.height = '250px';
-                        } else {
-                            parent.style.height = '300px';
-                        }
-                    }
-                }
-                // Call original resize
-                originalResize.call(this);
-            };
-            
-            // Trigger initial resize
-            setTimeout(() => chart.resize(), 100);
-            
-            // Enable touch interaction
-            enableChartTouchInteraction(chart);
-        }
-    });
-}
-
-// Function 3: Enable touch on charts
-function enableChartTouchInteraction(chart) {
-    if (!chart) return;
-    
-    const canvas = chart.canvas;
-    if (!canvas) return;
-    
-    // Show tooltips on touch
-    canvas.addEventListener('touchstart', function(e) {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        
-        try {
-            const elements = chart.getElementsAtEventForMode({ x, y }, 'index', { intersect: true });
-            if (elements && elements.length > 0) {
-                chart.tooltip.setActiveElements(elements);
-                chart.update();
-            }
-        } catch (error) {
-            // Silently handle errors
-        }
-    });
-    
-    // Hide tooltip after a delay
-    canvas.addEventListener('touchend', function() {
-        setTimeout(() => {
-            try {
-                chart.tooltip.setActiveElements([]);
-                chart.update();
-            } catch (error) {
-                // Silently handle errors
-            }
-        }, 2000);
-    });
-}
-
-// Function 4: Enhanced table scrolling
-function enhanceTableScrolling() {
-    document.querySelectorAll('.table-responsive').forEach(container => {
-        const table = container.querySelector('table');
-        if (table) {
-            // Check if table is wider than container
-            const isOverflowing = table.scrollWidth > container.clientWidth;
-            if (isOverflowing && window.innerWidth < 768) {
-                // Remove existing indicator
-                const existingIndicator = container.parentElement.querySelector('.scroll-indicator');
-                if (existingIndicator) existingIndicator.remove();
-                
-                // Add scroll indicator
-                const indicator = document.createElement('div');
-                indicator.className = 'scroll-indicator';
-                indicator.innerHTML = '<i class="bi bi-chevron-right"></i> Swipe to see more';
-                container.parentElement.insertBefore(indicator, container.nextSibling);
-                
-                // Hide indicator after user scrolls
-                container.addEventListener('scroll', function() {
-                    if (this.scrollLeft > 20) {
-                        const ind = this.parentElement.querySelector('.scroll-indicator');
-                        if (ind) ind.style.display = 'none';
-                    }
-                });
-            }
-        }
-    });
-}
-
-// Function 5: Fix mobile keyboard issues
-function fixMobileKeyboard() {
-    // Prevent zoom on input focus (changes viewport)
-    const inputs = document.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-        input.addEventListener('focus', function() {
-            if (window.innerWidth < 768) {
-                // Wait for keyboard to appear, then scroll
-                setTimeout(() => {
-                    this.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 300);
-            }
-        });
-    });
-}
-
-// Function 6: Main mobile initialization
-function initMobileOptimizations() {
-    // Only apply on mobile devices
-    const isMobile = window.innerWidth < 768;
-    
-    if (isMobile) {
-        // Fix navigation - make links easier to tap
-        document.querySelectorAll('.sidebar .nav-link').forEach(link => {
-            link.style.display = 'flex';
-            link.style.flexDirection = 'column';
-            link.style.alignItems = 'center';
-            link.style.justifyContent = 'center';
-            link.style.minHeight = '44px';
-        });
-        
-        // Remove gap between sidebar and content
-        const flexContainer = document.querySelector('.d-flex');
-        if (flexContainer) {
-            flexContainer.style.gap = '0';
-        }
-        
-        // Fix main content padding
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            mainContent.style.marginBottom = '65px';
-        }
-        
-        // Improve table scrolling
-        setTimeout(enhanceTableScrolling, 200);
-        
-        // Fix forms
-        setTimeout(improveMobileForms, 300);
-        
-        // Make charts responsive
-        setTimeout(makeChartsResponsive, 500);
-    }
-    
-    // Handle keyboard on all devices
-    setTimeout(fixMobileKeyboard, 100);
-}
-
-// Function 7: Fix layout when screen changes
-function handleOrientationChange() {
-    setTimeout(() => {
-        // Fix layout
-        if (typeof fixLayout === 'function') {
-            fixLayout();
-        }
-        
-        // Resize charts
-        const charts = [
-            healthTrendChart, 
-            projectStatusChart, 
-            analyticsHealthTrendChart, 
-            speciesTypeChart, 
-            maintenanceTypeChart, 
-            monthlyActivityChart
-        ];
-        
-        charts.forEach(chart => {
-            if (chart && chart.resize) {
-                try {
-                    setTimeout(() => chart.resize(), 200);
-                } catch (e) {
-                    // Ignore errors
-                }
-            }
-        });
-        
-        // Fix table scrolling
-        setTimeout(enhanceTableScrolling, 300);
-    }, 300);
-}
-
-
 // ==================== INITIALIZATION ====================
 
 // FIXED: Initialize the application with proper chart loading
@@ -8508,26 +7999,8 @@ function initApp() {
     // Fix table scrolling on initial load
     setTimeout(fixTableScrolling, 300);
     
-    // Apply mobile optimizations after a short delay
-    setTimeout(initMobileOptimizations, 200);
-    
-    // Handle orientation changes (when user rotates phone)
-    window.addEventListener('orientationchange', handleOrientationChange);
-    
-    // Also handle resize
-    let resizeTimer;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => {
-            if (window.innerWidth < 768) {
-                initMobileOptimizations();
-            }
-        }, 200);
-    });
-       
     console.log("EcoManager Pro initialized successfully!");
 }
-
     // Force layout recalculation on window load
     window.addEventListener('load', function() {
         const mainContent = document.querySelector('.main-content');
