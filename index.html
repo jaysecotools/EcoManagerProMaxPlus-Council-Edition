@@ -1507,6 +1507,22 @@ body.user-guide-active .content-section:not(#user-guide) {
     position: relative;
     z-index: 100;
 }
+
+/* Force hide everything except User Guide when active */
+body.user-guide-active #dashboard,
+body.user-guide-active #projects,
+body.user-guide-active #assessments,
+body.user-guide-active #species,
+body.user-guide-active #maintenance,
+body.user-guide-active #charts,
+body.user-guide-active #data,
+body.user-guide-active #weather {
+    display: none !important;
+}
+
+body.user-guide-active #user-guide {
+    display: block !important;
+}
     </style>
 </head>
 <body>
@@ -3027,26 +3043,21 @@ const weatherConfig = {
         }
     };
 
-// User Guide button functionality - Updated with cleanup
+// User Guide button functionality - COMPLETELY FIXED
 document.getElementById('userGuideBtn').addEventListener('click', function(e) {
     e.preventDefault();
     
-    // Remove body class to clean up any previous state
-    document.body.classList.remove('user-guide-active');
-    
-    // Navigate to the User Guide section like other menu items
+    // FIRST: Remove active class from all nav links
     document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
     this.classList.add('active');
     
-    // Show the User Guide
-    showUserGuideSection();
-});
-
-function showUserGuideSection() {
-    // Add class to body to hide dashboard elements
-    document.body.classList.add('user-guide-active');
+    // SECOND: IMMEDIATELY hide ALL content sections
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.remove('active');
+        section.style.display = 'none';
+    });
     
-    // Check if User Guide section already exists
+    // THIRD: Get or create the User Guide section
     let userGuideSection = document.getElementById('user-guide');
     
     if (!userGuideSection) {
@@ -3077,25 +3088,22 @@ function showUserGuideSection() {
         mainContent.appendChild(userGuideSection);
     }
     
-    // Hide ALL other content sections
-    document.querySelectorAll('.content-section').forEach(section => {
-        section.classList.remove('active');
-    });
+    // FOURTH: Show ONLY the User Guide section
+    userGuideSection.style.display = 'block';
+    userGuideSection.classList.add('active');
     
-    // Show the User Guide section
-    setTimeout(() => {
-        userGuideSection.classList.add('active');
-        
-        // Update page title
-        document.title = 'User Guide | EcoManager Pro';
-        
-        // Ensure the iframe loads
-        const guideFrame = document.getElementById('guideFrame');
-        if (guideFrame) {
-            guideFrame.src = guideFrame.src || 'UserGuide.html';
-        }
-    }, 50);
-}
+    // FIFTH: Add class to body to hide dashboard elements via CSS
+    document.body.classList.add('user-guide-active');
+    
+    // Update page title
+    document.title = 'User Guide | EcoManager Pro';
+    
+    // Ensure the iframe loads
+    const guideFrame = document.getElementById('guideFrame');
+    if (guideFrame) {
+        guideFrame.src = guideFrame.src || 'UserGuide.html';
+    }
+});
 
 // ========== SAFETY HELPER FOR CHARTS ==========
 function safeDestroyChart(chartInstance) {
@@ -7114,47 +7122,48 @@ function showEmptyChartMessage(canvas, message) {
         });
     }
 
-// Quick action handlers - ADD ensureProperLayout()
+// Quick action handlers - FIXED to prevent flashing
 document.querySelectorAll('.quick-action-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         const target = this.dataset.target;
+        
+        // Update sidebar
         document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
         const targetLink = document.querySelector(`[data-target="${target}"]`);
         if (targetLink) targetLink.classList.add('active');
         
+        // Hide all sections immediately
         document.querySelectorAll('.content-section').forEach(section => {
             section.classList.remove('active');
         });
         
-        setTimeout(() => {
-            const targetSection = document.getElementById(target);
-            if (targetSection) targetSection.classList.add('active');
-            
-            // Load data for the section
-            if (target === 'dashboard') loadDashboard();
-            if (target === 'projects') {
-                loadProjects();
-                setTimeout(() => {
-                    initProjectMap();
-                }, 100);
-            }
-            if (target === 'assessments') loadAssessments();
-            if (target === 'species') loadSpecies();
-            if (target === 'maintenance') {
-                loadMaintenance();
-                const listViewBtn = document.querySelector('[data-view="list-view"]');
-                if (listViewBtn) listViewBtn.click();
-            }
-            if (target === 'charts') loadCharts();
-            if (target === 'data') {
-                loadDataSummary();
-                loadProjectSelects();
-            }
-            if (target === 'weather') loadWeatherData();
-            
-            // ADD THIS LINE
-            ensureProperLayout();
-        }, 50);
+        // Show target section
+        const targetSection = document.getElementById(target);
+        if (targetSection) targetSection.classList.add('active');
+        
+        // Load data for the section
+        if (target === 'dashboard') loadDashboard();
+        if (target === 'projects') {
+            loadProjects();
+            setTimeout(() => {
+                initProjectMap();
+            }, 100);
+        }
+        if (target === 'assessments') loadAssessments();
+        if (target === 'species') loadSpecies();
+        if (target === 'maintenance') {
+            loadMaintenance();
+            const listViewBtn = document.querySelector('[data-view="list-view"]');
+            if (listViewBtn) listViewBtn.click();
+        }
+        if (target === 'charts') loadCharts();
+        if (target === 'data') {
+            loadDataSummary();
+            loadProjectSelects();
+        }
+        if (target === 'weather') loadWeatherData();
+        
+        ensureProperLayout();
     });
 });
 
@@ -7878,9 +7887,65 @@ function setupHealthScorePreview() {
         }
     };
 
-    // ==================== NAVIGATION ====================
+// ==================== NAVIGATION - COMPLETELY FIXED ====================
 
-// Navigation - FIXED to prevent dashboard content flashing
+// Show User Guide function
+function showUserGuide() {
+    // FIRST: HIDE ALL content sections with both class and display
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.remove('active');
+        section.style.display = 'none';
+    });
+    
+    // Get or create the User Guide section
+    let userGuideSection = document.getElementById('user-guide');
+    
+    if (!userGuideSection) {
+        // Create User Guide section
+        userGuideSection = document.createElement('div');
+        userGuideSection.id = 'user-guide';
+        userGuideSection.className = 'content-section';
+        
+        // Add User Guide content
+        userGuideSection.innerHTML = `
+            <div class="section-header">
+                <h2><i class="bi bi-question-circle"></i> User Guide</h2>
+                <p class="text-muted">Learn how to use EcoManager Pro effectively</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">EcoManager Pro Documentation</h5>
+                </div>
+                <div class="card-body p-0">
+                    <iframe id="guideFrame" src="UserGuide.html" style="width: 100%; height: calc(100vh - 200px); border: none; border-radius: 0;"></iframe>
+                </div>
+            </div>
+        `;
+        
+        // Add to main content
+        const mainContent = document.querySelector('.main-content');
+        mainContent.appendChild(userGuideSection);
+    }
+    
+    // SHOW ONLY the User Guide section
+    userGuideSection.style.display = 'block';
+    userGuideSection.classList.add('active');
+    
+    // Add class to body for CSS hiding
+    document.body.classList.add('user-guide-active');
+    
+    // Update page title
+    document.title = 'User Guide | EcoManager Pro';
+    
+    // Ensure the iframe loads
+    const guideFrame = document.getElementById('guideFrame');
+    if (guideFrame) {
+        guideFrame.src = guideFrame.src || 'UserGuide.html';
+    }
+}
+
+// Main navigation handler - FIXED
 document.querySelectorAll('.sidebar .nav-link').forEach(link => {
     link.addEventListener('click', function(e) {
         e.preventDefault();
@@ -7891,18 +7956,33 @@ document.querySelectorAll('.sidebar .nav-link').forEach(link => {
         
         const target = this.getAttribute('data-target');
         
-        // FIRST: Hide ALL content sections immediately
+        // Check if this is the User Guide button (special handling)
+        if (this.id === 'userGuideBtn' || target === 'user-guide') {
+            showUserGuide();
+            ensureProperLayout();
+            return;
+        }
+        
+        // HIDE ALL content sections - both class AND display
         document.querySelectorAll('.content-section').forEach(section => {
             section.classList.remove('active');
+            section.style.display = 'none';
         });
         
-        // SECOND: Show the target section
+        // REMOVE user-guide-active class from body
+        document.body.classList.remove('user-guide-active');
+        
+        // Reset document title
+        document.title = 'EcoManager Pro | Ecosystem Management';
+        
+        // SHOW the target section
         const targetSection = document.getElementById(target);
         if (targetSection) {
+            targetSection.style.display = 'block';
             targetSection.classList.add('active');
         }
         
-        // THIRD: Load data for the section (without setTimeout)
+        // Load data for the section
         if (target === 'dashboard') loadDashboard();
         if (target === 'projects') {
             loadProjects();
@@ -7922,15 +8002,41 @@ document.querySelectorAll('.sidebar .nav-link').forEach(link => {
             loadDataSummary();
             loadProjectSelects();
         }
-        if (target === 'weather') loadWeatherData();
+        if (target === 'weather') {
+            // Make sure weather section is visible
+            const weatherSection = document.getElementById('weather');
+            if (weatherSection) {
+                weatherSection.style.display = 'block';
+                weatherSection.classList.add('active');
+            }
+            loadWeatherData();
+        }
         
         // Fix layout
         ensureProperLayout();
     });
 });
 
+// Fix User Guide button separately - ensure it works
+const userGuideBtn = document.getElementById('userGuideBtn');
+if (userGuideBtn) {
+    // Remove existing listeners by cloning
+    const newBtn = userGuideBtn.cloneNode(true);
+    userGuideBtn.parentNode.replaceChild(newBtn, userGuideBtn);
+    
+    newBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Update active state
+        document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+        this.classList.add('active');
+        
+        showUserGuide();
+        ensureProperLayout();
+    });
+}
+
 function ensureProperLayout() {
-    // Force a reflow to fix any layout issues
     setTimeout(function() {
         const mainContent = document.querySelector('.main-content');
         const sidebar = document.querySelector('.sidebar');
@@ -7965,39 +8071,42 @@ function ensureProperLayout() {
         
         // Force layout recalculation
         fixLayout();
+        
+        // Clean up dashboard elements if User Guide is active
+        cleanupDashboardElements();
     }, 50);
 }
 
-    // Fix for table horizontal scrolling - ensure tables are scrollable
-    function fixTableScrolling() {
-        // Make sure all table-responsive divs have proper styling
-        document.querySelectorAll('.table-responsive').forEach(container => {
-            container.style.overflowX = 'auto';
-            container.style.width = '100%';
-            container.style.display = 'block';
-        });
-        
-        // Set minimum widths on tables to ensure horizontal scroll appears
-        const projectsTable = document.getElementById('projects-table');
-        if (projectsTable && projectsTable.closest('.table-responsive')) {
-            projectsTable.style.minWidth = '1000px';
-        }
-        
-        const maintenanceTable = document.getElementById('maintenance-table');
-        if (maintenanceTable && maintenanceTable.closest('.table-responsive')) {
-            maintenanceTable.style.minWidth = '900px';
-        }
-        
-        const speciesTable = document.getElementById('species-table');
-        if (speciesTable && speciesTable.closest('.table-responsive')) {
-            speciesTable.style.minWidth = '700px';
-        }
-        
-        const assessmentsTable = document.getElementById('assessments-table');
-        if (assessmentsTable && assessmentsTable.closest('.table-responsive')) {
-            assessmentsTable.style.minWidth = '600px';
-        }
+// Fix for table horizontal scrolling - ensure tables are scrollable
+function fixTableScrolling() {
+    // Make sure all table-responsive divs have proper styling
+    document.querySelectorAll('.table-responsive').forEach(container => {
+        container.style.overflowX = 'auto';
+        container.style.width = '100%';
+        container.style.display = 'block';
+    });
+    
+    // Set minimum widths on tables to ensure horizontal scroll appears
+    const projectsTable = document.getElementById('projects-table');
+    if (projectsTable && projectsTable.closest('.table-responsive')) {
+        projectsTable.style.minWidth = '1000px';
     }
+    
+    const maintenanceTable = document.getElementById('maintenance-table');
+    if (maintenanceTable && maintenanceTable.closest('.table-responsive')) {
+        maintenanceTable.style.minWidth = '900px';
+    }
+    
+    const speciesTable = document.getElementById('species-table');
+    if (speciesTable && speciesTable.closest('.table-responsive')) {
+        speciesTable.style.minWidth = '700px';
+    }
+    
+    const assessmentsTable = document.getElementById('assessments-table');
+    if (assessmentsTable && assessmentsTable.closest('.table-responsive')) {
+        assessmentsTable.style.minWidth = '600px';
+    }
+}
 
 // Force layout recalculation
 function fixLayout() {
@@ -8030,10 +8139,16 @@ function fixLayout() {
 
 // Clean up dashboard elements when User Guide is active
 function cleanupDashboardElements() {
-    // If User Guide is active, hide all dashboard-specific elements
     const userGuide = document.getElementById('user-guide');
     if (userGuide && userGuide.classList.contains('active')) {
         document.body.classList.add('user-guide-active');
+        // Also hide all other content sections directly
+        document.querySelectorAll('.content-section').forEach(section => {
+            if (section.id !== 'user-guide') {
+                section.classList.remove('active');
+                section.style.display = 'none';
+            }
+        });
     } else {
         document.body.classList.remove('user-guide-active');
     }
@@ -8042,29 +8157,6 @@ function cleanupDashboardElements() {
 // Call this after any navigation or window resize
 window.addEventListener('resize', fixLayout);
 window.addEventListener('load', fixLayout);
-
-// Call in your navigation code
-function ensureProperLayout() {
-    setTimeout(function() {
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            mainContent.style.opacity = '0.99';
-            setTimeout(function() {
-                mainContent.style.opacity = '1';
-                fixLayout();
-            }, 10);
-        }
-        
-        window.dispatchEvent(new Event('resize'));
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        fixTableScrolling();
-        fixLayout();
-        
-        // Clean up dashboard elements if User Guide is active
-        cleanupDashboardElements();
-    }, 50);
-}
-
 // FIXED initApiKeyManagement
 function initApiKeyManagement() {
     console.log("Initializing API key management");
