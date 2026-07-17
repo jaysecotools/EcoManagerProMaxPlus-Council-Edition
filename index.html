@@ -1225,18 +1225,44 @@
             display: block !important;
         }
 
-/* ===== SIMPLE MOBILE FIX - Just hide dashboard cards when not on dashboard ===== */
+/* ===== SIMPLE MOBILE FIX - Hide ALL dashboard content when not on dashboard ===== */
 @media (max-width: 768px) {
-    /* This is the ONLY fix needed - hide dashboard content when not on dashboard */
+    /* CRITICAL FIX: Hide ALL dashboard content when dashboard is NOT active */
+    #dashboard:not(.active) > *,
+    #dashboard:not(.active) .row,
     #dashboard:not(.active) .card,
     #dashboard:not(.active) .quick-actions,
-    #dashboard:not(.active) .row,
     #dashboard:not(.active) .section-header,
-    #dashboard:not(.active) .chart-container {
+    #dashboard:not(.active) .chart-container,
+    #dashboard:not(.active) .col-md-8,
+    #dashboard:not(.active) .col-md-4,
+    #dashboard:not(.active) .col-md-6,
+    #dashboard:not(.active) .col-12,
+    #dashboard:not(.active) .col-sm-6,
+    #dashboard:not(.active) .col-md-3,
+    #dashboard:not(.active) .mb-3,
+    #dashboard:not(.active) .mt-4,
+    #dashboard:not(.active) .card-body,
+    #dashboard:not(.active) .card-header,
+    #dashboard:not(.active) .table-responsive,
+    #dashboard:not(.active) .maintenance-item,
+    #dashboard:not(.active) .d-flex,
+    #dashboard:not(.active) .dropdown,
+    #dashboard:not(.active) .btn-group,
+    #dashboard:not(.active) .dropdown-toggle {
         display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        min-height: 0 !important;
+        max-height: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
     }
-}
-    </style>
+}    </style>
 </head>
 <body>
     <!-- Login Screen - Formerly commented out -->
